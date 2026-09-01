@@ -101,12 +101,28 @@ static uint32_t capture_surface_id(struct v4l2r_context *ctx, uint32_t index)
 static int queue_buffer(struct v4l2r_context *ctx, struct v4l2_buffer *buffer)
 {
 	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {0};
+	const struct v4l2r_capture_buffer *capture = NULL;
+
+	/* A DMABUF-mode CAPTURE buffer names its memory on every queue. */
+	if (!V4L2_TYPE_IS_OUTPUT(buffer->type) &&
+	    buffer->memory == V4L2_MEMORY_DMABUF)
+		capture = &ctx->captures[buffer->index];
 
 	if (V4L2_TYPE_IS_MULTIPLANAR(buffer->type)) {
 		planes[0].bytesused = buffer->bytesused;
 		buffer->bytesused = 0;
 		buffer->length = 1;
 		buffer->m.planes = planes;
+		if (capture) {
+			buffer->length = capture->nb_planes;
+			for (unsigned int i = 0; i < capture->nb_planes; i++) {
+				planes[i].m.fd = capture->dmabuf_fd[i];
+				planes[i].length = capture->plane_size[i];
+			}
+		}
+	} else if (capture) {
+		buffer->m.fd = capture->dmabuf_fd[0];
+		buffer->length = capture->plane_size[0];
 	}
 
 	if (ioctl(ctx->video_fd, VIDIOC_QBUF, buffer) < 0)
@@ -139,7 +155,7 @@ static int queue_capture_buffer(struct v4l2r_context *ctx, uint32_t index)
 	struct v4l2_buffer buffer = {
 		.index = index,
 		.type = ctx->capture_format.type,
-		.memory = V4L2_MEMORY_MMAP,
+		.memory = ctx->capture_memory,
 	};
 
 	return queue_buffer(ctx, &buffer);
@@ -167,11 +183,12 @@ static int dequeue_buffer(struct v4l2r_context *ctx, enum v4l2_buf_type type)
 	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {0};
 	struct v4l2_buffer buffer = {
 		.type = type,
-		.memory = V4L2_MEMORY_MMAP,
+		.memory = V4L2_TYPE_IS_OUTPUT(type) ? V4L2_MEMORY_MMAP :
+						      ctx->capture_memory,
 	};
 
 	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
-		buffer.length = 1;
+		buffer.length = VIDEO_MAX_PLANES;
 		buffer.m.planes = planes;
 	}
 

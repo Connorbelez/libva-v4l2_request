@@ -380,7 +380,7 @@ static int capture_buffer_new(struct v4l2r_context *ctx)
 {
 	struct v4l2_create_buffers buffers = {
 		.count = 1,
-		.memory = V4L2_MEMORY_MMAP,
+		.memory = ctx->capture_memory,
 		.format = ctx->capture_format,
 	};
 	struct v4l2_plane planes[VIDEO_MAX_PLANES] = {0};
@@ -428,12 +428,17 @@ static int capture_buffer_new(struct v4l2r_context *ctx)
 	if (V4L2_TYPE_IS_MULTIPLANAR(buffer.type)) {
 		capture->nb_planes = ctx->capture_format.fmt.pix_mp.num_planes;
 		for (unsigned int i = 0; i < capture->nb_planes; i++) {
-			capture->plane_mem_offset[i] = buffer.m.planes[i].m.mem_offset;
+			/* mem_offset is only meaningful for MMAP buffers. */
+			capture->plane_mem_offset[i] =
+				ctx->capture_memory == V4L2_MEMORY_MMAP ?
+				buffer.m.planes[i].m.mem_offset : 0;
 			capture->plane_size[i] = buffer.m.planes[i].length;
 		}
 	} else {
 		capture->nb_planes = 1;
-		capture->plane_mem_offset[0] = buffer.m.offset;
+		capture->plane_mem_offset[0] =
+			ctx->capture_memory == V4L2_MEMORY_MMAP ?
+			buffer.m.offset : 0;
 		capture->plane_size[0] = buffer.length;
 	}
 
@@ -480,6 +485,103 @@ static void capture_wait_readers(struct v4l2r_capture_buffer *capture)
 }
 
 /*
+ * Does standalone backing have exactly the layout of this context's CAPTURE
+ * format? Only then can the decoder write into it in place of an MMAP
+ * buffer: the client has already been told this pitch and chroma offset
+ * through vaExportSurfaceHandle(), and the kernel refuses an imported
+ * dma-buf smaller than sizeimage.
+ */
+static bool backing_matches_capture(const struct v4l2r_context *ctx,
+				    const struct v4l2r_surface_backing *backing)
+{
+	const struct v4l2_format *fmt = &ctx->capture_format;
+
+	if (backing->pixelformat != v4l2r_format_pixelformat(fmt) ||
+	    backing->width != v4l2r_format_width(fmt) ||
+	    backing->height != v4l2r_format_height(fmt) ||
+	    backing->pitch != v4l2r_format_bytesperline(fmt))
+		return false;
+
+	if (V4L2_TYPE_IS_MULTIPLANAR(fmt->type)) {
+		if (backing->nb_planes != fmt->fmt.pix_mp.num_planes)
+			return false;
+		for (unsigned int i = 0; i < backing->nb_planes; i++)
+			if (backing->plane_size[i] <
+			    fmt->fmt.pix_mp.plane_fmt[i].sizeimage)
+				return false;
+	} else {
+		if (backing->nb_planes != 1 ||
+		    backing->plane_size[0] < fmt->fmt.pix.sizeimage)
+			return false;
+	}
+
+	return true;
+}
+
+/*
+ * DMABUF mode: point CAPTURE buffer |index| at the surface's standalone
+ * backing, so the decoder writes into the very dma-buf the client already
+ * exported. A surface without backing gets one allocated (a recycled
+ * buffer could keep its old memory, but a fresh backing keeps every
+ * surface's export stable and independent of buffer recycling).
+ */
+static int capture_attach_backing(struct v4l2r_context *ctx, int index,
+				  struct v4l2r_surface *surface)
+{
+	struct v4l2r_capture_buffer *capture = &ctx->captures[index];
+	struct v4l2r_surface_backing *backing;
+
+	if (!surface->backing &&
+	    v4l2r_surface_alloc_backing(ctx->drv, surface) != VA_STATUS_SUCCESS) {
+		v4l2r_log("failed to allocate dma-buf backing for surface 0x%08x\n",
+			  surface->id);
+		return -ENOMEM;
+	}
+	backing = surface->backing;
+
+	if (!backing_matches_capture(ctx, backing)) {
+		v4l2r_log("surface 0x%08x backing (%.4s %ux%u pitch %u) does not "
+			  "match the CAPTURE format (%.4s %ux%u pitch %u)\n",
+			  surface->id, (const char *)&backing->pixelformat,
+			  backing->width, backing->height, backing->pitch,
+			  (const char *)&(uint32_t){v4l2r_format_pixelformat(&ctx->capture_format)},
+			  v4l2r_format_width(&ctx->capture_format),
+			  v4l2r_format_height(&ctx->capture_format),
+			  v4l2r_format_bytesperline(&ctx->capture_format));
+		return -EINVAL;
+	}
+
+	for (unsigned int i = 0; i < VIDEO_MAX_PLANES; i++) {
+		if (capture->map[i]) {
+			munmap(capture->map[i], capture->plane_size[i]);
+			capture->map[i] = NULL;
+		}
+		if (capture->dmabuf_fd[i] >= 0) {
+			close(capture->dmabuf_fd[i]);
+			capture->dmabuf_fd[i] = -1;
+		}
+	}
+
+	capture->nb_planes = backing->nb_planes;
+	for (unsigned int i = 0; i < backing->nb_planes; i++) {
+		int fd = fcntl(backing->dmabuf_fd[i], F_DUPFD_CLOEXEC, 0);
+
+		if (fd < 0) {
+			for (unsigned int j = 0; j < i; j++) {
+				close(capture->dmabuf_fd[j]);
+				capture->dmabuf_fd[j] = -1;
+			}
+			return -errno;
+		}
+		capture->dmabuf_fd[i] = fd;
+		capture->plane_size[i] = backing->plane_size[i];
+		capture->plane_mem_offset[i] = 0;
+	}
+
+	return 0;
+}
+
+/*
  * Ensure the surface has a CAPTURE buffer and that the buffer is safe to
  * decode into now. A surface keeps the same buffer for its whole lifetime -
  * so vaExportSurfaceHandle() is stable per VASurfaceID - and the buffer is
@@ -501,6 +603,30 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 	/* Refresh the completion counter with anything already finished. */
 	v4l2r_reap_capture(ctx);
 
+	/*
+	 * The first buffer fixes the queue's memory type. Normally the
+	 * decoder allocates (MMAP). But a client that exports a surface
+	 * before decoding into it - Chromium creates each VA surface, calls
+	 * vaExportSurfaceHandle() at once and imports the dma-buf into its
+	 * GPU, then decodes - already holds the standalone backing that
+	 * export produced, and would keep showing that never-written
+	 * memory if the decode went to a fresh MMAP buffer. In that case
+	 * run the queue in DMABUF mode and decode into the exported memory.
+	 * The format converter chain has its own backing rules, keep MMAP
+	 * there.
+	 */
+	if (!ctx->capture_memory) {
+		if (!ctx->conv && surface->backing &&
+		    backing_matches_capture(ctx, surface->backing)) {
+			ctx->capture_memory = V4L2_MEMORY_DMABUF;
+			v4l2r_log("surface 0x%08x was exported before its first "
+				  "decode; decoding into client-exported dma-bufs\n",
+				  surface->id);
+		} else {
+			ctx->capture_memory = V4L2_MEMORY_MMAP;
+		}
+	}
+
 	if (index < 0) {
 		/* First decode into this surface: recycle a buffer orphaned by
 		 * a destroyed surface, or grow the pool. */
@@ -510,8 +636,36 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 		if (index < 0) {
 			recycled = false;
 			index = capture_buffer_new(ctx);
+			/* Not every decoder accepts DMABUF on its CAPTURE
+			 * queue. While the queue is still empty the memory
+			 * type is not committed, so fall back to the old
+			 * MMAP behaviour (the client then keeps its stale
+			 * export, but decoding works). */
+			if (index < 0 &&
+			    ctx->capture_memory == V4L2_MEMORY_DMABUF &&
+			    !ctx->nb_captures) {
+				v4l2r_log("CAPTURE queue refused DMABUF, "
+					  "falling back to MMAP buffers\n");
+				ctx->capture_memory = V4L2_MEMORY_MMAP;
+				index = capture_buffer_new(ctx);
+			}
 			if (index < 0)
 				return index;
+		}
+
+		if (ctx->capture_memory == V4L2_MEMORY_DMABUF) {
+			int ret;
+
+			/* A recycled buffer may still be decoding into its
+			 * old memory; let that finish before re-pointing it. */
+			if (recycled)
+				v4l2r_sync_capture(ctx, index);
+			ret = capture_attach_backing(ctx, index, surface);
+			if (ret < 0) {
+				if (recycled)
+					free_list_push(ctx, index);
+				return ret;
+			}
 		}
 
 		ctx->captures[index].surface = surface;
@@ -646,8 +800,11 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 	/* The decode context provides the real storage now; drop any
 	 * standalone backing from pre-decode export probing. With a
 	 * conversion chain the backing IS the presented storage - keep it
-	 * (v4l2r_surface_convert_backing replaces a mismatched one). */
-	if (!ctx->conv)
+	 * (v4l2r_surface_convert_backing replaces a mismatched one). In
+	 * DMABUF mode the backing IS the CAPTURE buffer's memory, keep it
+	 * too (the buffer holds its own fds, so this only affects the
+	 * client-visible export, which must stay stable). */
+	if (!ctx->conv && ctx->capture_memory != V4L2_MEMORY_DMABUF)
 		v4l2r_surface_free_backing(surface);
 
 	if (starting) {

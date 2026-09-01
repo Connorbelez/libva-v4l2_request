@@ -98,6 +98,13 @@ struct v4l2r_decoder {
 	 * device can do 10-bit (e.g. Allwinner A64 lacks it), and the kernel only
 	 * rejects it at decode time, so probe it up front and gate Main10. */
 	bool hevc_10bit;
+	/* The decoder cannot handle H.264 High profile: the Apple AVD driver
+	 * in linux-asahi 7.1.6 stalls on transform_8x8_mode_flag=1 streams
+	 * (the x264 default). Advertising High would make every browser pick
+	 * VA-API for such streams and then fail them outright instead of
+	 * decoding in software. Override with V4L2R_H264_HIGH=1 once the
+	 * kernel is fixed. */
+	bool no_h264_high;
 };
 
 /*
@@ -199,6 +206,10 @@ struct v4l2r_frame_view {
 	void *map[VIDEO_MAX_PLANES];		/* valid when maps requested */
 };
 
+/* Allocate standalone backing sized like the surface itself. */
+VAStatus v4l2r_surface_alloc_backing(struct v4l2r_driver *drv,
+				     struct v4l2r_surface *surface);
+
 /* Resolve the memory view of a surface, allocating standalone backing
  * for unbound surfaces on demand. */
 VAStatus v4l2r_surface_view(struct v4l2r_driver *drv,
@@ -282,6 +293,14 @@ struct v4l2r_context {
 	uint32_t output_capabilities;
 	uint32_t capture_capabilities;
 	bool streaming;			/* CAPTURE side fully configured */
+	/*
+	 * Memory type of the CAPTURE queue, fixed by the first buffer created
+	 * on it (V4L2 does not allow mixing): V4L2_MEMORY_MMAP, the default,
+	 * or V4L2_MEMORY_DMABUF when the client exported (and imported into
+	 * its GPU) the surface memory before ever decoding into it - see
+	 * capture_buffer_bind() in context.c. 0 until decided.
+	 */
+	enum v4l2_memory capture_memory;
 
 	struct v4l2r_output_buffer output[V4L2R_OUTPUT_BUFFERS];
 	uint8_t next_output;

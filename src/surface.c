@@ -447,6 +447,15 @@ next:
 
 /* Backing for a bare (unbound) surface, sized like the surface itself. */
 static VAStatus backing_alloc_default(struct v4l2r_driver *drv,
+				      struct v4l2r_surface *surface);
+
+VAStatus v4l2r_surface_alloc_backing(struct v4l2r_driver *drv,
+				     struct v4l2r_surface *surface)
+{
+	return backing_alloc_default(drv, surface);
+}
+
+static VAStatus backing_alloc_default(struct v4l2r_driver *drv,
 				      struct v4l2r_surface *surface)
 {
 	uint32_t pixelformat = V4L2_PIX_FMT_NV12;
@@ -577,12 +586,20 @@ VAStatus v4l2r_surface_capture_view(struct v4l2r_surface *surface,
 	if (need_maps) {
 		for (unsigned int i = 0; i < capture->nb_planes; i++) {
 			if (!capture->map[i]) {
-				void *addr = mmap(NULL,
-					capture->plane_size[i],
-					PROT_READ | PROT_WRITE,
-					MAP_SHARED,
-					ctx->video_fd,
-					capture->plane_mem_offset[i]);
+				void *addr;
+
+				/* DMABUF-mode buffers have no mmap offset on
+				 * the video node; map the dma-buf itself. */
+				if (ctx->capture_memory == V4L2_MEMORY_DMABUF)
+					addr = mmap(NULL, capture->plane_size[i],
+						    PROT_READ | PROT_WRITE,
+						    MAP_SHARED,
+						    capture->dmabuf_fd[i], 0);
+				else
+					addr = mmap(NULL, capture->plane_size[i],
+						    PROT_READ | PROT_WRITE,
+						    MAP_SHARED, ctx->video_fd,
+						    capture->plane_mem_offset[i]);
 				if (addr == MAP_FAILED)
 					return VA_STATUS_ERROR_OPERATION_FAILED;
 				capture->map[i] = addr;
