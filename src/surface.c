@@ -386,10 +386,48 @@ static VAStatus backing_alloc(struct v4l2r_driver *drv,
 			backing->nb_planes = 1;
 		}
 
+		/* Export may precede context creation, so the codec is unknown.
+		 * Reserve enough tail storage for every codec with this layout;
+		 * AVD keeps codec-specific reference data after the visible image. */
+		struct v4l2_format allocation = format;
+		for (unsigned int c = 1; c < drv->decoders[n].nb_pixelformats; c++) {
+			struct v4l2_format candidate = format;
+			if (mplane)
+				out.fmt.pix_mp.pixelformat = drv->decoders[n].pixelformats[c];
+			else
+				out.fmt.pix.pixelformat = drv->decoders[n].pixelformats[c];
+			if (ioctl(fd, VIDIOC_S_FMT, &out) < 0 ||
+			    ioctl(fd, VIDIOC_S_FMT, &candidate) < 0)
+				continue;
+			if (v4l2r_format_pixelformat(&candidate) != pixelformat ||
+			    v4l2r_format_width(&candidate) != backing->width ||
+			    v4l2r_format_height(&candidate) != backing->height ||
+			    v4l2r_format_bytesperline(&candidate) != backing->pitch)
+				continue;
+			if (mplane) {
+				if (candidate.fmt.pix_mp.num_planes != backing->nb_planes)
+					continue;
+				for (unsigned int i = 0; i < backing->nb_planes; i++)
+					if (candidate.fmt.pix_mp.plane_fmt[i].sizeimage >
+					    allocation.fmt.pix_mp.plane_fmt[i].sizeimage)
+						allocation.fmt.pix_mp.plane_fmt[i].sizeimage =
+							candidate.fmt.pix_mp.plane_fmt[i].sizeimage;
+			} else if (candidate.fmt.pix.sizeimage > allocation.fmt.pix.sizeimage) {
+				allocation.fmt.pix.sizeimage = candidate.fmt.pix.sizeimage;
+			}
+		}
+		if (mplane)
+			out.fmt.pix_mp.pixelformat = coded;
+		else
+			out.fmt.pix.pixelformat = coded;
+		if (ioctl(fd, VIDIOC_S_FMT, &out) < 0 ||
+		    ioctl(fd, VIDIOC_S_FMT, &format) < 0)
+			goto next;
+
 		buffers = (struct v4l2_create_buffers) {
 			.count = 1,
 			.memory = V4L2_MEMORY_MMAP,
-			.format = format,
+			.format = allocation,
 		};
 		if (ioctl(fd, VIDIOC_CREATE_BUFS, &buffers) < 0)
 			goto next;
@@ -446,17 +484,8 @@ next:
 }
 
 /* Backing for a bare (unbound) surface, sized like the surface itself. */
-static VAStatus backing_alloc_default(struct v4l2r_driver *drv,
-				      struct v4l2r_surface *surface);
-
 VAStatus v4l2r_surface_alloc_backing(struct v4l2r_driver *drv,
 				     struct v4l2r_surface *surface)
-{
-	return backing_alloc_default(drv, surface);
-}
-
-static VAStatus backing_alloc_default(struct v4l2r_driver *drv,
-				      struct v4l2r_surface *surface)
 {
 	uint32_t pixelformat = V4L2_PIX_FMT_NV12;
 
@@ -634,7 +663,7 @@ VAStatus v4l2r_surface_view(struct v4l2r_driver *drv,
 
 	/* Unbound surface: use (or create) standalone backing. */
 	if (!surface->backing) {
-		VAStatus status = backing_alloc_default(drv, surface);
+		VAStatus status = v4l2r_surface_alloc_backing(drv, surface);
 		if (status != VA_STATUS_SUCCESS)
 			return status;
 	}

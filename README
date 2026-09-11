@@ -43,6 +43,16 @@ Run against a specific build without installing:
     export LIBVA_DRIVER_NAME=v4l2_request
     vainfo
 
+Hardware regression check for surfaces exported before decoding (requires
+FFmpeg development headers, its hw_decode.c example, and libx264/libx265/libvpx
+encoders):
+
+    tests/early-export.sh /path/to/build/src [/path/to/hw_decode.c]
+
+The check generates H.264, HEVC and VP9 clips, verifies stable dma-buf identity
+and layout across decode, and compares hardware output byte-for-byte with
+software output. It also exercises the normal decode-before-export path.
+
 Environment variables:
 
   LIBVA_V4L2_REQUEST_MEDIA_PATH=/dev/mediaN
@@ -265,9 +275,11 @@ Design
 - Surfaces that are exported or mapped *before* they were ever decoded
   into (mpv probes formats this way: it exports bare test surfaces with
   no decode context) get standalone dma-buf backing, allocated from a
-  decoder CAPTURE queue on a throwaway fd. The backing is dropped once
-  the surface is bound to a real decode context (kept when it serves as
-  the format converter's destination, see below).
+  decoder CAPTURE queue on a throwaway fd. If the first decoded surface
+  has this backing, the context imports it with V4L2_MEMORY_DMABUF so
+  clients keep seeing the same storage after decoding. Allocation reserves
+  the largest sizeimage required by codecs sharing the exported layout.
+  Decode-first clients continue to use MMAP CAPTURE buffers.
 
 - CAPTURE format selection prefers linear, VAImage-representable formats
   (NV12/P010) over tiled driver defaults, so dma-buf display interop and

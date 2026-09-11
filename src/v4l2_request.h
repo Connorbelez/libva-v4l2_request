@@ -98,13 +98,6 @@ struct v4l2r_decoder {
 	 * device can do 10-bit (e.g. Allwinner A64 lacks it), and the kernel only
 	 * rejects it at decode time, so probe it up front and gate Main10. */
 	bool hevc_10bit;
-	/* The decoder cannot handle H.264 High profile: the Apple AVD driver
-	 * in linux-asahi 7.1.6 stalls on transform_8x8_mode_flag=1 streams
-	 * (the x264 default). Advertising High would make every browser pick
-	 * VA-API for such streams and then fail them outright instead of
-	 * decoding in software. Override with V4L2R_H264_HIGH=1 once the
-	 * kernel is fixed. */
-	bool no_h264_high;
 };
 
 /*

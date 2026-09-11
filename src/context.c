@@ -26,21 +26,22 @@
 #include "v4l2_request.h"
 
 static int set_format(struct v4l2r_context *ctx, enum v4l2_buf_type type,
-		      uint32_t pixelformat, uint32_t buffersize)
+		      uint32_t pixelformat, uint32_t width, uint32_t height,
+		      uint32_t buffersize)
 {
 	struct v4l2_format format = {
 		.type = type,
 	};
 
 	if (V4L2_TYPE_IS_MULTIPLANAR(type)) {
-		format.fmt.pix_mp.width = ctx->picture_width;
-		format.fmt.pix_mp.height = ctx->picture_height;
+		format.fmt.pix_mp.width = width;
+		format.fmt.pix_mp.height = height;
 		format.fmt.pix_mp.pixelformat = pixelformat;
 		format.fmt.pix_mp.plane_fmt[0].sizeimage = buffersize;
 		format.fmt.pix_mp.num_planes = 1;
 	} else {
-		format.fmt.pix.width = ctx->picture_width;
-		format.fmt.pix.height = ctx->picture_height;
+		format.fmt.pix.width = width;
+		format.fmt.pix.height = height;
 		format.fmt.pix.pixelformat = pixelformat;
 		format.fmt.pix.sizeimage = buffersize;
 	}
@@ -120,7 +121,8 @@ static bool try_framesize(struct v4l2r_context *ctx, uint32_t pixelformat)
  *  3. any known format with matching bit depth,
  *  4. any known format.
  */
-static int select_capture_format(struct v4l2r_context *ctx)
+static int select_capture_format(struct v4l2r_context *ctx,
+				 struct v4l2r_surface *surface)
 {
 	enum v4l2_buf_type type = ctx->capture_format.type;
 	const struct v4l2r_format_info *info;
@@ -166,7 +168,11 @@ static int select_capture_format(struct v4l2r_context *ctx)
 	if (!best)
 		return -EINVAL;
 
-	return set_format(ctx, type, best, 0);
+	/* Clients may allocate a padded surface larger than the coded picture.
+	 * Keep its advertised chroma offset when importing pre-exported memory. */
+	return set_format(ctx, type, best,
+			surface->backing ? surface->backing->width : ctx->picture_width,
+			surface->backing ? surface->backing->height : ctx->picture_height, 0);
 }
 
 /* --- OUTPUT bitstream buffers with their media requests --- */
@@ -551,27 +557,19 @@ static int capture_attach_backing(struct v4l2r_context *ctx, int index,
 		return -EINVAL;
 	}
 
-	for (unsigned int i = 0; i < VIDEO_MAX_PLANES; i++) {
-		if (capture->map[i]) {
-			munmap(capture->map[i], capture->plane_size[i]);
-			capture->map[i] = NULL;
-		}
-		if (capture->dmabuf_fd[i] >= 0) {
-			close(capture->dmabuf_fd[i]);
-			capture->dmabuf_fd[i] = -1;
-		}
-	}
+	capture_buffer_cleanup(ctx, capture);
 
 	capture->nb_planes = backing->nb_planes;
 	for (unsigned int i = 0; i < backing->nb_planes; i++) {
 		int fd = fcntl(backing->dmabuf_fd[i], F_DUPFD_CLOEXEC, 0);
 
 		if (fd < 0) {
+			int ret = -errno;
 			for (unsigned int j = 0; j < i; j++) {
 				close(capture->dmabuf_fd[j]);
 				capture->dmabuf_fd[j] = -1;
 			}
-			return -errno;
+			return ret;
 		}
 		capture->dmabuf_fd[i] = fd;
 		capture->plane_size[i] = backing->plane_size[i];
@@ -616,8 +614,7 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 	 * there.
 	 */
 	if (!ctx->capture_memory) {
-		if (!ctx->conv && surface->backing &&
-		    backing_matches_capture(ctx, surface->backing)) {
+		if (!ctx->conv && surface->backing) {
 			ctx->capture_memory = V4L2_MEMORY_DMABUF;
 			v4l2r_log("surface 0x%08x was exported before its first "
 				  "decode; decoding into client-exported dma-bufs\n",
@@ -625,6 +622,12 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 		} else {
 			ctx->capture_memory = V4L2_MEMORY_MMAP;
 		}
+	}
+	if (!ctx->conv && surface->backing &&
+	    (ctx->capture_memory != V4L2_MEMORY_DMABUF ||
+	     !backing_matches_capture(ctx, surface->backing))) {
+		v4l2r_log("cannot decode into the already-exported surface layout\n");
+		return -EINVAL;
 	}
 
 	if (index < 0) {
@@ -636,19 +639,6 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 		if (index < 0) {
 			recycled = false;
 			index = capture_buffer_new(ctx);
-			/* Not every decoder accepts DMABUF on its CAPTURE
-			 * queue. While the queue is still empty the memory
-			 * type is not committed, so fall back to the old
-			 * MMAP behaviour (the client then keeps its stale
-			 * export, but decoding works). */
-			if (index < 0 &&
-			    ctx->capture_memory == V4L2_MEMORY_DMABUF &&
-			    !ctx->nb_captures) {
-				v4l2r_log("CAPTURE queue refused DMABUF, "
-					  "falling back to MMAP buffers\n");
-				ctx->capture_memory = V4L2_MEMORY_MMAP;
-				index = capture_buffer_new(ctx);
-			}
 			if (index < 0)
 				return index;
 		}
@@ -658,12 +648,13 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 
 			/* A recycled buffer may still be decoding into its
 			 * old memory; let that finish before re-pointing it. */
-			if (recycled)
-				v4l2r_sync_capture(ctx, index);
+			if (recycled && v4l2r_sync_capture(ctx, index) != VA_STATUS_SUCCESS) {
+				free_list_push(ctx, index);
+				return -EIO;
+			}
 			ret = capture_attach_backing(ctx, index, surface);
 			if (ret < 0) {
-				if (recycled)
-					free_list_push(ctx, index);
+				free_list_push(ctx, index);
 				return ret;
 			}
 		}
@@ -744,7 +735,7 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 		return VA_STATUS_ERROR_SURFACE_BUSY;
 
 	if (starting) {
-		ret = select_capture_format(ctx);
+		ret = select_capture_format(ctx, surface);
 		if (ret < 0) {
 			v4l2r_log("failed to select a CAPTURE format: %s\n",
 				  strerror(-ret));
@@ -931,7 +922,8 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 			buffersize = 1024 * 1024;
 
 		ret = set_format(ctx, ctx->output_format.type,
-				 ctx->codec->pixelformat, buffersize);
+				 ctx->codec->pixelformat, picture_width, picture_height,
+				 buffersize);
 		if (ret < 0)
 			goto next;
 
