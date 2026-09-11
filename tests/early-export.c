@@ -53,13 +53,16 @@ VAStatus vaEndPicture(VADisplay display, VAContextID context)
     require(vaSyncSurface(display, current) == VA_STATUS_SUCCESS, "decode sync failed");
     export_surface(display, current, &after);
     require(before.num_objects == after.num_objects, "object count changed");
-    require(before.width == after.width && before.height == after.height,
-            "surface dimensions changed");
+    require(before.fourcc == after.fourcc && before.width == after.width &&
+            before.height == after.height, "surface format or dimensions changed");
     require(before.num_layers == after.num_layers &&
             memcmp(before.layers, after.layers, sizeof(before.layers)) == 0,
             "exported layer layout changed");
     for (unsigned i = 0; i < before.num_objects; i++) {
         struct stat old_stat, new_stat;
+        require(before.objects[i].size == after.objects[i].size &&
+                before.objects[i].drm_format_modifier == after.objects[i].drm_format_modifier,
+                "exported object layout changed");
         require(fstat(before.objects[i].fd, &old_stat) == 0 &&
                 fstat(after.objects[i].fd, &new_stat) == 0, "fstat failed");
         require(old_stat.st_dev == new_stat.st_dev && old_stat.st_ino == new_stat.st_ino,
