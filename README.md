@@ -75,6 +75,12 @@ cannot match another missing reference through timestamp zero. Slice types must 
 agree with the parsed NAL header. Three new offline cases reproduce the earlier failures
 and verify valid submissions and recovery, bringing the sanitizer suite to 25 cases.
 
+Version `1.3.r10` validates VP9 headers and submission completeness, preserves the colour-range
+flag on inter pictures, and commits loop-filter/segmentation/range changes only after successful
+submission. Missing reference storage, including references from an older decoder context,
+is rejected before hardware submission. Four VP9 cases bring the sanitizer suite to 29 cases,
+including 24,000 additional deterministic parser inputs.
+
 Tested on an M1 (T8103) with the kernel patches from omarchy-m1-video: `JCT-VC-HEVC_V1` 144/147 and
 `JVT-AVC_V1` 73/135 bit-exact through FFmpeg VA-API. Earlier Chrome 152 H.264 playback tests
 matched software rendering; this revision adds direct early-export pixel regressions.
@@ -87,6 +93,10 @@ As of 2026-09-15:
   Vulkan driver for Apple GPUs ignores the plane offsets of imported frames. Use `gpu-api=opengl`.
 - **H.264 profiles:** Constrained Baseline, Main and High are offered by default. High 10 requires
   the opt-in mode below. 4:2:2 uses software. Interlaced H.264 remains unsupported by AVD.
+- **VP9:** 8-bit and 10-bit 4:2:0 are tested. Sub-64-pixel dimensions, inter-frame resizing,
+  and some scalable-video vectors remain incomplete. Two resize streams that caused firmware
+  timeouts with r9 now fail in userspace when their references belong to an older context.
+  This is safe rejection, not support for those streams. See [VP9 testing](tests/README.md#vp9-validation).
 - **Early export needs DMABUF import.** Once a context decodes into client-exported surfaces, a later
   surface whose layout does not match fails instead of falling back to separate buffers.
 - **Kernel driver bugs** in AVD itself can hang or crash the system; the kernel patches in
@@ -136,7 +146,7 @@ This is a client compatibility setting, not a change to the VA-API or V4L2 param
 
 See [tests/README.md](tests/README.md) for the offline sanitizer suite and guarded hardware
 checks. `vainfo --display drm` identifies this build as
-`v4l2-request (omarchy-m1-video 1.3.r9)`.
+`v4l2-request (omarchy-m1-video 1.3.r10)`.
 
 ## License
 

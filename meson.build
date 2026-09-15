@@ -1,5 +1,5 @@
 project('libva-v4l2_request', 'c',
-        version: '1.3.r9',
+        version: '1.3.r10',
         license: 'GPL-3.0',
         default_options: [
           'c_std=gnu11',
