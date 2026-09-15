@@ -10,8 +10,8 @@ meson setup build-test -Db_sanitize=address,undefined
 meson test -C build-test --print-errorlogs
 ```
 
-The 19 cases cover failed decode/export, CAPTURE/reference/GPU-reader/request timeouts,
-deferred flush failures, surviving surfaces and derived images after context destruction,
+The 20 cases cover failed decode/export, CAPTURE/reference/GPU-reader/request timeouts,
+invalid poll events, deferred flush failures, surviving surfaces and derived images after context destruction,
 errors during teardown, grown OUTPUT indices, bitstream size overflow, odd-width NV12/P010
 copies, truncated image backing, invalid dimensions and zero-element buffer resizing.
 The HEVC case checks exact-capacity entry points, malformed headers and 24,000 deterministic

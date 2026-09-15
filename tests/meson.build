@@ -2,13 +2,13 @@ regression = executable('regression', 'regression.c', driver_sources,
   c_args: ['-UNDEBUG'],
   include_directories: [root_inc, include_directories('../src')],
   dependencies: [libva_dep, libdrm_dep, threads_dep],
-  link_args: ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll'])
+  link_args: ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll', '-Wl,--wrap=__poll_chk'])
 foreach case : ['decode-error', 'export-error', 'reuse-timeout', 'reader-timeout',
                 'refwait-timeout', 'export-timeout', 'flush-error',
                 'image-dimensions', 'odd-image-copy', 'image-bounds', 'buffer-zero',
                 'context-lifetime', 'context-error', 'context-timeout',
                 'output-grown', 'request-timeout',
-                'bitstream-overflow', 'derive-bounds']
+                'bitstream-overflow', 'derive-bounds', 'invalid-poll']
   test(case, regression, args: [case], timeout: 10)
 endforeach
 

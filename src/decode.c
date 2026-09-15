@@ -250,7 +250,8 @@ static int wait_on_capture_locked(struct v4l2r_context *ctx, uint32_t index)
 
 	while (ctx->queued_capture & (UINT64_C(1) << index)) {
 		int ret = poll(&pollfd, 1, V4L2R_POLL_TIMEOUT_MS);
-		if (ret <= 0)
+		if (ret <= 0 || !(pollfd.revents & POLLIN) ||
+		    (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)))
 			return -EIO;
 
 		ret = dequeue_buffer(ctx, ctx->capture_format.type);
@@ -303,7 +304,8 @@ static int wait_completed_locked(struct v4l2r_context *ctx, uint64_t target)
 	 * submitted up to the target sequence. */
 	while (ctx->completed < target && ctx->queued_capture) {
 		int ret = poll(&pollfd, 1, V4L2R_POLL_TIMEOUT_MS);
-		if (ret <= 0)
+		if (ret <= 0 || !(pollfd.revents & POLLIN) ||
+		    (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)))
 			return -EIO;
 
 		ret = dequeue_buffer(ctx, ctx->capture_format.type);
@@ -359,7 +361,8 @@ static struct v4l2r_output_buffer *next_output(struct v4l2r_context *ctx)
 
 	while (ctx->queued_output & (1u << output->index)) {
 		int ret = poll(&pollfd, 1, V4L2R_POLL_TIMEOUT_MS);
-		if (ret <= 0)
+		if (ret <= 0 || !(pollfd.revents & POLLOUT) ||
+		    (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)))
 			goto fail;
 
 		ret = dequeue_buffer(ctx, ctx->output_format.type);
@@ -393,10 +396,11 @@ static int wait_on_request(struct v4l2r_context *ctx,
 
 	while (ctx->queued_request & (1u << output->index)) {
 		int ret = poll(&pollfd, 1, V4L2R_POLL_TIMEOUT_MS);
-		if (ret <= 0 || (pollfd.revents & (POLLHUP | POLLNVAL)))
+		if (ret <= 0 || !(pollfd.revents & POLLPRI) ||
+		    (pollfd.revents & (POLLERR | POLLHUP | POLLNVAL)))
 			return -EIO;
 
-		if (pollfd.revents & (POLLPRI | POLLERR)) {
+		if (pollfd.revents & POLLPRI) {
 			ctx->queued_request &= ~(1u << output->index);
 			break;
 		}

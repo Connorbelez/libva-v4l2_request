@@ -23,6 +23,7 @@ static struct v4l2r_surface *surface;
 static VASurfaceID sid;
 static int capture_available, capture_flags, poll_ready = 1, queued;
 static int output_available, output_index;
+static short poll_extra;
 static unsigned char pixels[64 * 6];
 static VAStatus failed_flush(struct v4l2r_context *context, struct v4l2r_surface *target)
 {
@@ -68,8 +69,15 @@ int __wrap_poll(struct pollfd *fds, nfds_t count, int timeout)
 {
     (void)timeout;
     for (nfds_t i = 0; i < count; i++)
-        fds[i].revents = poll_ready ? fds[i].events : 0;
+        fds[i].revents = poll_ready ? fds[i].events | poll_extra : 0;
     return poll_ready ? (int)count : 0;
+}
+
+/* Fortified glibc builds may call this instead of the public poll symbol. */
+int __wrap___poll_chk(struct pollfd *fds, nfds_t count, int timeout, size_t size)
+{
+    assert(count <= size / sizeof(*fds));
+    return __wrap_poll(fds, count, timeout);
 }
 
 static void setup(void)
@@ -221,6 +229,21 @@ int main(int argc, char **argv)
     } else if (!strcmp(argv[1], "request-timeout")) {
         ctx.queued_request = 1;
         poll_ready = 0;
+        ctx.captures[0].dmabuf_fd[0] = -1;
+        ctx.pic.output = &ctx.output[0];
+        ctx.pic.target = surface;
+        assert(v4l2r_decode(&ctx, NULL, 0, true, true) != VA_STATUS_SUCCESS);
+        assert(queued == 0 && ctx.queued_request == 1);
+    } else if (!strcmp(argv[1], "invalid-poll")) {
+        poll_extra = POLLNVAL;
+        ctx.queued_capture = 1;
+        assert(v4l2r_SyncSurface(&va, sid) == VA_STATUS_ERROR_OPERATION_FAILED);
+        assert(v4l2r_wait_completed(&ctx, 1) == VA_STATUS_ERROR_OPERATION_FAILED);
+        ctx.queued_capture = 0;
+        ctx.queued_output = 1;
+        assert(v4l2r_picture_begin(&ctx, surface) == VA_STATUS_ERROR_OPERATION_FAILED);
+        ctx.queued_output = 0;
+        ctx.queued_request = 1;
         ctx.captures[0].dmabuf_fd[0] = -1;
         ctx.pic.output = &ctx.output[0];
         ctx.pic.target = surface;
