@@ -140,7 +140,9 @@ VAStatus v4l2r_QuerySurfaceStatus(VADriverContextP va_ctx,
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
 	/* A frame held back for reordering reports rendering until submitted. */
-	v4l2r_flush_surface(surface);
+	VAStatus flush_status = v4l2r_flush_surface(surface);
+	if (flush_status != VA_STATUS_SUCCESS)
+		return flush_status;
 
 	if (surface->ctx && surface->capture_index >= 0 &&
 	    surface->status == VASurfaceRendering)
@@ -242,10 +244,12 @@ VAStatus v4l2r_surface_ready(struct v4l2r_surface *surface)
 {
 	VAStatus status;
 
-	v4l2r_flush_surface(surface);
+	status = v4l2r_flush_surface(surface);
+	if (status != VA_STATUS_SUCCESS)
+		return status;
 
 	if (!surface->ctx || surface->capture_index < 0)
-		return VA_STATUS_SUCCESS;
+		return surface->decode_status;
 
 	uint64_t t0 = v4l2r_now_ns();
 	status = v4l2r_sync_capture(surface->ctx, surface->capture_index);
@@ -254,6 +258,8 @@ VAStatus v4l2r_surface_ready(struct v4l2r_surface *surface)
 		    (v4l2r_now_ns() - t0) / 1e6);
 	if (status != VA_STATUS_SUCCESS)
 		return status;
+	if (surface->decode_status != VA_STATUS_SUCCESS)
+		return surface->decode_status;
 
 	return v4l2r_convert_wait(surface);
 }
@@ -887,7 +893,9 @@ VAStatus v4l2r_ExportSurfaceHandle(VADriverContextP va_ctx, VASurfaceID surface_
 	 * conversion) to finish so a consumer that does not vaSyncSurface()
 	 * itself (e.g. --vo=dmabuf-wayland) cannot read a partially decoded
 	 * frame. No-op for unbound or already-idle surfaces. */
-	v4l2r_surface_ready(surface);
+	status = v4l2r_surface_ready(surface);
+	if (status != VA_STATUS_SUCCESS)
+		return status;
 
 	status = v4l2r_surface_view(drv, surface, false, &view);
 	if (status != VA_STATUS_SUCCESS)

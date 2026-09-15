@@ -53,7 +53,7 @@ static inline uint64_t v4l2r_now_ns(void)
 #define V4L2R_MAX_IMAGE_FORMATS		8
 #define V4L2R_MAX_SUBPIC_FORMATS	1
 #define V4L2R_MAX_DISPLAY_ATTRIBUTES	1
-#define V4L2R_STR_VENDOR		"v4l2-request"
+#define V4L2R_STR_VENDOR		"v4l2-request (omarchy-m1-video " V4L2R_VERSION ")"
 
 #define V4L2R_MAX_DECODERS		8
 #define V4L2R_MAX_PIXELFORMATS		16
@@ -175,6 +175,9 @@ struct v4l2r_surface {
 	uint32_t fourcc;		/* requested pixel format, 0 = default */
 	int capture_index;		/* CAPTURE buffer index, -1 if unbound */
 	VASurfaceStatus status;
+	/* Completion and decode success are separate: a failed frame is ready
+	 * for reuse, but must not be reported as successfully decoded. */
+	VAStatus decode_status;
 	struct v4l2r_surface_backing *backing;
 	/* A finished decode still needs (or is undergoing) format conversion
 	 * into the backing. Protected by ctx->mutex. */
@@ -251,8 +254,7 @@ struct v4l2r_buffer {
 	unsigned int element_size;
 	unsigned int nb_elements;
 	void *data;
-	/* Set for images derived from a surface: data points into the
-	 * CAPTURE buffer mapping and must not be freed. */
+	/* Derived images own a dma-buf mapping, released with munmap(). */
 	bool derived;
 };
 
@@ -380,7 +382,7 @@ struct v4l2r_codec {
 
 /* Submit any decode a codec is holding back for this surface (no-op unless
  * the surface belongs to a context whose codec defers submission). */
-void v4l2r_flush_surface(struct v4l2r_surface *surface);
+VAStatus v4l2r_flush_surface(struct v4l2r_surface *surface);
 
 struct v4l2r_driver {
 	struct v4l2r_handles configs;
@@ -389,6 +391,8 @@ struct v4l2r_driver {
 	struct v4l2r_handles buffers;
 	struct v4l2r_handles images;
 	pthread_mutex_t mutex;
+	/* Serialize context/surface entrypoints against context teardown. */
+	pthread_mutex_t api_mutex;
 
 	struct v4l2r_decoder decoders[V4L2R_MAX_DECODERS];
 	unsigned int nb_decoders;
@@ -399,6 +403,8 @@ struct v4l2r_driver {
 	bool converter_probed;
 	bool has_converter;
 };
+
+void v4l2r_lock_surface_api(struct VADriverVTable *vtable);
 
 static inline struct v4l2r_driver *v4l2r_driver(VADriverContextP va_ctx)
 {
@@ -584,7 +590,7 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index);
 
 /* Wait until no in-flight conversion reads this CAPTURE buffer anymore,
  * before the buffer is overwritten by a new decode. Takes ctx->mutex. */
-void v4l2r_convert_drain_index(struct v4l2r_context *ctx, int capture_index);
+VAStatus v4l2r_convert_drain_index(struct v4l2r_context *ctx, int capture_index);
 
 /* Wait for the surface's pending conversion to finish. Takes ctx->mutex. */
 VAStatus v4l2r_convert_wait(struct v4l2r_surface *surface);

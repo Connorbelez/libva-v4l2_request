@@ -196,10 +196,17 @@ static int dequeue_buffer(struct v4l2r_context *ctx, enum v4l2_buf_type type)
 		return -errno;
 
 	if (V4L2_TYPE_IS_OUTPUT(type)) {
+		/* Grown OUTPUT buffers get new kernel indices beyond the ring's
+		 * four slots; the bitmasks support indices 0..31. */
+		if (buffer.index >= 32)
+			return -EIO;
 		ctx->queued_output &= ~(1u << buffer.index);
 		v4l2r_trace("DQBUF OUTPUT  #%u (bitstream consumed)\n",
 			  buffer.index);
 	} else {
+		if (buffer.index >= ctx->nb_captures ||
+		    buffer.index >= V4L2R_MAX_CAPTURE_BUFFERS)
+			return -EIO;
 		ctx->queued_capture &= ~(UINT64_C(1) << buffer.index);
 		ctx->completed++;
 		v4l2r_trace("DQBUF CAPTURE #%u (surface 0x%08x) decode done, "
@@ -209,11 +216,14 @@ static int dequeue_buffer(struct v4l2r_context *ctx, enum v4l2_buf_type type)
 			  __builtin_popcountll(ctx->queued_capture));
 		if (buffer.index < ctx->nb_captures &&
 		    ctx->captures[buffer.index].surface) {
+			struct v4l2r_surface *surface = ctx->captures[buffer.index].surface;
+			surface->decode_status = (buffer.flags & V4L2_BUF_FLAG_ERROR) ?
+				VA_STATUS_ERROR_DECODING_ERROR : VA_STATUS_SUCCESS;
 			ctx->captures[buffer.index].surface->status =
 				VASurfaceReady;
 			/* Start the format conversion right away so it
 			 * overlaps subsequent decodes. */
-			if (ctx->conv)
+			if (ctx->conv && surface->decode_status == VA_STATUS_SUCCESS)
 				v4l2r_convert_kick(ctx, buffer.index);
 		}
 	}
@@ -301,7 +311,7 @@ static int wait_completed_locked(struct v4l2r_context *ctx, uint64_t target)
 			return ret;
 	}
 
-	return 0;
+	return ctx->completed >= target ? 0 : -EIO;
 }
 
 VAStatus v4l2r_wait_completed(struct v4l2r_context *ctx, uint64_t target)
@@ -383,8 +393,8 @@ static int wait_on_request(struct v4l2r_context *ctx,
 
 	while (ctx->queued_request & (1u << output->index)) {
 		int ret = poll(&pollfd, 1, V4L2R_POLL_TIMEOUT_MS);
-		if (ret <= 0)
-			break;
+		if (ret <= 0 || (pollfd.revents & (POLLHUP | POLLNVAL)))
+			return -EIO;
 
 		if (pollfd.revents & (POLLPRI | POLLERR)) {
 			ctx->queued_request &= ~(1u << output->index);
@@ -442,6 +452,9 @@ VAStatus v4l2r_append_output(struct v4l2r_context *ctx, const void *data,
 	if (!output)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
+	if (size > UINT32_MAX - V4L2R_BITSTREAM_PADDING ||
+	    output->bytesused > UINT32_MAX - V4L2R_BITSTREAM_PADDING - size)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
 	needed = (size_t)output->bytesused + size + V4L2R_BITSTREAM_PADDING;
 	if (needed > output->size &&
 	    v4l2r_output_buffer_grow(ctx, output, needed) < 0) {
@@ -511,6 +524,7 @@ static VAStatus queue_decode(struct v4l2r_context *ctx,
 				  target->capture_index, strerror(-ret));
 			goto fail;
 		}
+		target->decode_status = VA_STATUS_SUCCESS;
 
 		/* ctx->submitted is now this frame's sequence number. Mark every
 		 * buffer it references as needed until this frame completes, so a

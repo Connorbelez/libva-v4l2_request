@@ -75,7 +75,11 @@ static inline uint32_t v4l2r_bits_read(struct v4l2r_bits *b, unsigned int count)
 {
 	uint32_t value = 0;
 
-	while (count--)
+	if (count > 32) {
+		b->error = true;
+		return 0;
+	}
+	while (count-- && !b->error)
 		value = (value << 1) | v4l2r_bits_bit(b);
 
 	return value;
@@ -83,7 +87,7 @@ static inline uint32_t v4l2r_bits_read(struct v4l2r_bits *b, unsigned int count)
 
 static inline void v4l2r_bits_skip(struct v4l2r_bits *b, size_t count)
 {
-	while (count--)
+	while (count-- && !b->error)
 		v4l2r_bits_bit(b);
 }
 

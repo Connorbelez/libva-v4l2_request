@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "v4l2_request.h"
 
@@ -23,6 +24,9 @@ VAStatus v4l2r_CreateBuffer(VADriverContextP va_ctx, VAContextID context_id,
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
 	struct v4l2r_buffer *buffer;
 	VABufferID id;
+
+	if (!size || !num_elements || (size_t)num_elements > SIZE_MAX / size)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	switch (type) {
 	case VAPictureParameterBufferType:
@@ -77,6 +81,10 @@ VAStatus v4l2r_BufferSetNumElements(VADriverContextP va_ctx, VABufferID buf_id,
 
 	if (buffer->derived)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
+	/* realloc(ptr, 0) may free ptr and return NULL; retaining it would
+	 * leave MapBuffer/DestroyBuffer using an already-freed allocation. */
+	if (!num_elements || (size_t)num_elements > SIZE_MAX / buffer->element_size)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	if (num_elements != buffer->nb_elements) {
 		void *data = realloc(buffer->data,
@@ -127,8 +135,9 @@ VAStatus v4l2r_DestroyBuffer(VADriverContextP va_ctx, VABufferID buf_id)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	}
 
-	/* Derived image buffers point into the CAPTURE buffer mapping. */
-	if (!buffer->derived)
+	if (buffer->derived)
+		munmap(buffer->data, v4l2r_buffer_bytes(buffer));
+	else
 		free(buffer->data);
 
 	v4l2r_handles_free(&drv->buffers, buf_id);

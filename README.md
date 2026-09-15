@@ -23,7 +23,7 @@ The original documentation is in [README](README).
   - `201bc71` by Igor Ryzhkov: decode into surfaces the client exported before the first decode
   - `9e6d750` and `386956d` by Ante042: keep exported dimensions, reserve codec tail storage, and a test
 
-## What branch `avd-fixes` changes
+## Changes carried by this fork
 
 On top of sofus13's tag `1.3`:
 
@@ -41,28 +41,42 @@ On top of sofus13's tag `1.3`:
 - HEVC: reject out-of-range reference counts, exp-Golomb codes and CTB sizes in untrusted slice
   headers; a crafted slice could overflow the stack.
 
+Version `1.3.r6` also:
+
+- Reports failed CAPTURE buffers as `VA_STATUS_ERROR_DECODING_ERROR` and propagates flush,
+  request, conversion and buffer-reuse wait failures.
+- Fixes FFmpeg `hwdownload` crashing when context destruction unmaps a frame during `vaGetImage`.
+  Surface operations and context teardown are serialized; live surfaces keep their frame storage,
+  and derived images own their mappings. Pending frames finish before teardown, with errors
+  retained on the surviving surfaces.
+- Bounds image copies, preserves the last UV pair on odd-width NV12/P010 images, rejects invalid
+  image dimensions, and avoids a dangling buffer after a zero-element resize.
+- Checks HEVC entry-point capacity and offset lengths, resets offsets between request batches,
+  and rejects malformed headers before submission.
+- Includes offline regression tests, sanitizer CI, and hardware pixel-comparison scripts.
+
 Tested on an M1 (T8103) with the kernel patches from omarchy-m1-video: `JCT-VC-HEVC_V1` 143/147 and
-`JVT-AVC_V1` 73/135 bit-exact through FFmpeg VA-API; Chrome 152 H.264 playback matched software
-rendering.
+`JVT-AVC_V1` 73/135 bit-exact through FFmpeg VA-API. Earlier Chrome 152 H.264 playback tests
+matched software rendering; this revision adds direct early-export pixel regressions.
 
 ## Known problems
 
 As of 2026-09-15:
 
-- **Decode errors are ignored.** Dequeued capture buffers flagged `V4L2_BUF_FLAG_ERROR` are reported
-  as successfully decoded, so failed frames show up as garbage instead of errors.
-- **Vulkan output in mpv** (`gpu-api=vulkan`, and `vo=gpu`) shows a green/pink ghost picture: Mesa's
+- **Vulkan output in mpv** (`gpu-api=vulkan`) shows a green/pink ghost picture: Mesa's
   Vulkan driver for Apple GPUs ignores the plane offsets of imported frames. Use `gpu-api=opengl`.
 - **H.264 profiles:** only Constrained Baseline, Main and High are offered, so 4:2:2 and 10-bit H.264
   decode in software. Interlaced H.264 is offered but the AVD kernel driver does not support it, so it
   fails.
-- **FFmpeg `hwdownload`** (`ffmpeg -hwaccel vaapi -hwaccel_output_format vaapi ... -vf hwdownload,format=nv12`)
-  was seen to segfault in `vaGetImage` with an earlier build and has not been retested. mpv's
-  `--hwdec=vaapi-copy` works.
 - **Early export needs DMABUF import.** Once a context decodes into client-exported surfaces, a later
   surface whose layout does not match fails instead of falling back to separate buffers.
 - **Kernel driver bugs** in AVD itself can hang or crash the system; the kernel patches in
   [omarchy-m1-video](https://github.com/iconidentify/omarchy-m1-video) fix several of them.
+
+The remaining HEVC mismatches, boot-reset investigation, Chrome colour issue and Firefox
+validation are tracked in [omarchy-m1-video's gap status](https://github.com/iconidentify/omarchy-m1-video/blob/fix/playback-gaps/docs/GAP_STATUS.md).
+A successful decode call cannot detect a firmware-produced wrong picture without an error flag;
+the conformance failures remain open.
 
 ## Building
 
@@ -76,6 +90,12 @@ To try the driver without installing it:
 ```sh
 LIBVA_DRIVERS_PATH=$PWD/build/src LIBVA_DRIVER_NAME=v4l2_request mpv --hwdec=vaapi-copy video.mp4
 ```
+
+## Tests
+
+See [tests/README.md](tests/README.md) for the offline sanitizer suite and guarded hardware
+checks. `vainfo --display drm` identifies this build as
+`v4l2-request (omarchy-m1-video 1.3.r6)`.
 
 ## License
 

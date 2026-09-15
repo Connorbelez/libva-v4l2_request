@@ -1,5 +1,5 @@
 project('libva-v4l2_request', 'c',
-        version: '1.2',
+        version: '1.3.r6',
         license: 'GPL-3.0',
         default_options: [
           'c_std=gnu11',
@@ -25,6 +25,7 @@ codec_checks = {
 }
 
 conf = configuration_data()
+conf.set_quoted('V4L2R_VERSION', meson.project_version())
 foreach codec, ctrl : codec_checks
   have = cc.compiles('#include <linux/videodev2.h>\nint i = @0@;'.format(ctrl),
                      name: 'kernel supports stateless @0@'.format(codec))
@@ -47,3 +48,4 @@ else
 endif
 
 subdir('src')
+subdir('tests')

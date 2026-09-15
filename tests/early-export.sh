@@ -1,7 +1,8 @@
 #!/bin/sh
 # Hardware regression check. Usage: early-export.sh BUILD/src [FFmpeg hw_decode.c]
 # Requires a supported VA-API device, C compiler, pkg-config, FFmpeg development
-# headers and ffmpeg with libx264, libx265 and libvpx-vp9. Generates its own clips.
+# headers and ffmpeg with libx264 and libx265. Generates its own clips.
+# TEST_VP9=1 adds VP9 on devices that support it (AVD does not).
 set -eu
 export LIBVA_DRIVERS_PATH=$(realpath "$1")
 export LIBVA_DRIVER_NAME=v4l2_request
@@ -15,7 +16,9 @@ cc -o "$test_dir/hw-decode" "$example" \
     $(pkg-config --cflags --libs libavformat libavcodec libavutil)
 # Use the synchronous hw_decode sample so frame downloads finish before context
 # destruction. The hook exports before vaBeginPicture and syncs after vaEndPicture.
-for spec in h264:640x360 h264:640x384 h264:1920x1080 hevc:640x384 vp9:640x384; do
+specs='h264:640x360 h264:640x384 h264:1920x1080 hevc:640x384'
+if [ "${TEST_VP9:-0}" = 1 ]; then specs="$specs vp9:640x384"; fi
+for spec in $specs; do
     codec=${spec%:*}
     size=${spec#*:}
     case "$codec" in
@@ -32,7 +35,7 @@ for spec in h264:640x360 h264:640x384 h264:1920x1080 hevc:640x384 vp9:640x384; d
     test "$(wc -c < "$test_dir/software.nv12")" -eq "$expected"
     for mode in normal early; do
         if [ "$mode" = early ]; then export LD_PRELOAD="$test_dir/check.so"; fi
-        if ! timeout 30 "$test_dir/hw-decode" vaapi "$test_dir/clip.mkv" \
+        if ! timeout -k 5 30 "$test_dir/hw-decode" vaapi "$test_dir/clip.mkv" \
             "$test_dir/hardware.nv12" 2>"$test_dir/decode.log"; then
             cat "$test_dir/decode.log" >&2
             exit 1
