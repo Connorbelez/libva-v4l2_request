@@ -19,3 +19,14 @@ if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
     dependencies: [libva_dep, libdrm_dep, threads_dep])
   test('hevc-parser', parser, timeout: 30)
 endif
+
+if conf.get('HAVE_V4L2_CTRL_H264') == 1
+  foreach case : ['h264-parser', 'h264-profile']
+    check = executable(case, case + '.c', driver_sources,
+      c_args: ['-UNDEBUG'],
+      include_directories: [root_inc, include_directories('../src')],
+      dependencies: [libva_dep, libdrm_dep, threads_dep],
+      link_args: case == 'h264-profile' ? ['-Wl,--wrap=ioctl'] : [])
+    test(case, check, timeout: 30)
+  endforeach
+endif

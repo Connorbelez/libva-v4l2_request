@@ -114,6 +114,9 @@ const struct v4l2r_codec *v4l2r_codec_for_profile(VAProfile profile)
 unsigned int v4l2r_profile_bit_depth(VAProfile profile)
 {
 	switch (profile) {
+#if VA_CHECK_VERSION(1, 18, 0)
+	case VAProfileH264High10:
+#endif
 	case VAProfileHEVCMain10:
 	case VAProfileVP9Profile2:
 		return 10;
@@ -125,6 +128,9 @@ unsigned int v4l2r_profile_bit_depth(VAProfile profile)
 unsigned int v4l2r_profile_rt_format(VAProfile profile)
 {
 	switch (profile) {
+#if VA_CHECK_VERSION(1, 18, 0)
+	case VAProfileH264High10:
+#endif
 	case VAProfileHEVCMain10:
 	case VAProfileVP9Profile2:
 		return VA_RT_FORMAT_YUV420_10;
@@ -307,6 +313,67 @@ static bool video_device_probe_hevc_10bit(int fd, uint32_t output_type)
 #endif
 }
 
+bool v4l2r_probe_h264_10bit(int fd, uint32_t output_type)
+{
+#if HAVE_V4L2_CTRL_H264 && VA_CHECK_VERSION(1, 18, 0)
+	bool mplane = V4L2_TYPE_IS_MULTIPLANAR(output_type);
+	struct v4l2_format format = { .type = output_type };
+	struct v4l2_ctrl_h264_sps sps = {
+		.profile_idc = 110,
+		.level_idc = 40,
+		.chroma_format_idc = 1,
+		.bit_depth_luma_minus8 = 2,
+		.bit_depth_chroma_minus8 = 2,
+		.max_num_ref_frames = 4,
+		.flags = V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY |
+			 V4L2_H264_SPS_FLAG_DIRECT_8X8_INFERENCE,
+	};
+	struct v4l2_ext_control control = {
+		.id = V4L2_CID_STATELESS_H264_SPS, .ptr = &sps, .size = sizeof(sps),
+	};
+	struct v4l2_ext_controls controls = { .count = 1, .controls = &control };
+	struct v4l2_fmtdesc capture = {
+		.type = mplane ? V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE :
+				 V4L2_BUF_TYPE_VIDEO_CAPTURE,
+	};
+	if (mplane) {
+		format.fmt.pix_mp.width = 1920;
+		format.fmt.pix_mp.height = 1088;
+		format.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264_SLICE;
+		format.fmt.pix_mp.num_planes = 1;
+	} else {
+		format.fmt.pix.width = 1920;
+		format.fmt.pix.height = 1088;
+		format.fmt.pix.pixelformat = V4L2_PIX_FMT_H264_SLICE;
+	}
+	if (ioctl(fd, VIDIOC_S_FMT, &format) < 0 ||
+	    v4l2r_format_pixelformat(&format) != V4L2_PIX_FMT_H264_SLICE)
+		return false;
+	unsigned int width = mplane ? format.fmt.pix_mp.width : format.fmt.pix.width;
+	unsigned int height = mplane ? format.fmt.pix_mp.height : format.fmt.pix.height;
+	if (width < 16 || height < 16)
+		return false;
+	sps.pic_width_in_mbs_minus1 = width / 16 - 1;
+	sps.pic_height_in_map_units_minus1 = height / 16 - 1;
+	if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) < 0)
+		return false;
+	/* Require usable 10-bit output as well as an accepted SPS. An 8-bit
+	 * fallback would silently discard the extra precision. */
+	while (ioctl(fd, VIDIOC_ENUM_FMT, &capture) >= 0) {
+		const struct v4l2r_format_info *info =
+			v4l2r_format_by_pixelformat(capture.pixelformat);
+		if (info && info->bit_depth == 10 && info->va_fourcc &&
+		    info->rt_format == VA_RT_FORMAT_YUV420_10)
+			return true;
+		capture.index++;
+	}
+#else
+	(void)fd;
+	(void)output_type;
+#endif
+	return false;
+}
+
 static bool video_device_is_request_decoder(const char *path,
 					    struct v4l2r_decoder *decoder)
 {
@@ -358,12 +425,14 @@ static bool video_device_is_request_decoder(const char *path,
 	}
 
 	decoder->hevc_10bit = false;
+	decoder->h264_10bit = false;
 	for (unsigned int i = 0; i < decoder->nb_pixelformats; i++) {
 		if (decoder->pixelformats[i] == V4L2_PIX_FMT_HEVC_SLICE) {
 			decoder->hevc_10bit =
 				video_device_probe_hevc_10bit(fd, output_type);
-			break;
 		}
+		if (decoder->pixelformats[i] == V4L2_PIX_FMT_H264_SLICE)
+			decoder->h264_10bit = v4l2r_probe_h264_10bit(fd, output_type);
 	}
 
 	close(fd);
@@ -621,6 +690,17 @@ static bool driver_supports_profile(struct v4l2r_driver *drv, VAProfile profile)
 
 	if (profile == VAProfileHEVCMain10 && !driver_supports_hevc_10bit(drv))
 		return false;
+
+#if VA_CHECK_VERSION(1, 18, 0)
+	if (profile == VAProfileH264High10) {
+		if (drv->h264_high10 == V4L2R_H264_HIGH10_OFF)
+			return false;
+		for (unsigned int i = 0; i < drv->nb_decoders; i++)
+			if (drv->decoders[i].h264_10bit)
+				return true;
+		return false;
+	}
+#endif
 
 	return true;
 }
@@ -967,6 +1047,15 @@ VAStatus V4L2R_DRIVER_INIT(VADriverContextP va_ctx)
 	drv = calloc(1, sizeof(*drv));
 	if (!drv)
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
+	/* FFmpeg 9.0.1 sends its internal QP bit-depth bias in VA parameters.
+	 * Keep High 10 opt-in until clients pass the unmodified PPS values. */
+	const char *high10 = getenv("LIBVA_V4L2_H264_HIGH10");
+	if (high10 && !strcmp(high10, "native"))
+		drv->h264_high10 = V4L2R_H264_HIGH10_NATIVE;
+	else if (high10 && !strcmp(high10, "ffmpeg"))
+		drv->h264_high10 = V4L2R_H264_HIGH10_FFMPEG;
+	else if (high10 && strcmp(high10, "off"))
+		v4l2r_log("unknown LIBVA_V4L2_H264_HIGH10 value; High 10 disabled\n");
 
 	if (v4l2r_handles_init(&drv->configs, V4L2R_ID_OFFSET_CONFIG) < 0 ||
 	    v4l2r_handles_init(&drv->contexts, V4L2R_ID_OFFSET_CONTEXT) < 0 ||

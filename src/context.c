@@ -903,6 +903,10 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 	status = VA_STATUS_ERROR_OPERATION_FAILED;
 	for (unsigned int i = 0; i < drv->nb_decoders; i++) {
 		decoder = &drv->decoders[i];
+#if VA_CHECK_VERSION(1, 18, 0)
+		if (ctx->profile == VAProfileH264High10 && !decoder->h264_10bit)
+			continue;
+#endif
 
 		ctx->video_fd = open(decoder->video_path, O_RDWR | O_NONBLOCK);
 		if (ctx->video_fd < 0)

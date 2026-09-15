@@ -55,6 +55,10 @@ Version `1.3.r6` also:
   and rejects malformed headers before submission.
 - Includes offline regression tests, sanitizer CI, and hardware pixel-comparison scripts.
 
+Version `1.3.r7` adds opt-in H.264 High 10, an explicit FFmpeg quantizer workaround,
+10-bit capability checks, H.264 parser regressions, and a conformance runner that requires
+hardware frames and preserves resolution changes. See [codec testing](tests/README.md#codec-conformance-without-software-fallback).
+
 Tested on an M1 (T8103) with the kernel patches from omarchy-m1-video: `JCT-VC-HEVC_V1` 143/147 and
 `JVT-AVC_V1` 73/135 bit-exact through FFmpeg VA-API. Earlier Chrome 152 H.264 playback tests
 matched software rendering; this revision adds direct early-export pixel regressions.
@@ -65,16 +69,15 @@ As of 2026-09-15:
 
 - **Vulkan output in mpv** (`gpu-api=vulkan`) shows a green/pink ghost picture: Mesa's
   Vulkan driver for Apple GPUs ignores the plane offsets of imported frames. Use `gpu-api=opengl`.
-- **H.264 profiles:** only Constrained Baseline, Main and High are offered, so 4:2:2 and 10-bit H.264
-  decode in software. Interlaced H.264 is offered but the AVD kernel driver does not support it, so it
-  fails.
+- **H.264 profiles:** Constrained Baseline, Main and High are offered by default. High 10 requires
+  the opt-in mode below. 4:2:2 uses software. Interlaced H.264 remains unsupported by AVD.
 - **Early export needs DMABUF import.** Once a context decodes into client-exported surfaces, a later
   surface whose layout does not match fails instead of falling back to separate buffers.
 - **Kernel driver bugs** in AVD itself can hang or crash the system; the kernel patches in
   [omarchy-m1-video](https://github.com/iconidentify/omarchy-m1-video) fix several of them.
 
 The remaining HEVC mismatches, boot-reset investigation, Chrome colour issue and Firefox
-validation are tracked in [omarchy-m1-video's gap status](https://github.com/iconidentify/omarchy-m1-video/blob/fix/playback-gaps/docs/GAP_STATUS.md).
+validation are tracked in [omarchy-m1-video's gap status](https://github.com/iconidentify/omarchy-m1-video/blob/main/docs/GAP_STATUS.md).
 A successful decode call cannot detect a firmware-produced wrong picture without an error flag;
 the conformance failures remain open.
 
@@ -91,11 +94,33 @@ To try the driver without installing it:
 LIBVA_DRIVERS_PATH=$PWD/build/src LIBVA_DRIVER_NAME=v4l2_request mpv --hwdec=vaapi-copy video.mp4
 ```
 
+### H.264 High 10 with FFmpeg or mpv
+
+High 10 is disabled by default because FFmpeg 9.0.1 passes a bit-depth bias in its VA-API
+picture quantizers: a stream with QP 21 arrives as QP 33. The compatibility mode removes
+that bias. Both complete FREH10 conformance streams (718 frames) matched the reference
+checksums on the M1 with this mode:
+
+```sh
+LIBVA_DRIVERS_PATH=$PWD/build/src LIBVA_DRIVER_NAME=v4l2_request \
+LIBVA_V4L2_H264_HIGH10=ffmpeg mpv --gpu-api=opengl --hwdec=vaapi-copy high10.mkv
+```
+
+`LIBVA_V4L2_H264_HIGH10=native` enables the profile for clients that already send the PPS
+syntax values. `ffmpeg` enables it and adjusts the biased quantizers; use it only with
+affected FFmpeg-based clients. Unset the variable (or use `off`) to disable High 10.
+Both enabled modes also require the decoder to accept a 10-bit SPS and offer usable
+10-bit 4:2:0 output. Other hardware and all High 10 coding features are not yet validated.
+
+The offset is visible in FFmpeg's [PPS parser](https://github.com/FFmpeg/FFmpeg/blob/n8.0/libavcodec/h264_ps.c)
+and [VA parameter construction](https://github.com/FFmpeg/FFmpeg/blob/n8.0/libavcodec/vaapi_h264.c).
+This is a client compatibility setting, not a change to the VA-API or V4L2 parameter contract.
+
 ## Tests
 
 See [tests/README.md](tests/README.md) for the offline sanitizer suite and guarded hardware
 checks. `vainfo --display drm` identifies this build as
-`v4l2-request (omarchy-m1-video 1.3.r6)`.
+`v4l2-request (omarchy-m1-video 1.3.r7)`.
 
 ## License
 
