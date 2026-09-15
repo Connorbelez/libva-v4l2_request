@@ -612,6 +612,7 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 	struct h264_context *codec = ctx->codec_priv;
 	const uint8_t *slice_data = data + va_slice->slice_data_offset;
 	struct h264_slice_info info;
+	size_t slice_size;
 	VAStatus status;
 
 	if (!codec->have_pic)
@@ -622,6 +623,17 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 	if (va_slice->slice_data_offset > data_size ||
 	    va_slice->slice_data_size > data_size - va_slice->slice_data_offset)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
+
+	/*
+	 * A NAL unit ends with its rbsp_stop_one_bit (or a cabac_zero_word's 0x03),
+	 * so trailing zero bytes are never part of it: they are the zero_byte of
+	 * the next 4-byte start code, which FFmpeg leaves on every slice of a
+	 * picture but the last. The kernel hands them to the decoder as slice data;
+	 * on Apple AVD a CAVLC picture with such slices never completes.
+	 */
+	slice_size = va_slice->slice_data_size;
+	while (slice_size > 1 && slice_data[slice_size - 1] == 0x00)
+		slice_size--;
 
 	/* In slice mode every slice becomes its own request; flush the
 	 * previously staged one before starting the next. */
@@ -638,8 +650,7 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 		codec->staged = false;
 	}
 
-	h264_parse_slice_header(codec, va_slice, slice_data,
-				va_slice->slice_data_size, &info);
+	h264_parse_slice_header(codec, va_slice, slice_data, slice_size, &info);
 
 	if (codec->num_slices == 0) {
 		struct v4l2_ctrl_h264_decode_params *decode =
@@ -709,7 +720,7 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 			return status;
 	}
 
-	status = v4l2r_append_output(ctx, slice_data, va_slice->slice_data_size);
+	status = v4l2r_append_output(ctx, slice_data, slice_size);
 	if (status != VA_STATUS_SUCCESS)
 		return status;
 
