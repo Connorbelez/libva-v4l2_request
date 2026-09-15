@@ -21,9 +21,12 @@ rejection, High 10 quantizer modes and fake-device capability checks. Three H.26
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
-25 Meson cases. The count-overflow case injects the boundary into codec state rather than
+29 Meson cases. The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.
+Four VP9 cases cover malformed/incomplete headers, failed-submission state rollback, colour-range
+inheritance, missing/cross-context references and 24,000 deterministic parser inputs. These join
+the H.264 and HEVC inputs for 72,000 generated inputs across three registered parser cases.
 CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
 hardware tests are separate.
 
@@ -34,7 +37,8 @@ and the kernel has no existing decoder faults first. The scripts load the select
 library through `LIBVA_DRIVERS_PATH`; they do not install it or reload the kernel module.
 Run them through a hardware watchdog such as `avd-lab`'s `avdlab.guard.run`, with a finite
 deadline and `wedge_monitor`. Stop after a wedge; do not repeatedly open a stuck decoder.
-A userspace timeout cannot recover a wedged kernel.
+A userspace timeout cannot recover a wedged kernel. Also monitor the kernel journal for new
+AVD firmware errors/timeouts and stop the run if one appears, even if the child exits normally.
 
 ```sh
 meson setup build
@@ -55,7 +59,8 @@ On the test M1, use `WPP_C_ericsson_MAIN10_2.bit` from the JCT-VC HEVC conforman
 second argument gives its path). It compares ordinary decode with export-before-first-decode
 for five H.264/HEVC/VP9 clips. It also needs the libvpx-vp9 encoder. The preload hook checks
 the exported dma-buf pixels after each frame. AVD on the test M1 advertises VP9 profiles 0
-and 2; this test covers profile 0 only, not full VP9 conformance or 10-bit VP9.
+and 2; this particular smoke test covers profile 0. The separate VP9 checks below cover
+10-bit output and conformance vectors.
 
 `h264-high10.sh` generates six 10-bit H.264 clips: CABAC/CAVLC, QP 1/21/51, four slices,
 B pictures and a cropped 640x360 output. It checks each of 12 frames against software,
@@ -126,3 +131,29 @@ parser; preserving native sizes alone does not fix it. Direct GStreamer V4L2 pas
 
 To test the checksum helper independently, run `sh tests/frame-check.sh`. The optional driver
 argument adds a guarded hardware comparison of a generated H.264 resolution change.
+
+## VP9 validation
+
+Run `sh tests/vp9-matrix.sh /path/to/build/src` through the hardware guard. It needs a
+high-bit-depth-capable libvpx-vp9 encoder and the FFmpeg development libraries. Eight generated
+640x360 clips cover 8/10-bit 4:2:0, limited/full range and lossy/lossless encoding, with tile
+settings, alternate-reference encoding enabled and two keyframe intervals. Each 24-frame clip
+is decoded normally and with early export: 384 hardware output-frame comparisons. The script
+verifies encoded pixel format and range, requires actual hardware frames, checks early-export
+backing and compares every output pixel with software. This is not a browser display test.
+
+The official WebM vectors can be run with `conformance.py` using Fluster's
+`test_suites/vp9/VP9-TEST-VECTORS.json` and `VP9-TEST-VECTORS-HIGH.json`. On the M1, r9 passed
+216/305 in the first suite and the single 10-bit 4:2:0 vector (10 frames) in the second.
+The high-bit-depth suite also contains five 12-bit or 4:2:2/4:4:4 vectors outside the tested
+hardware formats; they are not included in that 1/1 result.
+
+The 89 baseline failures comprise 60 sub-64-dimension streams, two unsupported profile-1
+streams, two resize streams that triggered firmware timeouts, 24 inter-frame-resize checksum
+mismatches and one scalable-video checksum mismatch. Software passes 88 of these 89; the
+scalable-video stream also misses its reference checksum in software, with a different digest.
+The candidate retains all 216 baseline passes and passes the 384-frame generated matrix.
+With r10's reference checks, both timeout-producing resize streams are rejected in userspace
+without new kernel messages. Their decoding support remains open. The installer repository's
+[codec status](https://github.com/iconidentify/omarchy-m1-video/blob/main/docs/CODEC_STATUS.md)
+records release-package results and exact vector lists.

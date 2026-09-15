@@ -20,6 +20,16 @@ if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
   test('hevc-parser', parser, timeout: 30)
 endif
 
+if conf.get('HAVE_V4L2_CTRL_VP9') == 1
+  vp9 = executable('vp9', 'vp9.c', driver_sources,
+    c_args: ['-UNDEBUG'],
+    include_directories: [root_inc, include_directories('../src')],
+    dependencies: [libva_dep, libdrm_dep, threads_dep])
+  foreach case : ['malformed', 'state', 'parser', 'references']
+    test('vp9-' + case, vp9, args: [case], timeout: 30)
+  endforeach
+endif
+
 if conf.get('HAVE_V4L2_CTRL_H264') == 1
   submission = executable('h264-submission', 'h264-submission.c', driver_sources,
     c_args: ['-UNDEBUG'],

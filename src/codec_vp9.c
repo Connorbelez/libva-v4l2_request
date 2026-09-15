@@ -106,9 +106,17 @@ static unsigned int vp9_bool_lit(struct vp9_bool *b, unsigned int bits)
 	return value;
 }
 
+static bool vp9_bool_valid(const struct vp9_bool *b)
+{
+	/* Renormalizing the final symbol can exhaust the buffered bits before
+	 * another read would refill them. Unread input still makes that valid. */
+	return !b->error && (b->count >= 0 || b->buffer < b->end);
+}
+
 /* --- codec state --- */
 
 struct vp9_frame_header {
+	uint8_t bit_depth;
 	bool keyframe;
 	bool intra_only;
 	bool error_resilient;
@@ -137,17 +145,7 @@ struct vp9_frame_header {
 	bool valid;
 };
 
-struct vp9_context {
-	bool has_compressed_hdr;
-
-	VADecPictureParameterBufferVP9 va_pic;
-	bool have_pic;
-
-	struct vp9_frame_header hdr;
-	struct v4l2_ctrl_vp9_frame frame;
-	struct v4l2_ctrl_vp9_compressed_hdr compressed_hdr;
-	unsigned int reference_mode;
-
+struct vp9_persistent_state {
 	/*
 	 * Loop-filter deltas and segmentation feature data persist across VP9
 	 * frames (the bitstream only re-sends them when updated, and they are
@@ -160,6 +158,23 @@ struct vp9_context {
 	bool seg_abs_delta;
 	bool seg_feature_enabled[8][4];
 	int16_t seg_feature_data[8][4];
+	bool color_range_full;
+};
+
+struct vp9_context {
+	bool has_compressed_hdr;
+
+	VADecPictureParameterBufferVP9 va_pic;
+	bool have_pic;
+	bool have_data;
+	bool failed;
+
+	struct vp9_frame_header hdr;
+	struct v4l2_ctrl_vp9_frame frame;
+	struct v4l2_ctrl_vp9_compressed_hdr compressed_hdr;
+	unsigned int reference_mode;
+
+	struct vp9_persistent_state state, pending;
 };
 
 /* --- uncompressed header parser (VP9 spec 6.2) --- */
@@ -173,8 +188,8 @@ static void vp9_parse_color_config(struct v4l2r_bits *b,
 {
 	unsigned int color_space;
 
-	if (profile >= 2)
-		v4l2r_bits_bit(b);		/* ten_or_twelve_bit */
+	hdr->bit_depth = profile >= 2 ?
+		(v4l2r_bits_bit(b) ? 12 : 10) : 8;
 
 	color_space = v4l2r_bits_read(b, 3);
 	if (color_space != 7 /* CS_RGB */) {
@@ -185,6 +200,8 @@ static void vp9_parse_color_config(struct v4l2r_bits *b,
 		}
 	} else {
 		hdr->color_range_full = true;
+		if (profile == 0 || profile == 2)
+			b->error = true; /* RGB requires profile 1 or 3. */
 		if (profile == 1 || profile == 3)
 			v4l2r_bits_bit(b);	/* reserved_zero */
 	}
@@ -208,6 +225,7 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 	unsigned int profile;
 
 	memset(hdr, 0, sizeof(*hdr));
+	hdr->color_range_full = codec->pending.color_range_full;
 
 	v4l2r_bits_init(b, data, size, false);
 
@@ -216,8 +234,8 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 
 	profile = v4l2r_bits_bit(b);
 	profile |= v4l2r_bits_bit(b) << 1;
-	if (profile == 3)
-		v4l2r_bits_bit(b);		/* reserved_zero */
+	if (profile != codec->va_pic.profile || (profile != 0 && profile != 2))
+		return; /* Only the advertised 4:2:0 profiles are implemented. */
 
 	if (v4l2r_bits_bit(b))			/* show_existing_frame */
 		return;
@@ -227,7 +245,8 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 	hdr->error_resilient = v4l2r_bits_bit(b);
 
 	if (hdr->keyframe) {
-		v4l2r_bits_read(b, 24);		/* sync code */
+		if (v4l2r_bits_read(b, 24) != 0x498342)
+			return;
 		vp9_parse_color_config(b, hdr, profile);
 		vp9_parse_frame_and_render_size(b);
 	} else {
@@ -238,7 +257,8 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 			v4l2r_bits_read(b, 2);	/* reset_frame_context */
 
 		if (hdr->intra_only) {
-			v4l2r_bits_read(b, 24);	/* sync code */
+			if (v4l2r_bits_read(b, 24) != 0x498342)
+				return;
 			if (profile > 0)
 				vp9_parse_color_config(b, hdr, profile);
 			else
@@ -295,14 +315,14 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 	if (hdr->keyframe || hdr->intra_only || hdr->error_resilient) {
 		static const int8_t default_ref_deltas[4] = { 1, 0, -1, -1 };
 
-		memcpy(codec->lf_ref_deltas, default_ref_deltas,
-		       sizeof(codec->lf_ref_deltas));
-		memset(codec->lf_mode_deltas, 0, sizeof(codec->lf_mode_deltas));
-		memset(codec->seg_feature_enabled, 0,
-		       sizeof(codec->seg_feature_enabled));
-		memset(codec->seg_feature_data, 0,
-		       sizeof(codec->seg_feature_data));
-		codec->seg_abs_delta = false;
+		memcpy(codec->pending.lf_ref_deltas, default_ref_deltas,
+		       sizeof(codec->pending.lf_ref_deltas));
+		memset(codec->pending.lf_mode_deltas, 0, sizeof(codec->pending.lf_mode_deltas));
+		memset(codec->pending.seg_feature_enabled, 0,
+		       sizeof(codec->pending.seg_feature_enabled));
+		memset(codec->pending.seg_feature_data, 0,
+		       sizeof(codec->pending.seg_feature_data));
+		codec->pending.seg_abs_delta = false;
 	}
 
 	/* loop_filter_params() */
@@ -315,14 +335,14 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 			for (int i = 0; i < 4; i++) {
 				if (v4l2r_bits_bit(b)) {
 					int v = v4l2r_bits_read(b, 6);
-					codec->lf_ref_deltas[i] =
+					codec->pending.lf_ref_deltas[i] =
 						v4l2r_bits_bit(b) ? -v : v;
 				}
 			}
 			for (int i = 0; i < 2; i++) {
 				if (v4l2r_bits_bit(b)) {
 					int v = v4l2r_bits_read(b, 6);
-					codec->lf_mode_deltas[i] =
+					codec->pending.lf_mode_deltas[i] =
 						v4l2r_bits_bit(b) ? -v : v;
 				}
 			}
@@ -363,15 +383,15 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 
 		hdr->seg_update_data = v4l2r_bits_bit(b);
 		if (hdr->seg_update_data) {
-			codec->seg_abs_delta = v4l2r_bits_bit(b);
+			codec->pending.seg_abs_delta = v4l2r_bits_bit(b);
 
 			for (int i = 0; i < 8; i++) {
 				for (int j = 0; j < 4; j++) {
 					int16_t value = 0;
 
-					codec->seg_feature_enabled[i][j] =
+					codec->pending.seg_feature_enabled[i][j] =
 						v4l2r_bits_bit(b);
-					if (!codec->seg_feature_enabled[i][j])
+					if (!codec->pending.seg_feature_enabled[i][j])
 						continue;
 
 					if (seg_feature_bits[j])
@@ -381,13 +401,38 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 					    v4l2r_bits_bit(b))
 						value = -value;
 
-					codec->seg_feature_data[i][j] = value;
+					codec->pending.seg_feature_data[i][j] = value;
 				}
 			}
 		}
 	}
 
+	/* Finish the uncompressed header so client-provided boundaries cannot
+	 * redirect the probability parser into a different section of the frame. */
+	unsigned int sb_cols = (codec->va_pic.frame_width + 63u) / 64;
+	unsigned int min_cols = 0, max_cols = 0;
+	while ((64u << min_cols) < sb_cols)
+		min_cols++;
+	while ((sb_cols >> (max_cols + 1)) >= 4)
+		max_cols++;
+	unsigned int cols = min_cols;
+	while (cols < max_cols && v4l2r_bits_bit(b))
+		cols++;
+	unsigned int rows = v4l2r_bits_bit(b);
+	if (rows)
+		rows += v4l2r_bits_bit(b);
+	unsigned int compressed_size = v4l2r_bits_read(b, 16);
+	if (cols != codec->va_pic.log2_tile_columns ||
+	    rows != codec->va_pic.log2_tile_rows ||
+	    !compressed_size || compressed_size != codec->va_pic.first_partition_size ||
+	    (b->pos + 7) / 8 != codec->va_pic.frame_header_length_in_bytes ||
+	    (hdr->bit_depth && hdr->bit_depth != codec->va_pic.bit_depth) ||
+	    hdr->keyframe == !!codec->va_pic.pic_fields.bits.frame_type ||
+	    hdr->intra_only != !!codec->va_pic.pic_fields.bits.intra_only)
+		return;
 	hdr->valid = !b->error;
+	if (hdr->valid)
+		codec->pending.color_range_full = hdr->color_range_full;
 }
 
 /* --- compressed header parser, follows FFmpeg v4l2_request_vp9.c --- */
@@ -440,7 +485,7 @@ static int vp9_read_prob_delta(struct vp9_bool *c)
 #define VP9_MV_UPDATE(c, target) \
 	do { if (vp9_bool_bit(c, 252)) (target) = (vp9_bool_lit(c, 7) << 1) | 1; } while (0)
 
-static void vp9_parse_compressed_header(struct vp9_context *codec,
+static bool vp9_parse_compressed_header(struct vp9_context *codec,
 					const uint8_t *data, size_t size)
 {
 	struct v4l2_ctrl_vp9_compressed_hdr *ctrl = &codec->compressed_hdr;
@@ -454,13 +499,13 @@ static void vp9_parse_compressed_header(struct vp9_context *codec,
 	memset(ctrl, 0, sizeof(*ctrl));
 	codec->reference_mode = 0;
 
-	if (!size)
-		return;
+	if (!data || !size)
+		return false;
 
 	vp9_bool_init(&c, data, size);
 
 	if (vp9_bool_bit(&c, 128))		/* marker bit must be 0 */
-		return;
+		return false;
 
 	if (hdr->lossless) {
 		ctrl->tx_mode = V4L2_VP9_TX_MODE_ONLY_4X4;
@@ -502,7 +547,7 @@ static void vp9_parse_compressed_header(struct vp9_context *codec,
 		VP9_UPDATE(&c, ctrl->skip[i]);
 
 	if (!inter)
-		return;
+		return vp9_bool_valid(&c);
 
 	for (int i = 0; i < 7; i++)
 		for (int j = 0; j < 3; j++)
@@ -580,11 +625,22 @@ static void vp9_parse_compressed_header(struct vp9_context *codec,
 	}
 
 	codec->reference_mode = comp_pred_mode;
+	return vp9_bool_valid(&c);
 }
 
 /* --- control fill --- */
 
-static void vp9_fill_frame(struct v4l2r_context *ctx)
+static uint64_t vp9_reference_timestamp(struct v4l2r_context *ctx, VASurfaceID id)
+{
+	struct v4l2r_surface *surface = V4L2R_SURFACE_GET(ctx->drv, id);
+	/* CAPTURE indices are local to the decoder context. A surface from an
+	 * older context can have the same index as an unrelated new buffer. */
+	if (!surface || surface->ctx != ctx)
+		return 0;
+	return v4l2r_surface_timestamp(ctx->drv, id);
+}
+
+static bool vp9_fill_frame(struct v4l2r_context *ctx)
 {
 	struct vp9_context *codec = ctx->codec_priv;
 	const VADecPictureParameterBufferVP9 *pic = &codec->va_pic;
@@ -623,9 +679,9 @@ static void vp9_fill_frame(struct v4l2r_context *ctx)
 	};
 
 	for (int i = 0; i < 4; i++)
-		frame->lf.ref_deltas[i] = codec->lf_ref_deltas[i];
+		frame->lf.ref_deltas[i] = codec->pending.lf_ref_deltas[i];
 	for (int i = 0; i < 2; i++)
-		frame->lf.mode_deltas[i] = codec->lf_mode_deltas[i];
+		frame->lf.mode_deltas[i] = codec->pending.lf_mode_deltas[i];
 
 	if (hdr->lf_delta_enabled)
 		frame->lf.flags |= V4L2_VP9_LOOP_FILTER_FLAG_DELTA_ENABLED;
@@ -641,12 +697,12 @@ static void vp9_fill_frame(struct v4l2r_context *ctx)
 		};
 
 		for (int j = 0; j < 4; j++) {
-			if (!codec->seg_feature_enabled[i][j])
+			if (!codec->pending.seg_feature_enabled[i][j])
 				continue;
 			frame->seg.feature_enabled[i] |=
 				V4L2_VP9_SEGMENT_FEATURE_ENABLED(feature_map[j]);
 			frame->seg.feature_data[i][feature_map[j]] =
-				codec->seg_feature_data[i][j];
+				codec->pending.seg_feature_data[i][j];
 		}
 	}
 
@@ -663,7 +719,7 @@ static void vp9_fill_frame(struct v4l2r_context *ctx)
 		frame->seg.flags |= V4L2_VP9_SEGMENTATION_FLAG_TEMPORAL_UPDATE;
 	if (hdr->seg_update_data)
 		frame->seg.flags |= V4L2_VP9_SEGMENTATION_FLAG_UPDATE_DATA;
-	if (codec->seg_abs_delta)
+	if (codec->pending.seg_abs_delta)
 		frame->seg.flags |= V4L2_VP9_SEGMENTATION_FLAG_ABS_OR_DELTA_UPDATE;
 
 	if (!pic->pic_fields.bits.frame_type)
@@ -688,12 +744,21 @@ static void vp9_fill_frame(struct v4l2r_context *ctx)
 	if (hdr->color_range_full)
 		frame->flags |= V4L2_VP9_FRAME_FLAG_COLOR_RANGE_FULL_SWING;
 
-	frame->last_frame_ts = v4l2r_surface_timestamp(ctx->drv,
+	frame->last_frame_ts = vp9_reference_timestamp(ctx,
 			pic->reference_frames[pic->pic_fields.bits.last_ref_frame]);
-	frame->golden_frame_ts = v4l2r_surface_timestamp(ctx->drv,
+	frame->golden_frame_ts = vp9_reference_timestamp(ctx,
 			pic->reference_frames[pic->pic_fields.bits.golden_ref_frame]);
-	frame->alt_frame_ts = v4l2r_surface_timestamp(ctx->drv,
+	frame->alt_frame_ts = vp9_reference_timestamp(ctx,
 			pic->reference_frames[pic->pic_fields.bits.alt_ref_frame]);
+	/* Inter pictures need all three reference slots backed by decoded
+	 * surfaces. Context teardown (including a size change) can detach a
+	 * still-live VA surface from its CAPTURE buffer. Never submit its zero
+	 * timestamp as a reference to the hardware. */
+	if (pic->pic_fields.bits.frame_type && !pic->pic_fields.bits.intra_only &&
+	    (!frame->last_frame_ts || !frame->golden_frame_ts || !frame->alt_frame_ts)) {
+		v4l2r_log("VP9 inter picture has an unavailable reference in this decoder context\n");
+		return false;
+	}
 
 	if (pic->pic_fields.bits.last_ref_frame_sign_bias)
 		frame->ref_frame_sign_bias |= V4L2_VP9_SIGN_BIAS_LAST;
@@ -701,6 +766,7 @@ static void vp9_fill_frame(struct v4l2r_context *ctx)
 		frame->ref_frame_sign_bias |= V4L2_VP9_SIGN_BIAS_GOLDEN;
 	if (pic->pic_fields.bits.alt_ref_frame_sign_bias)
 		frame->ref_frame_sign_bias |= V4L2_VP9_SIGN_BIAS_ALT;
+	return true;
 }
 
 /* --- codec ops --- */
@@ -717,8 +783,8 @@ static VAStatus vp9_init(struct v4l2r_context *ctx)
 
 	/* Persistent loop-filter deltas start at the VP9 defaults; the first
 	 * frame is a key frame which re-applies them, but seed them anyway. */
-	memcpy(codec->lf_ref_deltas, default_ref_deltas,
-	       sizeof(codec->lf_ref_deltas));
+	memcpy(codec->state.lf_ref_deltas, default_ref_deltas,
+	       sizeof(codec->state.lf_ref_deltas));
 
 	return VA_STATUS_SUCCESS;
 }
@@ -728,6 +794,9 @@ static VAStatus vp9_begin_picture(struct v4l2r_context *ctx)
 	struct vp9_context *codec = ctx->codec_priv;
 
 	codec->have_pic = false;
+	codec->have_data = false;
+	codec->failed = false;
+	codec->pending = codec->state;
 	memset(&codec->hdr, 0, sizeof(codec->hdr));
 	memset(&codec->compressed_hdr, 0, sizeof(codec->compressed_hdr));
 	codec->reference_mode = 0;
@@ -735,16 +804,21 @@ static VAStatus vp9_begin_picture(struct v4l2r_context *ctx)
 	return VA_STATUS_SUCCESS;
 }
 
-static VAStatus vp9_render_buffer(struct v4l2r_context *ctx,
+static VAStatus vp9_render_buffer_impl(struct v4l2r_context *ctx,
 				  struct v4l2r_buffer *buf)
 {
 	struct vp9_context *codec = ctx->codec_priv;
 
 	switch (buf->type) {
 	case VAPictureParameterBufferType:
-		if (v4l2r_buffer_bytes(buf) < sizeof(codec->va_pic))
+		if (codec->have_data || !buf->data ||
+		    v4l2r_buffer_bytes(buf) < sizeof(codec->va_pic))
 			return VA_STATUS_ERROR_INVALID_BUFFER;
 		codec->va_pic = *(const VADecPictureParameterBufferVP9 *)buf->data;
+		if (!codec->va_pic.frame_width || !codec->va_pic.frame_height ||
+		    (codec->va_pic.profile != 0 && codec->va_pic.profile != 2) ||
+		    codec->va_pic.bit_depth != (codec->va_pic.profile ? 10 : 8))
+			return VA_STATUS_ERROR_INVALID_BUFFER;
 		codec->have_pic = true;
 		return VA_STATUS_SUCCESS;
 	case VASliceParameterBufferType:
@@ -757,25 +831,41 @@ static VAStatus vp9_render_buffer(struct v4l2r_context *ctx,
 		if (!codec->have_pic)
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 
-		/* The buffer holds the whole frame; parse both headers
-		 * before appending the bitstream untouched. */
-		vp9_parse_uncompressed_header(codec, data, size);
+		size_t header_size = codec->va_pic.frame_header_length_in_bytes;
+		size_t compressed_size = codec->va_pic.first_partition_size;
+		if (codec->have_data || !data || !header_size || header_size >= size ||
+		    !compressed_size || compressed_size >= size - header_size)
+			return VA_STATUS_ERROR_INVALID_BUFFER;
 
-		if (codec->va_pic.frame_header_length_in_bytes < size)
-			vp9_parse_compressed_header(codec,
-				data + codec->va_pic.frame_header_length_in_bytes,
-				codec->va_pic.first_partition_size <=
-				size - codec->va_pic.frame_header_length_in_bytes ?
-				codec->va_pic.first_partition_size :
-				size - codec->va_pic.frame_header_length_in_bytes);
+		/* Parse only the declared header spans, and reject malformed input
+		 * instead of sending fallback or partially parsed controls. */
+		vp9_parse_uncompressed_header(codec, data, header_size);
+		if (!codec->hdr.valid ||
+		    !vp9_parse_compressed_header(codec, data + header_size, compressed_size))
+			return VA_STATUS_ERROR_INVALID_BUFFER;
+		if (!vp9_fill_frame(ctx))
+			return VA_STATUS_ERROR_INVALID_SURFACE;
 
-		vp9_fill_frame(ctx);
-
-		return v4l2r_append_output(ctx, data, size);
+		VAStatus status = v4l2r_append_output(ctx, data, size);
+		if (status == VA_STATUS_SUCCESS)
+			codec->have_data = true;
+		return status;
 	}
 	default:
 		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
 	}
+}
+
+static VAStatus vp9_render_buffer(struct v4l2r_context *ctx,
+				  struct v4l2r_buffer *buf)
+{
+	struct vp9_context *codec = ctx->codec_priv;
+	if (codec->failed)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
+	VAStatus status = vp9_render_buffer_impl(ctx, buf);
+	if (status != VA_STATUS_SUCCESS)
+		codec->failed = true;
+	return status;
 }
 
 static VAStatus vp9_end_picture(struct v4l2r_context *ctx)
@@ -784,8 +874,8 @@ static VAStatus vp9_end_picture(struct v4l2r_context *ctx)
 	struct v4l2_ext_control controls[2];
 	unsigned int count = 0;
 
-	if (!codec->have_pic)
-		return VA_STATUS_ERROR_OPERATION_FAILED;
+	if (codec->failed || !codec->have_pic || !codec->have_data)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
 
 	controls[count++] = (struct v4l2_ext_control) {
 		.id = V4L2_CID_STATELESS_VP9_FRAME,
@@ -801,7 +891,12 @@ static VAStatus vp9_end_picture(struct v4l2r_context *ctx)
 		};
 	}
 
-	return v4l2r_decode(ctx, controls, count, true, true);
+	VAStatus status = v4l2r_decode(ctx, controls, count, true, true);
+	if (status == VA_STATUS_SUCCESS)
+		codec->state = codec->pending;
+	else
+		codec->failed = true;
+	return status;
 }
 
 static const VAProfile vp9_profiles[] = {
