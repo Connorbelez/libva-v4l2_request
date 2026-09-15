@@ -60,7 +60,12 @@ struct hevc_context {
 
 	VAPictureParameterBufferHEVC va_pic;
 	bool have_pic;
+	bool failed;
 	uint8_t dpb_index_of_va[15];
+	/* Previous full DPB followed by its current picture, in decode order.
+	 * Keep retained long-term pictures indefinitely, without a history ring. */
+	VAPictureHEVC reference_order[16];
+	unsigned int nb_reference_order;
 
 	struct v4l2_ctrl_hevc_sps sps;
 	struct v4l2_ctrl_hevc_pps pps;
@@ -181,6 +186,8 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 	size_t mark;
 
 	memset(info, 0, sizeof(*info));
+	if (!data || !size || pic->log2_max_pic_order_cnt_lsb_minus4 > 12)
+		return;
 
 	v4l2r_bits_init(&b, data, size, true);
 
@@ -189,10 +196,13 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 	else
 		chroma_array_type = pic->pic_fields.bits.chroma_format_idc;
 
-	v4l2r_bits_bit(&b);				/* forbidden_zero_bit */
+	bool forbidden = v4l2r_bits_bit(&b);
 	info->nal_unit_type = v4l2r_bits_read(&b, 6);
-	v4l2r_bits_read(&b, 6);				/* nuh_layer_id */
+	unsigned int layer_id = v4l2r_bits_read(&b, 6);
 	info->temporal_id_plus1 = v4l2r_bits_read(&b, 3);
+	if (forbidden || layer_id || !info->temporal_id_plus1 ||
+	    info->nal_unit_type > 31)
+		return;
 
 	idr = info->nal_unit_type == HEVC_NAL_IDR_W_RADL ||
 	      info->nal_unit_type == HEVC_NAL_IDR_N_LP;
@@ -204,7 +214,8 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 	if (irap)
 		info->no_output_of_prior_pics = v4l2r_bits_bit(&b);
 
-	v4l2r_bits_ue(&b);				/* pic_parameter_set_id */
+	if (v4l2r_bits_ue(&b) > 63)		/* pic_parameter_set_id */
+		return;
 
 	if (!first_slice_in_pic) {
 		unsigned int ctb_log2 =
@@ -231,6 +242,8 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 	if (!dependent_slice) {
 		v4l2r_bits_skip(&b, pic->num_extra_slice_header_bits);
 		slice_type = v4l2r_bits_ue(&b);
+		if (slice_type > V4L2_HEVC_SLICE_TYPE_I)
+			return;
 
 		if (pic->slice_parsing_fields.bits.output_flag_present_flag)
 			v4l2r_bits_bit(&b);
@@ -304,6 +317,11 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 				if (pic->num_long_term_ref_pic_sps > 0)
 					num_lt_sps = v4l2r_bits_ue(&b);
 				num_lt_pics = v4l2r_bits_ue(&b);
+				if (num_lt_sps > pic->num_long_term_ref_pic_sps ||
+				    num_lt_sps > 32 || num_lt_pics > 32 - num_lt_sps) {
+					b.error = true;
+					goto done;
+				}
 
 				for (uint32_t i = 0; i < num_lt_sps + num_lt_pics && !b.error; i++) {
 					if (i < num_lt_sps) {
@@ -427,7 +445,8 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 					b.error = true;
 					goto done;
 				}
-				codec->entry_point_offsets[start + i] = offset + 1;
+				if (codec->entry_point_offsets)
+					codec->entry_point_offsets[start + i] = offset + 1;
 			}
 			codec->num_entry_point_offsets += info->num_entry_point_offsets;
 		}
@@ -582,12 +601,64 @@ static void hevc_fill_sps_pps(struct v4l2r_context *ctx,
 	}
 }
 
-static void hevc_fill_decode_params(struct v4l2r_context *ctx,
+static bool hevc_reference_valid(const VAPictureHEVC *ref)
+{
+	return !(ref->flags & VA_PICTURE_HEVC_INVALID) &&
+		ref->picture_id != VA_INVALID_SURFACE;
+}
+
+static unsigned int hevc_reference_indices(const struct hevc_context *codec,
+		const VAPictureParameterBufferHEVC *pic, bool decode_order, uint8_t indices[15])
+{
+	unsigned int count = 0;
+	bool included[15] = {0};
+	/* AVD produces wrong TMVP pictures for some legal VA slot orders.
+	 * Preserve decode order, as direct V4L2 clients do, while remapping
+	 * every slice/RPS index. Other decoders keep the original VA order. */
+	if (decode_order) {
+		for (unsigned int n = 0; n < codec->nb_reference_order; n++) {
+			const VAPictureHEVC *old = &codec->reference_order[n];
+			for (unsigned int i = 0; i < 15; i++) {
+				const VAPictureHEVC *ref = &pic->ReferenceFrames[i];
+				if (!included[i] && hevc_reference_valid(ref) &&
+				    ref->picture_id == old->picture_id &&
+				    ref->pic_order_cnt == old->pic_order_cnt) {
+					indices[count++] = i;
+					included[i] = true;
+				}
+			}
+		}
+	}
+	for (unsigned int i = 0; i < 15; i++)
+		if (!included[i] && hevc_reference_valid(&pic->ReferenceFrames[i]))
+			indices[count++] = i;
+	return count;
+}
+
+static void hevc_remember_reference_order(struct hevc_context *codec)
+{
+	codec->nb_reference_order = codec->decode_params.num_active_dpb_entries;
+	for (unsigned int i = 0; i < 15; i++) {
+		unsigned int dpb = codec->dpb_index_of_va[i];
+		if (dpb != 0xff)
+			codec->reference_order[dpb] = codec->va_pic.ReferenceFrames[i];
+	}
+	codec->reference_order[codec->nb_reference_order++] = codec->va_pic.CurrPic;
+}
+
+static VAStatus hevc_fill_decode_params(struct v4l2r_context *ctx,
 				    const VAPictureParameterBufferHEVC *pic)
 {
 	struct hevc_context *codec = ctx->codec_priv;
 	struct v4l2_ctrl_hevc_decode_params *decode = &codec->decode_params;
 	unsigned int entries = 0;
+	uint8_t indices[15];
+	/* The ordering workaround fixes short-term RPS_B. Applying it to
+	 * long-term RPS_E increases corruption, so preserve VA order whenever
+	 * the SPS permits long-term references, even before one is used. */
+	bool reorder = ctx->is_avd &&
+		!pic->slice_parsing_fields.bits.long_term_ref_pics_present_flag;
+	unsigned int count = hevc_reference_indices(codec, pic, reorder, indices);
 
 	*decode = (struct v4l2_ctrl_hevc_decode_params) {
 		.pic_order_cnt_val = pic->CurrPic.pic_order_cnt,
@@ -595,7 +666,8 @@ static void hevc_fill_decode_params(struct v4l2r_context *ctx,
 
 	memset(codec->dpb_index_of_va, 0xff, sizeof(codec->dpb_index_of_va));
 
-	for (int i = 0; i < 15; i++) {
+	for (unsigned int n = 0; n < count; n++) {
+		unsigned int i = indices[n];
 		const VAPictureHEVC *ref = &pic->ReferenceFrames[i];
 		struct v4l2_hevc_dpb_entry *entry;
 
@@ -607,6 +679,11 @@ static void hevc_fill_decode_params(struct v4l2r_context *ctx,
 		entry = &decode->dpb[entries];
 		entry->timestamp = v4l2r_surface_timestamp(ctx->drv,
 							   ref->picture_id);
+		/* Random-access pictures may carry unavailable, unused entries
+		 * from before the access point. Omit them; slice validation below
+		 * rejects any attempt to actually use an unavailable reference. */
+		if (!entry->timestamp)
+			continue;
 		entry->field_pic = !!(ref->flags & VA_PICTURE_HEVC_FIELD_PIC);
 		entry->pic_order_cnt_val = ref->pic_order_cnt;
 		entry->flags = 0;
@@ -686,6 +763,7 @@ static void hevc_fill_decode_params(struct v4l2r_context *ctx,
 		decode->flags |= V4L2_HEVC_DECODE_PARAM_FLAG_IRAP_PIC;
 	if (pic->slice_parsing_fields.bits.IdrPicFlag)
 		decode->flags |= V4L2_HEVC_DECODE_PARAM_FLAG_IDR_PIC;
+	return VA_STATUS_SUCCESS;
 }
 
 static void hevc_fill_scaling_matrix(struct hevc_context *codec,
@@ -805,6 +883,39 @@ static void hevc_fill_slice_params(struct v4l2r_context *ctx,
 
 /* --- submission --- */
 
+/* VA indices must name an actual decoded reference, never an implicit slot 0. */
+static bool hevc_slice_refs_valid(const struct hevc_context *codec,
+				 const VASliceParameterBufferHEVC *slice)
+{
+	unsigned int type = slice->LongSliceFlags.fields.slice_type;
+	if (type > V4L2_HEVC_SLICE_TYPE_I)
+		return false;
+	if (type == V4L2_HEVC_SLICE_TYPE_I)
+		return true;
+	unsigned int counts[2] = { slice->num_ref_idx_l0_active_minus1,
+				  slice->num_ref_idx_l1_active_minus1 };
+	for (unsigned int list = 0; list < (type == V4L2_HEVC_SLICE_TYPE_B ? 2u : 1u); list++) {
+		if (counts[list] > 14)
+			return false;
+		for (unsigned int i = 0; i <= counts[list]; i++) {
+			unsigned int va = slice->RefPicList[list][i];
+			if (va >= 15 || codec->dpb_index_of_va[va] == 0xff)
+				return false;
+			unsigned int dpb = codec->dpb_index_of_va[va];
+			if (dpb >= codec->decode_params.num_active_dpb_entries ||
+			    !codec->decode_params.dpb[dpb].timestamp)
+				return false;
+		}
+	}
+	if (slice->LongSliceFlags.fields.slice_temporal_mvp_enabled_flag) {
+		unsigned int list = type == V4L2_HEVC_SLICE_TYPE_P ||
+			slice->LongSliceFlags.fields.collocated_from_l0_flag ? 0 : 1;
+		if (slice->collocated_ref_idx > counts[list])
+			return false;
+	}
+	return true;
+}
+
 static VAStatus hevc_submit(struct v4l2r_context *ctx, bool last_slice)
 {
 	struct hevc_context *codec = ctx->codec_priv;
@@ -881,8 +992,12 @@ static VAStatus hevc_process_slice(struct v4l2r_context *ctx,
 
 	/* offset and size are client-supplied; reject a slice that would read
 	 * past the slice-data buffer before parsing or copying it. */
-	if (va_slice->slice_data_offset > data_size ||
-	    va_slice->slice_data_size > data_size - va_slice->slice_data_offset)
+	if (!data || !va_slice->slice_data_size ||
+	    va_slice->slice_data_offset > data_size ||
+	    va_slice->slice_data_size > data_size - va_slice->slice_data_offset ||
+	    va_slice->slice_data_size > UINT32_MAX / 8 - 3 ||
+	    va_slice->slice_data_byte_offset > va_slice->slice_data_size ||
+	    !hevc_slice_refs_valid(codec, va_slice))
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	slice_data = data + va_slice->slice_data_offset;
 
@@ -890,6 +1005,15 @@ static VAStatus hevc_process_slice(struct v4l2r_context *ctx,
 	if (codec->decode_mode == V4L2_STATELESS_HEVC_DECODE_MODE_SLICE_BASED &&
 	    codec->max_slice_params &&
 	    codec->num_slice_params >= codec->max_slice_params) {
+		/* Validate before submitting the preceding batch. The new header's
+		 * offsets belong to the next batch; a dry run must not overwrite
+		 * offsets still needed by the preceding request. */
+		struct hevc_context probe = *codec;
+		probe.num_entry_point_offsets = 0;
+		probe.entry_point_offsets = NULL;
+		hevc_parse_slice_header(&probe, slice_data, va_slice->slice_data_size, &info);
+		if (!info.valid)
+			return VA_STATUS_ERROR_INVALID_BUFFER;
 		status = hevc_submit(ctx, false);
 		if (status != VA_STATUS_SUCCESS)
 			return status;
@@ -1061,6 +1185,7 @@ static VAStatus hevc_begin_picture(struct v4l2r_context *ctx)
 	struct hevc_context *codec = ctx->codec_priv;
 
 	codec->have_pic = false;
+	codec->failed = false;
 	codec->nb_va_slices = 0;
 	codec->slices_consumed = 0;
 	codec->num_slice_params = 0;
@@ -1079,7 +1204,8 @@ static VAStatus hevc_store_slice_params(struct hevc_context *codec,
 	const VASliceParameterBufferHEVC *elements = buf->data;
 	unsigned int count = buf->nb_elements;
 
-	if (buf->element_size != sizeof(*elements))
+	if (buf->element_size != sizeof(*elements) ||
+	    count > UINT32_MAX - codec->nb_va_slices)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 
 	if (v4l2r_array_reserve((void **)&codec->va_slices,
@@ -1095,7 +1221,7 @@ static VAStatus hevc_store_slice_params(struct hevc_context *codec,
 	return VA_STATUS_SUCCESS;
 }
 
-static VAStatus hevc_render_buffer(struct v4l2r_context *ctx,
+static VAStatus hevc_render_buffer_impl(struct v4l2r_context *ctx,
 				   struct v4l2r_buffer *buf)
 {
 	struct hevc_context *codec = ctx->codec_priv;
@@ -1108,8 +1234,7 @@ static VAStatus hevc_render_buffer(struct v4l2r_context *ctx,
 		codec->va_pic = *(const VAPictureParameterBufferHEVC *)buf->data;
 		codec->have_pic = true;
 		hevc_fill_sps_pps(ctx, &codec->va_pic);
-		hevc_fill_decode_params(ctx, &codec->va_pic);
-		return VA_STATUS_SUCCESS;
+		return hevc_fill_decode_params(ctx, &codec->va_pic);
 	case VAIQMatrixBufferType:
 		if (v4l2r_buffer_bytes(buf) < sizeof(VAIQMatrixBufferHEVC))
 			return VA_STATUS_ERROR_INVALID_BUFFER;
@@ -1133,14 +1258,31 @@ static VAStatus hevc_render_buffer(struct v4l2r_context *ctx,
 	}
 }
 
+static VAStatus hevc_render_buffer(struct v4l2r_context *ctx,
+				   struct v4l2r_buffer *buf)
+{
+	struct hevc_context *codec = ctx->codec_priv;
+	if (codec->failed)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
+	VAStatus status = hevc_render_buffer_impl(ctx, buf);
+	if (status != VA_STATUS_SUCCESS)
+		codec->failed = true;
+	return status;
+}
+
 static VAStatus hevc_end_picture(struct v4l2r_context *ctx)
 {
 	struct hevc_context *codec = ctx->codec_priv;
 
+	if (codec->failed || codec->slices_consumed != codec->nb_va_slices)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
 	if (!codec->have_pic || !codec->num_slices)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	return hevc_submit(ctx, true);
+	VAStatus status = hevc_submit(ctx, true);
+	if (status == VA_STATUS_SUCCESS && ctx->is_avd)
+		hevc_remember_reference_order(codec);
+	return status;
 }
 
 static const VAProfile hevc_profiles[] = {

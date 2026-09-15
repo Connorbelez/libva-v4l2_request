@@ -59,7 +59,17 @@ Version `1.3.r7` adds opt-in H.264 High 10, an explicit FFmpeg quantizer workaro
 10-bit capability checks, H.264 parser regressions, and a conformance runner that requires
 hardware frames and preserves resolution changes. See [codec testing](tests/README.md#codec-conformance-without-software-fallback).
 
-Tested on an M1 (T8103) with the kernel patches from omarchy-m1-video: `JCT-VC-HEVC_V1` 143/147 and
+Version `1.3.r8` preserves short-term-only HEVC references in decode order on AVD and remaps all slice/RPS
+indices. This corrects all 300 pictures of `RPS_B_qualcomm_5`, raising the serial HEVC total
+to 144/147. The firmware's ordering sensitivity remains unexplained; `RPS_E_qualcomm_5`
+still fails. Streams permitting long-term references and other V4L2 decoders retain the
+original reference order: the unrestricted experiment increased RPS_E corruption.
+
+HEVC also rejects invalid active references and malformed slices before flushing a preceding
+batch. A failed RenderPicture blocks subsequent submission of the incomplete picture.
+Unused unavailable references around random-access points remain allowed.
+
+Tested on an M1 (T8103) with the kernel patches from omarchy-m1-video: `JCT-VC-HEVC_V1` 144/147 and
 `JVT-AVC_V1` 73/135 bit-exact through FFmpeg VA-API. Earlier Chrome 152 H.264 playback tests
 matched software rendering; this revision adds direct early-export pixel regressions.
 
@@ -120,7 +130,7 @@ This is a client compatibility setting, not a change to the VA-API or V4L2 param
 
 See [tests/README.md](tests/README.md) for the offline sanitizer suite and guarded hardware
 checks. `vainfo --display drm` identifies this build as
-`v4l2-request (omarchy-m1-video 1.3.r7)`.
+`v4l2-request (omarchy-m1-video 1.3.r8)`.
 
 ## License
 
