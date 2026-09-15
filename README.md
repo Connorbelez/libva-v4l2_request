@@ -69,6 +69,12 @@ HEVC also rejects invalid active references and malformed slices before flushing
 batch. A failed RenderPicture blocks subsequent submission of the incomplete picture.
 Unused unavailable references around random-access points remain allowed.
 
+Version `1.3.r9` rejects incomplete H.264 pictures, overflowing slice-parameter counts,
+and invalid active references before submitting a pending slice. Missing surface storage
+cannot match another missing reference through timestamp zero. Slice types must also
+agree with the parsed NAL header. Three new offline cases reproduce the earlier failures
+and verify valid submissions and recovery, bringing the sanitizer suite to 25 cases.
+
 Tested on an M1 (T8103) with the kernel patches from omarchy-m1-video: `JCT-VC-HEVC_V1` 144/147 and
 `JVT-AVC_V1` 73/135 bit-exact through FFmpeg VA-API. Earlier Chrome 152 H.264 playback tests
 matched software rendering; this revision adds direct early-export pixel regressions.
@@ -130,7 +136,7 @@ This is a client compatibility setting, not a change to the VA-API or V4L2 param
 
 See [tests/README.md](tests/README.md) for the offline sanitizer suite and guarded hardware
 checks. `vainfo --display drm` identifies this build as
-`v4l2-request (omarchy-m1-video 1.3.r8)`.
+`v4l2-request (omarchy-m1-video 1.3.r9)`.
 
 ## License
 
