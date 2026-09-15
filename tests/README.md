@@ -42,8 +42,9 @@ On the test M1, use `WPP_C_ericsson_MAIN10_2.bit` from the JCT-VC HEVC conforman
 
 `early-export.sh` needs FFmpeg development headers and its `hw_decode.c` example (optional
 second argument gives its path). It compares ordinary decode with export-before-first-decode
-for four H.264/HEVC clips. The preload hook checks the exported dma-buf pixels after each
-frame. `TEST_VP9=1` adds VP9 for other supported devices; AVD does not support VP9.
+for five H.264/HEVC/VP9 clips. It also needs the libvpx-vp9 encoder. The preload hook checks
+the exported dma-buf pixels after each frame. AVD on the test M1 advertises VP9 profiles 0
+and 2; this test covers profile 0 only, not full VP9 conformance or 10-bit VP9.
 
 ## Full conformance
 
