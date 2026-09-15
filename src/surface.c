@@ -279,6 +279,60 @@ void v4l2r_surface_free_backing(struct v4l2r_surface *surface)
 }
 
 /*
+ * Apple AVD sizes the reference data it stores after the picture from the bit
+ * depth of the last SPS, not from the CAPTURE pixel format: P010 set before any
+ * SPS gets 8-bit sized storage, and once a 10-bit stream starts the decode
+ * context rejects the exported buffer as too small. Give the probe instance a
+ * 10-bit SPS of the requested size before sizing a P010 CAPTURE format.
+ * Decoders that do not derive anything from the SPS here are unaffected, and a
+ * rejected control is harmless: the probe goes on as before.
+ */
+static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
+				uint32_t width, uint32_t height)
+{
+	struct v4l2_ctrl_h264_sps h264 = {0};
+	struct v4l2_ctrl_hevc_sps hevc = {0};
+	struct v4l2_ext_control control = {0};
+	struct v4l2_ext_controls controls = {
+		.which = V4L2_CTRL_WHICH_CUR_VAL,
+		.count = 1,
+		.controls = &control,
+	};
+
+	if (pixelformat != V4L2_PIX_FMT_P010)
+		return;
+
+	switch (coded) {
+	case V4L2_PIX_FMT_H264_SLICE:
+		h264.profile_idc = 110;		/* High 10 */
+		h264.chroma_format_idc = 1;
+		h264.bit_depth_luma_minus8 = 2;
+		h264.bit_depth_chroma_minus8 = 2;
+		h264.pic_width_in_mbs_minus1 = (width + 15) / 16 - 1;
+		h264.pic_height_in_map_units_minus1 = (height + 15) / 16 - 1;
+		h264.flags = V4L2_H264_SPS_FLAG_FRAME_MBS_ONLY;
+		control.id = V4L2_CID_STATELESS_H264_SPS;
+		control.ptr = &h264;
+		control.size = sizeof(h264);
+		break;
+	case V4L2_PIX_FMT_HEVC_SLICE:
+		hevc.pic_width_in_luma_samples = width;
+		hevc.pic_height_in_luma_samples = height;
+		hevc.chroma_format_idc = 1;
+		hevc.bit_depth_luma_minus8 = 2;
+		hevc.bit_depth_chroma_minus8 = 2;
+		control.id = V4L2_CID_STATELESS_HEVC_SPS;
+		control.ptr = &hevc;
+		control.size = sizeof(hevc);
+		break;
+	default:
+		return;
+	}
+
+	(void)ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
+}
+
+/*
  * Allocate dma-buf backing for a surface that is not bound to a decode
  * context, using the CAPTURE queue of one of the enumerated decoders on
  * a throwaway file descriptor. Each open of a mem2mem device is its own
@@ -348,6 +402,7 @@ static VAStatus backing_alloc(struct v4l2r_driver *drv,
 
 		if (coded && ioctl(fd, VIDIOC_S_FMT, &out) < 0)
 			goto next;
+		probe_set_bit_depth(fd, coded, pixelformat, width, height);
 
 		format.type = mplane ? V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE :
 				       V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -396,8 +451,11 @@ static VAStatus backing_alloc(struct v4l2r_driver *drv,
 				out.fmt.pix_mp.pixelformat = drv->decoders[n].pixelformats[c];
 			else
 				out.fmt.pix.pixelformat = drv->decoders[n].pixelformats[c];
-			if (ioctl(fd, VIDIOC_S_FMT, &out) < 0 ||
-			    ioctl(fd, VIDIOC_S_FMT, &candidate) < 0)
+			if (ioctl(fd, VIDIOC_S_FMT, &out) < 0)
+				continue;
+			probe_set_bit_depth(fd, drv->decoders[n].pixelformats[c],
+					    pixelformat, width, height);
+			if (ioctl(fd, VIDIOC_S_FMT, &candidate) < 0)
 				continue;
 			if (v4l2r_format_pixelformat(&candidate) != pixelformat ||
 			    v4l2r_format_width(&candidate) != backing->width ||
@@ -420,8 +478,10 @@ static VAStatus backing_alloc(struct v4l2r_driver *drv,
 			out.fmt.pix_mp.pixelformat = coded;
 		else
 			out.fmt.pix.pixelformat = coded;
-		if (ioctl(fd, VIDIOC_S_FMT, &out) < 0 ||
-		    ioctl(fd, VIDIOC_S_FMT, &format) < 0)
+		if (ioctl(fd, VIDIOC_S_FMT, &out) < 0)
+			goto next;
+		probe_set_bit_depth(fd, coded, pixelformat, width, height);
+		if (ioctl(fd, VIDIOC_S_FMT, &format) < 0)
 			goto next;
 
 		buffers = (struct v4l2_create_buffers) {
