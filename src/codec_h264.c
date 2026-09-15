@@ -422,42 +422,69 @@ static void h264_fill_dpb(struct v4l2r_context *ctx,
 	}
 }
 
+static int h264_reference_index(struct v4l2r_context *ctx,
+				const VAPictureH264 *ref)
+{
+	struct h264_context *codec = ctx->codec_priv;
+	uint64_t timestamp;
+
+	if ((ref->flags & VA_PICTURE_H264_INVALID) ||
+	    ref->picture_id == VA_INVALID_SURFACE)
+		return -1;
+	timestamp = v4l2r_surface_timestamp(ctx->drv, ref->picture_id);
+	if (!timestamp)
+		return -1; /* Two unavailable surfaces must not match each other. */
+
+	for (unsigned int j = 0; j < 16; j++) {
+		const struct v4l2_h264_dpb_entry *entry = &codec->decode_params.dpb[j];
+		if ((entry->flags & V4L2_H264_DPB_ENTRY_FLAG_VALID) &&
+		    entry->reference_ts == timestamp)
+			return j;
+	}
+	return -1;
+}
+
+static bool h264_slice_refs_valid(struct v4l2r_context *ctx,
+				  const VASliceParameterBufferH264 *slice)
+{
+	if (slice->slice_type > 9)
+		return false;
+	unsigned int type = slice->slice_type % 5;
+	if (type == SLICE_I || type == SLICE_SI)
+		return true;
+	const VAPictureH264 *lists[2] = { slice->RefPicList0, slice->RefPicList1 };
+	unsigned int counts[2] = { slice->num_ref_idx_l0_active_minus1,
+				  slice->num_ref_idx_l1_active_minus1 };
+	for (unsigned int list = 0; list < (type == SLICE_B ? 2u : 1u); list++) {
+		if (counts[list] > 31)
+			return false;
+		for (unsigned int i = 0; i <= counts[list]; i++)
+			if (h264_reference_index(ctx, &lists[list][i]) < 0)
+				return false;
+	}
+	return true;
+}
+
 static void h264_fill_ref_list(struct v4l2r_context *ctx,
 			       struct v4l2_h264_reference *references,
 			       const VAPictureH264 *va_list,
 			       unsigned int count)
 {
-	struct h264_context *codec = ctx->codec_priv;
-	struct v4l2_ctrl_h264_decode_params *decode = &codec->decode_params;
-
 	for (unsigned int i = 0; i < count && i < 32; i++) {
 		const VAPictureH264 *ref = &va_list[i];
-		uint64_t timestamp;
+		int index = h264_reference_index(ctx, ref);
 
 		references[i].index = 0xff;
 		references[i].fields = 0;
 
-		if (ref->flags & VA_PICTURE_H264_INVALID)
+		if (index < 0)
 			continue;
-		if (ref->picture_id == VA_INVALID_SURFACE)
-			continue;
-
-		timestamp = v4l2r_surface_timestamp(ctx->drv, ref->picture_id);
-
-		for (unsigned int j = 0; j < 16; j++) {
-			const struct v4l2_h264_dpb_entry *entry = &decode->dpb[j];
-
-			if ((entry->flags & V4L2_H264_DPB_ENTRY_FLAG_VALID) &&
-			    entry->reference_ts == timestamp) {
-				references[i].index = j;
-				references[i].fields = V4L2_H264_FRAME_REF;
-				if (ref->flags & VA_PICTURE_H264_TOP_FIELD)
-					references[i].fields = V4L2_H264_TOP_FIELD_REF;
-				else if (ref->flags & VA_PICTURE_H264_BOTTOM_FIELD)
-					references[i].fields = V4L2_H264_BOTTOM_FIELD_REF;
-				break;
-			}
-		}
+		references[i].index = index;
+		references[i].fields = V4L2_H264_FRAME_REF;
+		if (ref->flags & VA_PICTURE_H264_TOP_FIELD)
+			references[i].fields = V4L2_H264_TOP_FIELD_REF;
+		else if (ref->flags & VA_PICTURE_H264_BOTTOM_FIELD)
+			references[i].fields = V4L2_H264_BOTTOM_FIELD_REF;
 	}
 }
 
@@ -658,6 +685,11 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 		v4l2r_log("invalid or unsupported H.264 slice header\n");
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	}
+	/* Validate before flushing a pending slice. Unavailable references are
+	 * allowed in the picture's DPB only when no active slice list uses them. */
+	if (!h264_slice_refs_valid(ctx, va_slice) ||
+	    info.slice_type != va_slice->slice_type % 5)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
 
 	/*
 	 * A NAL unit ends with its rbsp_stop_one_bit (or a cabac_zero_word's 0x03),
@@ -835,7 +867,8 @@ static VAStatus h264_store_slice_params(struct h264_context *codec,
 	const VASliceParameterBufferH264 *elements = buf->data;
 	unsigned int count = buf->nb_elements;
 
-	if (buf->element_size != sizeof(*elements))
+	if (buf->element_size != sizeof(*elements) ||
+	    count > UINT32_MAX - codec->nb_va_slices)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 
 	if (v4l2r_array_reserve((void **)&codec->va_slices,
@@ -915,7 +948,7 @@ static VAStatus h264_end_picture(struct v4l2r_context *ctx)
 
 	/* A client may call EndPicture even after RenderPicture failed. Do not
 	 * submit the valid prefix of a frame with a missing/invalid last slice. */
-	if (codec->failed)
+	if (codec->failed || codec->slices_consumed != codec->nb_va_slices)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	if (!codec->have_pic || !codec->num_slices)
 		return VA_STATUS_ERROR_OPERATION_FAILED;

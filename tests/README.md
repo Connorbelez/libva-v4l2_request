@@ -17,7 +17,13 @@ copies, truncated image backing, invalid dimensions and zero-element buffer resi
 The HEVC case checks exact-capacity entry points, malformed headers and 24,000 deterministic
 random inputs, AVD reference ordering and index remapping, retained long-term references,
 unavailable references at random-access points, and failed-picture submission. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
-rejection, High 10 quantizer modes and fake-device capability checks. There are 22 Meson cases.
+rejection, High 10 quantizer modes and fake-device capability checks. Three H.264 submission
+cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
+references, contradictory slice types, preserving a staged slice's controls, and recovery
+on the next picture. Submission is intercepted in-process; no device is opened. There are
+25 Meson cases. The count-overflow case injects the boundary into codec state rather than
+allocating billions of real slices; it is an arithmetic regression, not proof of a practical
+malicious-video exploit.
 CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
 hardware tests are separate.
 

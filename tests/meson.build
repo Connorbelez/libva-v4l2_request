@@ -21,6 +21,13 @@ if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
 endif
 
 if conf.get('HAVE_V4L2_CTRL_H264') == 1
+  submission = executable('h264-submission', 'h264-submission.c', driver_sources,
+    c_args: ['-UNDEBUG'],
+    include_directories: [root_inc, include_directories('../src')],
+    dependencies: [libva_dep, libdrm_dep, threads_dep])
+  foreach case : ['incomplete', 'slice-count', 'references']
+    test('h264-' + case, submission, args: [case], timeout: 10)
+  endforeach
   foreach case : ['h264-parser', 'h264-profile']
     check = executable(case, case + '.c', driver_sources,
       c_args: ['-UNDEBUG'],
