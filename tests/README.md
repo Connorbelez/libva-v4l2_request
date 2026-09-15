@@ -15,7 +15,8 @@ invalid poll events, deferred flush failures, surviving surfaces and derived ima
 errors during teardown, grown OUTPUT indices, bitstream size overflow, odd-width NV12/P010
 copies, truncated image backing, invalid dimensions and zero-element buffer resizing.
 The HEVC case checks exact-capacity entry points, malformed headers and 24,000 deterministic
-random inputs. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
+random inputs, AVD reference ordering and index remapping, retained long-term references,
+unavailable references at random-access points, and failed-picture submission. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
 rejection, High 10 quantizer modes and fake-device capability checks. There are 22 Meson cases.
 CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
 hardware tests are separate.
@@ -34,6 +35,7 @@ meson setup build
 meson compile -C build
 sh tests/hwdownload.sh "$PWD/build/src" /path/to/main10.bit
 sh tests/early-export.sh "$PWD/build/src"
+sh tests/h264-high10.sh "$PWD/build/src"
 ```
 
 `hwdownload.sh` creates short H.264 640x360/1920x1080 and HEVC 640x360 clips and compares the
@@ -48,6 +50,12 @@ second argument gives its path). It compares ordinary decode with export-before-
 for five H.264/HEVC/VP9 clips. It also needs the libvpx-vp9 encoder. The preload hook checks
 the exported dma-buf pixels after each frame. AVD on the test M1 advertises VP9 profiles 0
 and 2; this test covers profile 0 only, not full VP9 conformance or 10-bit VP9.
+
+`h264-high10.sh` generates six 10-bit H.264 clips: CABAC/CAVLC, QP 1/21/51, four slices,
+B pictures and a cropped 640x360 output. It checks each of 12 frames against software,
+then repeats with export-before-decode and verifies stable dma-buf identity/layout.
+It requires a 10-bit-capable libx264 build and enables the explicit FFmpeg compatibility
+mode for this process. The checksum helper requires hardware frames in both modes.
 
 ## Full conformance
 

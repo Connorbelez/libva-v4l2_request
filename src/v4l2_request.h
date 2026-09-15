@@ -279,6 +279,7 @@ struct v4l2r_context {
 
 	int video_fd;
 	int media_fd;
+	bool is_avd;
 
 	unsigned int picture_width;
 	unsigned int picture_height;
