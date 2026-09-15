@@ -10,12 +10,15 @@ meson setup build-test -Db_sanitize=address,undefined
 meson test -C build-test --print-errorlogs
 ```
 
-The 20 cases cover failed decode/export, CAPTURE/reference/GPU-reader/request timeouts,
+The cases cover failed decode/export, CAPTURE/reference/GPU-reader/request timeouts,
 invalid poll events, deferred flush failures, surviving surfaces and derived images after context destruction,
 errors during teardown, grown OUTPUT indices, bitstream size overflow, odd-width NV12/P010
 copies, truncated image backing, invalid dimensions and zero-element buffer resizing.
 The HEVC case checks exact-capacity entry points, malformed headers and 24,000 deterministic
-random inputs. CI runs these on every push and pull request; hardware tests are separate.
+random inputs. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
+rejection, High 10 quantizer modes and fake-device capability checks. There are 22 Meson cases.
+CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
+hardware tests are separate.
 
 ## Hardware pixel comparisons
 
@@ -70,3 +73,42 @@ Offline tests do not validate firmware, DMA coherence, display import or boot st
 The per-display API mutex prevents teardown racing surface operations; it may serialize work
 from separate contexts within one application. Independent processes remain concurrent.
 Rockchip conversion/VPP, AV1 and other hardware are not validated by the M1 runs.
+
+## Codec conformance without software fallback
+
+`conformance.py` builds `frame-check.c` using the installed FFmpeg development libraries,
+then reads an existing Fluster suite and downloaded resources. It requires actual VA-API
+frames for a hardware pass, hashes each frame at its native resolution, and saves frame
+checksums, logs and fsynced JSON results. Failed decode calls and corrupt frames fail the
+test; a timeout stops the run. It needs `cc`, `pkg-config`, Python 3, libavformat, libavcodec,
+libavutil and libswscale development files. Choose a new output directory for each run.
+
+Run hardware commands below through the guard described above. For software, omit `--driver`.
+
+```sh
+LIBVA_V4L2_H264_HIGH10=ffmpeg python3 tests/conformance.py \
+  /path/to/fluster/test_suites/h.264/JVT-FR-EXT.json /path/to/fluster/resources \
+  --driver "$PWD/build/src" --output /path/to/new-results
+```
+
+For the five progressive Baseline/Extended streams rejected by FFmpeg's profile selection,
+an explicit override decoded bit-exact on the M1:
+
+```sh
+python3 tests/conformance.py /path/to/fluster/test_suites/h.264/JVT-AVC_V1.json \
+  /path/to/fluster/resources --driver "$PWD/build/src" --output /path/to/new-results \
+  --profile-mismatch --vectors BA3_SVA_C MR2_TANDBERG_E MR3_TANDBERG_B \
+  MR4_TANDBERG_C MR5_TANDBERG_C
+```
+
+The equivalent FFmpeg option is `-hwaccel_flags allow_profile_mismatch`. This is a per-file
+workaround for those tested coding features, not full Baseline/Extended support. Interlacing,
+FMO, data partitions and other unimplemented syntax still need software or further work.
+
+Do not count a successful FFmpeg process as hardware evidence: the Fluster FFmpeg VA-API
+decoder can silently use software for H.264 4:2:2. Its FRExt totals therefore require the
+strict frame check above. Also, `VPSSPSPPS_A_MainConcept_1` loses pictures in FFmpeg's parameter-set
+parser; preserving native sizes alone does not fix it. Direct GStreamer V4L2 passes that vector.
+
+To test the checksum helper independently, run `sh tests/frame-check.sh`. The optional driver
+argument adds a guarded hardware comparison of a generated H.264 resolution change.

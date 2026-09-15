@@ -98,6 +98,7 @@ struct v4l2r_decoder {
 	 * device can do 10-bit (e.g. Allwinner A64 lacks it), and the kernel only
 	 * rejects it at decode time, so probe it up front and gate Main10. */
 	bool hevc_10bit;
+	bool h264_10bit;
 };
 
 /*
@@ -384,6 +385,14 @@ struct v4l2r_codec {
  * the surface belongs to a context whose codec defers submission). */
 VAStatus v4l2r_flush_surface(struct v4l2r_surface *surface);
 
+enum v4l2r_h264_high10_mode {
+	V4L2R_H264_HIGH10_OFF,
+	V4L2R_H264_HIGH10_NATIVE,
+	V4L2R_H264_HIGH10_FFMPEG,
+};
+
+bool v4l2r_probe_h264_10bit(int fd, uint32_t output_type);
+
 struct v4l2r_driver {
 	struct v4l2r_handles configs;
 	struct v4l2r_handles contexts;
@@ -396,6 +405,7 @@ struct v4l2r_driver {
 
 	struct v4l2r_decoder decoders[V4L2R_MAX_DECODERS];
 	unsigned int nb_decoders;
+	enum v4l2r_h264_high10_mode h264_high10;
 
 	/* Converter detection is deferred until something can actually use
 	 * one (see v4l2r_converter_available). */

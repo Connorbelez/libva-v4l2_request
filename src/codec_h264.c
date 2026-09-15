@@ -53,6 +53,7 @@ struct h264_context {
 
 	VAPictureParameterBufferH264 va_pic;
 	bool have_pic;
+	bool failed;
 
 	struct v4l2_ctrl_h264_sps sps;
 	struct v4l2_ctrl_h264_pps pps;
@@ -98,18 +99,31 @@ static void h264_parse_slice_header(struct h264_context *codec,
 	size_t mark;
 
 	memset(info, 0, sizeof(*info));
+	if (va_slice->num_ref_idx_l0_active_minus1 > 31 ||
+	    va_slice->num_ref_idx_l1_active_minus1 > 31 ||
+	    pic->seq_fields.bits.log2_max_frame_num_minus4 > 12 ||
+	    pic->seq_fields.bits.log2_max_pic_order_cnt_lsb_minus4 > 12 ||
+	    pic->seq_fields.bits.pic_order_cnt_type > 2)
+		return;
 
 	v4l2r_bits_init(&b, data, size, true);
 
-	v4l2r_bits_bit(&b);				/* forbidden_zero_bit */
+	if (v4l2r_bits_bit(&b))			/* forbidden_zero_bit */
+		return;
 	info->nal_ref_idc = v4l2r_bits_read(&b, 2);
 	info->nal_unit_type = v4l2r_bits_read(&b, 5);
+	if (info->nal_unit_type != 1 && info->nal_unit_type != 5)
+		return; /* Data partitions and extension NALs are not implemented. */
 	info->idr = info->nal_unit_type == 5;
 
 	v4l2r_bits_ue(&b);				/* first_mb_in_slice */
 	slice_type = v4l2r_bits_ue(&b);
+	if (slice_type > 9)
+		return;
 	info->slice_type = slice_type % 5;
 	info->pic_parameter_set_id = v4l2r_bits_ue(&b);
+	if (info->pic_parameter_set_id > 255)
+		return;
 
 	v4l2r_bits_read(&b, pic->seq_fields.bits.log2_max_frame_num_minus4 + 4);
 
@@ -266,6 +280,12 @@ static void h264_profile_idc(VAProfile profile, uint8_t *profile_idc,
 		*profile_idc = 77;
 		*constraint_set_flags = 0;
 		break;
+#if VA_CHECK_VERSION(1, 18, 0)
+	case VAProfileH264High10:
+		*profile_idc = 110;
+		*constraint_set_flags = 0;
+		break;
+#endif
 	default:
 		*profile_idc = 100;
 		*constraint_set_flags = 0;
@@ -320,6 +340,12 @@ static void h264_fill_sps_pps(struct v4l2r_context *ctx,
 		.second_chroma_qp_index_offset = pic->second_chroma_qp_index_offset,
 		.weighted_bipred_idc = pic->pic_fields.bits.weighted_bipred_idc,
 	};
+	/* Explicit compatibility mode for FFmpeg's biased VA QP parameters.
+	 * Native clients already provide the PPS syntax values. */
+	if (ctx->drv->h264_high10 == V4L2R_H264_HIGH10_FFMPEG) {
+		pps->pic_init_qp_minus26 -= 6 * pic->bit_depth_luma_minus8;
+		pps->pic_init_qs_minus26 -= 6 * pic->bit_depth_luma_minus8;
+	}
 
 	if (pic->pic_fields.bits.entropy_coding_mode_flag)
 		pps->flags |= V4L2_H264_PPS_FLAG_ENTROPY_CODING_MODE;
@@ -610,7 +636,7 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 				   const uint8_t *data, size_t data_size)
 {
 	struct h264_context *codec = ctx->codec_priv;
-	const uint8_t *slice_data = data + va_slice->slice_data_offset;
+	const uint8_t *slice_data;
 	struct h264_slice_info info;
 	size_t slice_size;
 	VAStatus status;
@@ -623,6 +649,15 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 	if (va_slice->slice_data_offset > data_size ||
 	    va_slice->slice_data_size > data_size - va_slice->slice_data_offset)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
+	if (!data || !va_slice->slice_data_size)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
+	slice_data = data + va_slice->slice_data_offset;
+	h264_parse_slice_header(codec, va_slice, slice_data,
+				va_slice->slice_data_size, &info);
+	if (!info.valid) {
+		v4l2r_log("invalid or unsupported H.264 slice header\n");
+		return VA_STATUS_ERROR_INVALID_BUFFER;
+	}
 
 	/*
 	 * A NAL unit ends with its rbsp_stop_one_bit (or a cabac_zero_word's 0x03),
@@ -649,8 +684,6 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 
 		codec->staged = false;
 	}
-
-	h264_parse_slice_header(codec, va_slice, slice_data, slice_size, &info);
 
 	if (codec->num_slices == 0) {
 		struct v4l2_ctrl_h264_decode_params *decode =
@@ -785,6 +818,7 @@ static VAStatus h264_begin_picture(struct v4l2r_context *ctx)
 	struct h264_context *codec = ctx->codec_priv;
 
 	codec->have_pic = false;
+	codec->failed = false;
 	codec->nb_va_slices = 0;
 	codec->slices_consumed = 0;
 	codec->staged = false;
@@ -817,7 +851,15 @@ static VAStatus h264_store_slice_params(struct h264_context *codec,
 	return VA_STATUS_SUCCESS;
 }
 
-static VAStatus h264_render_buffer(struct v4l2r_context *ctx,
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+static bool h264_has_slice_groups(const VAPictureParameterBufferH264 *pic)
+{
+	return pic->num_slice_groups_minus1 != 0;
+}
+#pragma GCC diagnostic pop
+
+static VAStatus h264_render_buffer_impl(struct v4l2r_context *ctx,
 				   struct v4l2r_buffer *buf)
 {
 	struct h264_context *codec = ctx->codec_priv;
@@ -827,6 +869,10 @@ static VAStatus h264_render_buffer(struct v4l2r_context *ctx,
 	case VAPictureParameterBufferType:
 		if (v4l2r_buffer_bytes(buf) < sizeof(VAPictureParameterBufferH264))
 			return VA_STATUS_ERROR_INVALID_BUFFER;
+		/* We cannot translate FMO maps. Do not silently drop this field
+		 * and submit a different PPS to the kernel. */
+		if (h264_has_slice_groups(buf->data))
+			return VA_STATUS_ERROR_UNIMPLEMENTED;
 		h264_fill_picture(ctx, buf->data);
 		return VA_STATUS_SUCCESS;
 	case VAIQMatrixBufferType:
@@ -851,10 +897,26 @@ static VAStatus h264_render_buffer(struct v4l2r_context *ctx,
 	}
 }
 
+static VAStatus h264_render_buffer(struct v4l2r_context *ctx,
+				  struct v4l2r_buffer *buf)
+{
+	struct h264_context *codec = ctx->codec_priv;
+	if (codec->failed)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
+	VAStatus status = h264_render_buffer_impl(ctx, buf);
+	if (status != VA_STATUS_SUCCESS)
+		codec->failed = true;
+	return status;
+}
+
 static VAStatus h264_end_picture(struct v4l2r_context *ctx)
 {
 	struct h264_context *codec = ctx->codec_priv;
 
+	/* A client may call EndPicture even after RenderPicture failed. Do not
+	 * submit the valid prefix of a frame with a missing/invalid last slice. */
+	if (codec->failed)
+		return VA_STATUS_ERROR_INVALID_BUFFER;
 	if (!codec->have_pic || !codec->num_slices)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
@@ -865,13 +927,16 @@ static const VAProfile h264_profiles[] = {
 	VAProfileH264ConstrainedBaseline,
 	VAProfileH264Main,
 	VAProfileH264High,
+#if VA_CHECK_VERSION(1, 18, 0)
+	VAProfileH264High10,
+#endif
 };
 
 const struct v4l2r_codec v4l2r_codec_h264 = {
 	.name = "h264",
 	.pixelformat = V4L2_PIX_FMT_H264_SLICE,
 	.profiles = h264_profiles,
-	.nb_profiles = 3,
+	.nb_profiles = sizeof(h264_profiles) / sizeof(h264_profiles[0]),
 	.priv_size = sizeof(struct h264_context),
 	.init = h264_init,
 	.uninit = h264_uninit,

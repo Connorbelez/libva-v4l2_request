@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y meson ninja-build libva-dev libdrm-dev
+      - run: sudo apt-get update && sudo apt-get install -y meson ninja-build libva-dev libdrm-dev ffmpeg libavformat-dev libavcodec-dev libavutil-dev libswscale-dev
       - run: meson setup build -Db_sanitize=address,undefined
       - run: meson test -C build --print-errorlogs
+      - run: sh -x tests/frame-check.sh
