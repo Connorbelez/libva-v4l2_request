@@ -1,0 +1,12 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  userspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y meson ninja-build libva-dev libdrm-dev
+      - run: meson setup build -Db_sanitize=address,undefined
+      - run: meson test -C build --print-errorlogs

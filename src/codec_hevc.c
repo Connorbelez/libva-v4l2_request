@@ -89,7 +89,7 @@ static unsigned int ceil_log2(unsigned int value)
 {
 	unsigned int bits = 0;
 
-	while ((1u << bits) < value)
+	for (value = value ? value - 1 : 0; value; value >>= 1)
 		bits++;
 
 	return bits;
@@ -337,6 +337,10 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 				if (slice_type == V4L2_HEVC_SLICE_TYPE_B)
 					num_ref_idx_l1_active_minus1 = v4l2r_bits_ue(&b);
 			}
+			if (num_ref_idx_l0_active_minus1 > 14 || num_ref_idx_l1_active_minus1 > 14) {
+				b.error = true;
+				goto done;
+			}
 			if (pic->slice_parsing_fields.bits.lists_modification_present_flag &&
 					codec->num_pic_total_curr > 1) {
 				ref_pic_lists_modification(codec, &b,
@@ -404,18 +408,28 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 			pic->pic_fields.bits.entropy_coding_sync_enabled_flag) {
 		info->num_entry_point_offsets = v4l2r_bits_ue(&b);
 
-		if (info->num_entry_point_offsets > 0 &&
-				info->num_entry_point_offsets < codec->max_entry_point_offsets
-				&& codec->num_entry_point_offsets +
-				info->num_entry_point_offsets < codec->max_entry_point_offsets) {
+		if (codec->num_entry_point_offsets > codec->max_entry_point_offsets ||
+		    info->num_entry_point_offsets > codec->max_entry_point_offsets -
+			codec->num_entry_point_offsets) {
+			b.error = true;
+			goto done;
+		}
+		if (info->num_entry_point_offsets) {
 			offset_len_minus1 = v4l2r_bits_ue(&b);
-			offset_len_minus1 = offset_len_minus1 > 31 ? 31 : offset_len_minus1;
-			for (uint32_t i = 0; i < info->num_entry_point_offsets; i++) {
-				codec->entry_point_offsets[codec->num_entry_point_offsets++]
-					= v4l2r_bits_read(&b, offset_len_minus1 + 1) + 1;
+			if (b.error || offset_len_minus1 > 31) {
+				b.error = true;
+				goto done;
 			}
-		} else {
-			info->num_entry_point_offsets = 0;
+			unsigned int start = codec->num_entry_point_offsets;
+			for (uint32_t i = 0; i < info->num_entry_point_offsets; i++) {
+				uint32_t offset = v4l2r_bits_read(&b, offset_len_minus1 + 1);
+				if (b.error || offset == UINT32_MAX) {
+					b.error = true;
+					goto done;
+				}
+				codec->entry_point_offsets[start + i] = offset + 1;
+			}
+			codec->num_entry_point_offsets += info->num_entry_point_offsets;
 		}
 	}
 
@@ -858,7 +872,7 @@ static VAStatus hevc_process_slice(struct v4l2r_context *ctx,
 				   const uint8_t *data, size_t data_size)
 {
 	struct hevc_context *codec = ctx->codec_priv;
-	const uint8_t *slice_data = data + va_slice->slice_data_offset;
+	const uint8_t *slice_data;
 	struct hevc_slice_info info;
 	VAStatus status;
 
@@ -870,6 +884,7 @@ static VAStatus hevc_process_slice(struct v4l2r_context *ctx,
 	if (va_slice->slice_data_offset > data_size ||
 	    va_slice->slice_data_size > data_size - va_slice->slice_data_offset)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
+	slice_data = data + va_slice->slice_data_offset;
 
 	/* Flush a full batch of slices as an intermediate request. */
 	if (codec->decode_mode == V4L2_STATELESS_HEVC_DECODE_MODE_SLICE_BASED &&
@@ -884,11 +899,16 @@ static VAStatus hevc_process_slice(struct v4l2r_context *ctx,
 			return status;
 
 		codec->num_slice_params = 0;
+		codec->num_entry_point_offsets = 0;
 		codec->first_slice = false;
 	}
 
 	hevc_parse_slice_header(codec, slice_data, va_slice->slice_data_size,
 				&info);
+	if (!info.valid) {
+		v4l2r_log("hevc: invalid or unsupported slice header\n");
+		return VA_STATUS_ERROR_INVALID_BUFFER;
+	}
 
 	if (codec->num_slices == 0 && info.valid) {
 		codec->decode_params.short_term_ref_pic_set_size =

@@ -1,5 +1,6 @@
-sources = [
+driver_sources = files(
   'driver.c',
+  'api.c',
   'handles.c',
   'context.c',
   'convert.c',
@@ -13,10 +14,10 @@ sources = [
   'codec_vp8.c',
   'codec_vp9.c',
   'codec_av1.c',
-]
+)
 
 shared_module('v4l2_request_drv_video',
-              sources,
+              driver_sources,
               name_prefix: '',
               include_directories: root_inc,
               c_args: ['-fvisibility=hidden'],

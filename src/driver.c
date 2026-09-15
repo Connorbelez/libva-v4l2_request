@@ -875,6 +875,7 @@ VAStatus v4l2r_Terminate(VADriverContextP va_ctx)
 	v4l2r_handles_destroy(&drv->images);
 
 	pthread_mutex_destroy(&drv->mutex);
+	pthread_mutex_destroy(&drv->api_mutex);
 
 	free(drv);
 	va_ctx->pDriverData = NULL;
@@ -982,7 +983,9 @@ VAStatus V4L2R_DRIVER_INIT(VADriverContextP va_ctx)
 	}
 
 	pthread_mutex_init(&drv->mutex, NULL);
+	pthread_mutex_init(&drv->api_mutex, NULL);
 	va_ctx->pDriverData = drv;
+	v4l2r_lock_surface_api(vtable);
 
 	enumerate_decoders(drv);
 	if (!drv->nb_decoders) {

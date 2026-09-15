@@ -475,7 +475,7 @@ static int capture_buffer_new(struct v4l2r_context *ctx)
  * read fence a GPU attaches while sampling it. Buffers that were never exported
  * carry fd == -1 and are skipped.
  */
-static void capture_wait_readers(struct v4l2r_capture_buffer *capture)
+static int capture_wait_readers(struct v4l2r_capture_buffer *capture)
 {
 	for (unsigned int i = 0; i < capture->nb_planes; i++) {
 		struct pollfd pfd = {
@@ -486,8 +486,12 @@ static void capture_wait_readers(struct v4l2r_capture_buffer *capture)
 		if (capture->dmabuf_fd[i] < 0)
 			continue;
 
-		poll(&pfd, 1, V4L2R_POLL_TIMEOUT_MS);
+		int ret = poll(&pfd, 1, V4L2R_POLL_TIMEOUT_MS);
+		if (ret <= 0 || !(pfd.revents & POLLOUT) ||
+		    (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)))
+			return -EIO;
 	}
+	return 0;
 }
 
 /*
@@ -679,11 +683,14 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 	 * while any frame still references its current contents, or while
 	 * the format converter is still reading it. */
 	uint64_t t0 = v4l2r_now_ns();
-	v4l2r_sync_capture(ctx, index);
+	if (v4l2r_sync_capture(ctx, index) != VA_STATUS_SUCCESS)
+		return -EIO;
 	uint64_t t1 = v4l2r_now_ns();
-	v4l2r_wait_completed(ctx, ctx->captures[index].last_ref_seq);
+	if (v4l2r_wait_completed(ctx, ctx->captures[index].last_ref_seq) != VA_STATUS_SUCCESS)
+		return -EIO;
 	uint64_t t2 = v4l2r_now_ns();
-	v4l2r_convert_drain_index(ctx, index);
+	if (v4l2r_convert_drain_index(ctx, index) != VA_STATUS_SUCCESS)
+		return -EIO;
 
 	/*
 	 * The decoder writes into this buffer and the kernel offers no implicit
@@ -695,7 +702,8 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 	 * wait for readers to finish before handing the buffer back to decode.
 	 * No-op for a buffer never exported (fd < 0) or already idle.
 	 */
-	capture_wait_readers(&ctx->captures[index]);
+	if (capture_wait_readers(&ctx->captures[index]) < 0)
+		return -EIO;
 	uint64_t t3 = v4l2r_now_ns();
 
 	v4l2r_trace("bind wait (surface 0x%08x buf #%d): sync %.2f refwait %.2f "
@@ -725,11 +733,12 @@ void v4l2r_context_release_capture(struct v4l2r_context *ctx, int index)
 	free_list_push(ctx, index);
 }
 
-void v4l2r_flush_surface(struct v4l2r_surface *surface)
+VAStatus v4l2r_flush_surface(struct v4l2r_surface *surface)
 {
 	if (surface && surface->ctx && surface->ctx->codec &&
 	    surface->ctx->codec->flush)
-		surface->ctx->codec->flush(surface->ctx, surface);
+		return surface->ctx->codec->flush(surface->ctx, surface);
+	return VA_STATUS_SUCCESS;
 }
 
 VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
@@ -794,7 +803,8 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 	 * buffer for this frame's decode. */
 	ret = capture_buffer_bind(ctx, surface);
 	if (ret < 0)
-		return VA_STATUS_ERROR_ALLOCATION_FAILED;
+		return ret == -ENOMEM || ret == -ENOSPC ?
+			VA_STATUS_ERROR_ALLOCATION_FAILED : VA_STATUS_ERROR_OPERATION_FAILED;
 
 	/* The decode context provides the real storage now; drop any
 	 * standalone backing from pre-decode export probing. With a
@@ -1028,6 +1038,40 @@ fail:
 	return status;
 }
 
+/* Transfer MMAP storage to the still-live surface before freeing the context.
+ * Already-exported DMABUF surfaces have their own backing and need no transfer.
+ */
+static void preserve_capture(struct v4l2r_context *ctx, unsigned int index)
+{
+	struct v4l2r_capture_buffer *capture = &ctx->captures[index];
+	struct v4l2r_surface *surface = capture->surface;
+	struct v4l2r_surface_backing *backing;
+
+	if (!surface || surface->backing)
+		return;
+	backing = calloc(1, sizeof(*backing));
+	if (!backing || v4l2r_export_capture_dmabufs(ctx, capture, index) < 0) {
+		free(backing);
+		surface->decode_status = VA_STATUS_ERROR_ALLOCATION_FAILED;
+		return;
+	}
+	for (unsigned int i = 0; i < VIDEO_MAX_PLANES; i++)
+		backing->dmabuf_fd[i] = -1;
+	backing->pixelformat = v4l2r_format_pixelformat(&ctx->capture_format);
+	backing->width = v4l2r_format_width(&ctx->capture_format);
+	backing->height = v4l2r_format_height(&ctx->capture_format);
+	backing->pitch = v4l2r_format_bytesperline(&ctx->capture_format);
+	backing->nb_planes = capture->nb_planes;
+	for (unsigned int i = 0; i < capture->nb_planes; i++) {
+		backing->plane_size[i] = capture->plane_size[i];
+		backing->dmabuf_fd[i] = capture->dmabuf_fd[i];
+		backing->map[i] = capture->map[i];
+		capture->dmabuf_fd[i] = -1;
+		capture->map[i] = NULL;
+	}
+	surface->backing = backing;
+}
+
 VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 {
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
@@ -1039,6 +1083,32 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	ctx = V4L2R_CONTEXT_GET(drv, context_id);
 	if (!ctx)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
+
+	/* Finish the last frames before STREAMOFF cancels the queue. The VA
+	 * surfaces may still be downloaded after this context goes away. Keep
+	 * failures on the surface instead of turning an aborted decode into a
+	 * successful read of stale pixels. */
+	if (ctx->streaming) {
+		for (unsigned int i = 0; i < ctx->nb_captures; i++) {
+			surface = ctx->captures[i].surface;
+			if (surface) {
+				VAStatus status = v4l2r_flush_surface(surface);
+				if (status != VA_STATUS_SUCCESS)
+					surface->decode_status = status;
+			}
+		}
+		v4l2r_wait_completed(ctx, ctx->submitted);
+		for (unsigned int i = 0; i < ctx->nb_captures; i++) {
+			surface = ctx->captures[i].surface;
+			if (!surface)
+				continue;
+			if (ctx->queued_capture & (UINT64_C(1) << i))
+				surface->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
+			else if (surface->decode_status == VA_STATUS_SUCCESS)
+				surface->decode_status = v4l2r_convert_wait(surface);
+			surface->status = VASurfaceReady;
+		}
+	}
 
 	if (ctx->video_fd >= 0 && ctx->streaming) {
 		type = ctx->output_format.type;
@@ -1053,8 +1123,10 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	for (unsigned int i = 0; i < V4L2R_OUTPUT_BUFFERS; i++)
 		output_buffer_cleanup(ctx, &ctx->output[i]);
 
-	for (unsigned int i = 0; i < ctx->nb_captures; i++)
+	for (unsigned int i = 0; i < ctx->nb_captures; i++) {
+		preserve_capture(ctx, i);
 		capture_buffer_cleanup(ctx, &ctx->captures[i]);
+	}
 
 	/* Detach surfaces that were attached but never bound. */
 	pthread_mutex_lock(&drv->mutex);

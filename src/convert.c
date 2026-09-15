@@ -326,13 +326,14 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 	surface->convert_pending = true;
 }
 
-void v4l2r_convert_drain_index(struct v4l2r_context *ctx, int capture_index)
+VAStatus v4l2r_convert_drain_index(struct v4l2r_context *ctx, int capture_index)
 {
 	struct v4l2r_convert *conv = ctx->conv;
 	bool in_flight = true;
+	VAStatus status = VA_STATUS_SUCCESS;
 
 	if (!conv)
-		return;
+		return VA_STATUS_SUCCESS;
 
 	pthread_mutex_lock(&ctx->mutex);
 	while (in_flight) {
@@ -345,10 +346,13 @@ void v4l2r_convert_drain_index(struct v4l2r_context *ctx, int capture_index)
 			}
 		}
 
-		if (in_flight && convert_reap(ctx, true) < 0)
+		if (in_flight && convert_reap(ctx, true) < 0) {
+			status = VA_STATUS_ERROR_OPERATION_FAILED;
 			break;
+		}
 	}
 	pthread_mutex_unlock(&ctx->mutex);
+	return status;
 }
 
 VAStatus v4l2r_convert_wait(struct v4l2r_surface *surface)

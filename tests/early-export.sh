@@ -32,7 +32,7 @@ for spec in h264:640x360 h264:640x384 h264:1920x1080 hevc:640x384 vp9:640x384; d
     test "$(wc -c < "$test_dir/software.nv12")" -eq "$expected"
     for mode in normal early; do
         if [ "$mode" = early ]; then export LD_PRELOAD="$test_dir/check.so"; fi
-        if ! timeout 30 "$test_dir/hw-decode" vaapi "$test_dir/clip.mkv" \
+        if ! timeout -k 5 30 "$test_dir/hw-decode" vaapi "$test_dir/clip.mkv" \
             "$test_dir/hardware.nv12" 2>"$test_dir/decode.log"; then
             cat "$test_dir/decode.log" >&2
             exit 1
