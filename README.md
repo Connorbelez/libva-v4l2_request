@@ -5,6 +5,10 @@ Decoder (AVD) support used by Asahi Linux. It lets VA-API applications (mpv, Chr
 decode video on the AVD hardware in Apple Silicon Macs.
 
 **This fork is not affiliated with or endorsed by the authors of the projects it is based on.**
+Please don't report problems with it to those projects; open an issue here instead.
+
+To set up hardware video decoding on an Omarchy Mac with this driver and the matching kernel
+driver patches, use [omarchy-m1-video](https://github.com/iconidentify/omarchy-m1-video).
 
 The original documentation is in [README](README).
 
@@ -33,15 +37,13 @@ HEVC, and a 5,400-frame H.264 decode through mpv (`--hwdec=vaapi-copy`) was bit-
 As of 2026-09-15:
 
 - **Decode errors are ignored.** Dequeued capture buffers flagged `V4L2_BUF_FLAG_ERROR` are reported
-  as successfully decoded, so failed frames show up as green or garbage instead of errors.
-- **FFmpeg `hwdownload` crashes.** `ffmpeg -hwaccel vaapi -hwaccel_output_format vaapi ... -vf hwdownload,format=nv12`
-  segfaults in `memcpy` inside `vaGetImage`. mpv's `--hwdec=vaapi-copy` works.
-- **Wrong colors in some mpv renderers.** With `--hwdec=vaapi`, `--vo=gpu-next` on Vulkan (Mesa
-  Honeykrisp) and `--vo=gpu` show a green/pink picture with a ghost image, as if the chroma plane
-  offset were misread. `--vo=gpu-next --gpu-api=opengl` and Chromium display correctly. The cause
-  (exported surface layout or the importers) is not known.
-- **Kernel driver bugs** in AVD itself can hang or crash the system under load; see
-  [apple-avd-driver](https://github.com/iconidentify/apple-avd-driver).
+  as successfully decoded, so failed frames show up as garbage instead of errors.
+- **Vulkan output in mpv** (`gpu-api=vulkan`, and `vo=gpu`) shows a green/pink ghost picture: Mesa's
+  Vulkan driver for Apple GPUs ignores the plane offsets of imported frames. Use `gpu-api=opengl`.
+- **Only H.264 Baseline, Main and High** are offered for H.264, so interlaced, 4:2:2 and 10-bit H.264
+  decode in software.
+- **Kernel driver bugs** in AVD itself can hang or crash the system; the kernel patches in
+  [omarchy-m1-video](https://github.com/iconidentify/omarchy-m1-video) fix the ones found so far.
 
 ## Building
 
