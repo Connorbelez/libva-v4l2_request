@@ -637,13 +637,20 @@ static unsigned int hevc_reference_indices(const struct hevc_context *codec,
 
 static void hevc_remember_reference_order(struct hevc_context *codec)
 {
-	codec->nb_reference_order = codec->decode_params.num_active_dpb_entries;
-	for (unsigned int i = 0; i < 15; i++) {
-		unsigned int dpb = codec->dpb_index_of_va[i];
-		if (dpb != 0xff)
-			codec->reference_order[dpb] = codec->va_pic.ReferenceFrames[i];
+	VAPictureHEVC next[16];
+	uint8_t indices[15];
+	unsigned int count = hevc_reference_indices(codec, &codec->va_pic, true, indices);
+	unsigned int retained = 0;
+	/* Keep decode history even while an SPS permitting long-term refs
+	 * disables the workaround. A later SPS may re-enable it. */
+	for (unsigned int n = 0; n < count; n++) {
+		unsigned int i = indices[n];
+		if (codec->dpb_index_of_va[i] != 0xff)
+			next[retained++] = codec->va_pic.ReferenceFrames[i];
 	}
-	codec->reference_order[codec->nb_reference_order++] = codec->va_pic.CurrPic;
+	next[retained++] = codec->va_pic.CurrPic;
+	memcpy(codec->reference_order, next, retained * sizeof(*next));
+	codec->nb_reference_order = retained;
 }
 
 static VAStatus hevc_fill_decode_params(struct v4l2r_context *ctx,

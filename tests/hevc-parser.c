@@ -114,7 +114,10 @@ static void reference_order(void)
     pic->slice_parsing_fields.bits.long_term_ref_pics_present_flag = 1;
     assert(hevc_fill_decode_params(&ctx, pic) == VA_STATUS_SUCCESS);
     assert(codec.dpb_index_of_va[0] == 0 && codec.dpb_index_of_va[5] == 2);
+    hevc_remember_reference_order(&codec);
     pic->slice_parsing_fields.bits.long_term_ref_pics_present_flag = 0;
+    assert(hevc_fill_decode_params(&ctx, pic) == VA_STATUS_SUCCESS);
+    assert(codec.dpb_index_of_va[5] == 0 && codec.dpb_index_of_va[0] == 2);
     ctx.is_avd = false;
     assert(hevc_fill_decode_params(&ctx, pic) == VA_STATUS_SUCCESS);
     assert(codec.dpb_index_of_va[0] == 0 && codec.dpb_index_of_va[5] == 2);
