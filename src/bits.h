@@ -104,6 +104,11 @@ static inline uint32_t v4l2r_bits_ue(struct v4l2r_bits *b)
 		}
 		zeros++;
 	}
+	if (zeros >= 32) {
+		/* 32 leading zeros then a one: the value does not fit in 32 bits */
+		b->error = true;
+		return 0;
+	}
 
 	return (1u << zeros) - 1 + v4l2r_bits_read(b, zeros);
 }

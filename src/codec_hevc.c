@@ -103,6 +103,12 @@ static void ref_pic_lists_modification(struct hevc_context *codec,
 	/* list_entry_lX[i] is u(v) of Ceil(Log2(NumPicTotalCurr)) bits */
 	unsigned int entry_bits = ceil_log2(codec->num_pic_total_curr);
 
+	/* 7.4.7.1: at most 15 active references; anything else is corrupt */
+	if (num_ref_idx_l0_active_minus1 > 14 || num_ref_idx_l1_active_minus1 > 14) {
+		b->error = true;
+		return;
+	}
+
 	if (v4l2r_bits_bit(b)) {	/* ref_pic_list_modification_flag_l0 */
 		for (uint32_t i = 0; i <= num_ref_idx_l0_active_minus1; i++)
 			v4l2r_bits_read(b, entry_bits);	/* list_entry_l0[i] */
@@ -119,8 +125,15 @@ static void pred_weight_table(struct v4l2r_bits *b,
 			uint32_t num_ref_idx_active_minus1,
 			uint32_t chroma_array_type)
 {
-	uint8_t luma_weight_flag[num_ref_idx_active_minus1 + 1];
-	uint8_t chroma_weight_flag[num_ref_idx_active_minus1 + 1];
+	uint8_t luma_weight_flag[15];
+	uint8_t chroma_weight_flag[15];
+
+	/* 7.4.7.1: at most 15 active references; the value comes from the
+	 * bitstream and must not size or index anything past that */
+	if (num_ref_idx_active_minus1 > 14) {
+		b->error = true;
+		return;
+	}
 
 	for (uint32_t i = 0; i <= num_ref_idx_active_minus1; i++)
 		luma_weight_flag[i] = v4l2r_bits_bit(b);	/* luma_weight_lX_flag[i] */
@@ -197,7 +210,14 @@ static void hevc_parse_slice_header(struct hevc_context *codec,
 		unsigned int ctb_log2 =
 			pic->log2_min_luma_coding_block_size_minus3 + 3 +
 			pic->log2_diff_max_min_luma_coding_block_size;
-		unsigned int ctb = 1u << ctb_log2;
+		unsigned int ctb;
+
+		/* 7.4.3.2.1: CtbLog2SizeY is 4..6 */
+		if (ctb_log2 < 4 || ctb_log2 > 6) {
+			info->valid = false;
+			return;
+		}
+		ctb = 1u << ctb_log2;
 		unsigned int pic_size_in_ctbs =
 			((pic->pic_width_in_luma_samples + ctb - 1) >> ctb_log2) *
 			((pic->pic_height_in_luma_samples + ctb - 1) >> ctb_log2);
