@@ -501,6 +501,8 @@ static bool backing_matches_capture(const struct v4l2r_context *ctx,
 				    const struct v4l2r_surface_backing *backing)
 {
 	const struct v4l2_format *fmt = &ctx->capture_format;
+	bool mplane = V4L2_TYPE_IS_MULTIPLANAR(fmt->type);
+	unsigned int nb_planes = mplane ? fmt->fmt.pix_mp.num_planes : 1;
 
 	if (backing->pixelformat != v4l2r_format_pixelformat(fmt) ||
 	    backing->width != v4l2r_format_width(fmt) ||
@@ -508,17 +510,23 @@ static bool backing_matches_capture(const struct v4l2r_context *ctx,
 	    backing->pitch != v4l2r_format_bytesperline(fmt))
 		return false;
 
-	if (V4L2_TYPE_IS_MULTIPLANAR(fmt->type)) {
-		if (backing->nb_planes != fmt->fmt.pix_mp.num_planes)
+	/* Say which check failed: the callers only print the layout above. */
+	if (backing->nb_planes != nb_planes) {
+		v4l2r_log("backing has %u plane(s), the CAPTURE format %u\n",
+			  backing->nb_planes, nb_planes);
+		return false;
+	}
+
+	for (unsigned int i = 0; i < nb_planes; i++) {
+		unsigned int sizeimage = mplane ?
+			fmt->fmt.pix_mp.plane_fmt[i].sizeimage :
+			fmt->fmt.pix.sizeimage;
+
+		if (backing->plane_size[i] < sizeimage) {
+			v4l2r_log("backing plane %u is %u bytes, the CAPTURE format needs %u\n",
+				  i, (unsigned int)backing->plane_size[i], sizeimage);
 			return false;
-		for (unsigned int i = 0; i < backing->nb_planes; i++)
-			if (backing->plane_size[i] <
-			    fmt->fmt.pix_mp.plane_fmt[i].sizeimage)
-				return false;
-	} else {
-		if (backing->nb_planes != 1 ||
-		    backing->plane_size[0] < fmt->fmt.pix.sizeimage)
-			return false;
+		}
 	}
 
 	return true;
