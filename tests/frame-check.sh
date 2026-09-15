@@ -23,7 +23,9 @@ test "$(grep -c '64x48' "$work/software")" -eq 2
 test "$(grep -c '128x96' "$work/software")" -eq 2
 ffmpeg -nostdin -v error -i "$work/64x48.h264" -c copy \
     -bsf:v h264_metadata=crop_left=2:crop_right=2:crop_top=2:crop_bottom=2 "$work/crop.h264"
-ffmpeg -nostdin -v error -i "$work/crop.h264" -pix_fmt yuv420p \
+# Older FFmpeg CLI decoders round metadata crops to pointer alignment. Build
+# the reference with an explicit pixel crop of the original, uncropped video.
+ffmpeg -nostdin -v error -i "$work/64x48.h264" -vf crop=60:44:2:2 -pix_fmt yuv420p \
     -f rawvideo "$work/crop.yuv"
 expected_crop=$(md5sum "$work/crop.yuv" | cut -d' ' -f1)
 "$work/check" software "$work/crop.h264" yuv420p > "$work/crop-software"
