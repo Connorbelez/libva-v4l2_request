@@ -12,6 +12,16 @@ driver patches, use [omarchy-m1-video](https://github.com/iconidentify/omarchy-m
 
 The original documentation is in [README](README).
 
+## Support contract
+
+Codec, device and client claims are defined in [docs/SUPPORT.md](docs/SUPPORT.md)
+and the versioned [support matrix](docs/support-matrix.json). r11 evidence is M1
+(T8103) only: HEVC 144/147, AVC 73/135, opt-in High 10 FRExt 27/69 and VP9
+216/305, with exact pass sets pinned. Those fractions are raw suite totals, not
+eligible-subset percentages. No matrix row is currently `supported`. Compiled-in
+AV1/VP8/MPEG-2 backends and 12-bit/4:2:2/4:4:4 formats are untested or
+unsupported, not inferred from source files. Safe rejection is not decode support.
+
 ## Development roadmap
 
 See the [roadmap and ticket index](docs/ROADMAP.md) for planned codec, reliability,

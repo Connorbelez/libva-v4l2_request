@@ -1,0 +1,375 @@
+{
+  "schema_version": "1.0.0",
+  "contract_id": "libva-v4l2_request-support-matrix",
+  "driver_version": "1.3.r11",
+  "layers": {
+    "decode": "d",
+    "encode": "e",
+    "demux": "m",
+    "drm": "r",
+    "tone_mapping": "t"
+  },
+  "outcomes": [
+    "hardware_pass",
+    "software_fallback",
+    "expected_rejection",
+    "wrong_output",
+    "untested"
+  ],
+  "tiers": {
+    "supported": "s",
+    "experimental": "x",
+    "unsupported": "u",
+    "untested": "n"
+  },
+  "promotion_rules": [
+    "every mandatory vector matches"
+  ],
+  "demotion_rules": [
+    "mandatory vector regresses"
+  ],
+  "proposed_production_gate": {
+    "stable_rows_at_r11": 0
+  },
+  "platforms": [
+    {
+      "id": "apple-avd-m1-t8103",
+      "backend": "avd",
+      "device": "Apple M1 T8103"
+    }
+  ],
+  "advertised_va_profiles": [
+    {
+      "va_profile": "VAProfileH264ConstrainedBaseline",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileH264Main",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileH264High",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileH264High10",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileHEVCMain",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileHEVCMain10",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileVP9Profile0",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileVP9Profile2",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileMPEG2Simple",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileMPEG2Main",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileVP8Version0_3",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileAV1Profile0",
+      "codec": "x",
+      "default_advertised": true
+    },
+    {
+      "va_profile": "VAProfileNone",
+      "codec": "x",
+      "default_advertised": true
+    }
+  ],
+  "suites": {
+    "JCT-VC-HEVC_V1": {
+      "name": "JCT-VC-HEVC_V1",
+      "passed": 144,
+      "total": 147,
+      "pass_set_key": "hevc",
+      "primary": true
+    },
+    "JVT-AVC_V1": {
+      "name": "JVT-AVC_V1",
+      "passed": 73,
+      "total": 73,
+      "pass_set_key": "avc",
+      "primary": true,
+      "eligible_percent": 100
+    },
+    "JVT-FR-EXT": {
+      "name": "JVT-FR-EXT",
+      "passed": 27,
+      "total": 69,
+      "pass_set_key": "frext",
+      "primary": true
+    },
+    "VP9-TEST-VECTORS": {
+      "name": "VP9-TEST-VECTORS",
+      "passed": 216,
+      "total": 305,
+      "pass_set_key": "vp9",
+      "primary": true
+    }
+  },
+  "rows": [
+    {
+      "id": "row-0",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileH264ConstrainedBaseline",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-1",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileH264Main",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-2",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileH264High",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-3",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileH264High10",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-4",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileHEVCMain",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-5",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileHEVCMain10",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-6",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileVP9Profile0",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-7",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileVP9Profile2",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-8",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileMPEG2Simple",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-9",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileMPEG2Main",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-10",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileVP8Version0_3",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-11",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileAV1Profile0",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    },
+    {
+      "id": "row-12",
+      "backend": "avd",
+      "device": "apple-avd-m1-t8103",
+      "codec": "h264",
+      "va_profile": "VAProfileNone",
+      "bit_depth": 8,
+      "chroma": "4:2:0",
+      "coded_picture": "progressive",
+      "client": "test",
+      "api": "VA-API",
+      "kernel": "test",
+      "library": "1.3.r11",
+      "tier": "experimental",
+      "criticality": "optional",
+      "outcome": "untested",
+      "layer": "decode"
+    }
+  ]
+}

@@ -55,3 +55,6 @@ picture = executable('picture', 'picture.c', driver_sources,
 foreach case : ['render-errors', 'begin-errors', 'target-lifetime', 'reference-owner', 'context-parameters']
   test('picture-' + case, picture, args: [case], timeout: 10)
 endforeach
+
+python3 = find_program('python3')
+test('support-matrix', python3, args: files('support-matrix.py'), timeout: 30)

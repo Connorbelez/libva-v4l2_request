@@ -10,6 +10,12 @@ meson setup build-test -Db_sanitize=address,undefined
 meson test -C build-test --print-errorlogs
 ```
 
+`python3 tests/support-matrix.py` (also the Meson `support-matrix` test) validates
+the versioned support contract in `docs/SUPPORT.md` and `docs/support-matrix.json`.
+It checks advertised VA profiles, the r11 raw suite totals, pinned pass sets, and
+fixtures that reject a `supported` row without provenance or a result artifact.
+It does not open a decoder.
+
 The cases cover failed decode/export, CAPTURE/reference/GPU-reader/request timeouts,
 invalid poll events, deferred flush failures, surviving surfaces and derived images after context destruction,
 errors during teardown, grown OUTPUT indices, bitstream size overflow, odd-width NV12/P010
@@ -21,7 +27,8 @@ rejection, High 10 quantizer modes and fake-device capability checks. Three H.26
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
-35 Meson cases. The count-overflow case injects the boundary into codec state rather than
+35 sanitizer Meson cases plus the `support-matrix` contract check (36 tests).
+The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.
 Four VP9 cases cover malformed/incomplete headers, failed-submission state rollback, colour-range

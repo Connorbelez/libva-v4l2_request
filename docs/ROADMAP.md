@@ -62,7 +62,7 @@ These seven tickets were ready when the roadmap was created. Check their live st
 
 Parent: [iconidentify/libva-v4l2_request#9](https://github.com/iconidentify/libva-v4l2_request/issues/9). Every advertised support claim has a device/client/version boundary and reproducible evidence. Fresh-checkout agents can run offline checks, obtain legal test data and compare results without private lab state.
 
-- [iconidentify/libva-v4l2_request#15](https://github.com/iconidentify/libva-v4l2_request/issues/15) — Define codec, device and client support tiers with explicit release gates (P0, M0).
+- [iconidentify/libva-v4l2_request#15](https://github.com/iconidentify/libva-v4l2_request/issues/15) — Define codec, device and client support tiers with explicit release gates (P0, M0). Contract: [SUPPORT.md](SUPPORT.md).
 - [iconidentify/libva-v4l2_request#16](https://github.com/iconidentify/libva-v4l2_request/issues/16) — Publish a licensed, checksum-pinned codec regression corpus manifest (P1, M0).
 - [iconidentify/libva-v4l2_request#21](https://github.com/iconidentify/libva-v4l2_request/issues/21) — Make conformance results schema-validated and compare exact passing vectors (P0, M0).
 - [iconidentify/libva-v4l2_request#17](https://github.com/iconidentify/libva-v4l2_request/issues/17) — Ship a portable hardware guard with an exclusive device lease and durable logs (P0, M0).
