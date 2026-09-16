@@ -34,6 +34,7 @@ silently bypassing it.  Standard library only.
 """
 
 import argparse
+import datetime
 import json
 import re
 import sys
@@ -79,10 +80,7 @@ ACTION_RUNTIME_ALLOWLIST = {
     "actions/cache@caa296126883cff596d87d8935842f9db880ef25": {
         "runtime": "node24", "reviewed": "2026-09-16",
     },
-    # Fixture-only pin exercised by run_fixtures(); not a real dependency.
-    "actions/checkout@1111111111111111111111111111111111111111": {
-        "runtime": "node24", "reviewed": "2026-09-16",
-    },
+
 }
 
 
@@ -99,7 +97,11 @@ def validate_allowlist(allowlist):
         if not runtime or not isinstance(runtime, str):
             problems.append("allowlist entry for '%s' has no runtime" % pin)
         reviewed = entry.get("reviewed")
-        if not isinstance(reviewed, str) or not REVIEW_DATE.match(reviewed):
+        try:
+            if not isinstance(reviewed, str) or not REVIEW_DATE.fullmatch(reviewed):
+                raise ValueError("invalid date shape")
+            datetime.date.fromisoformat(reviewed)
+        except ValueError:
             problems.append("allowlist entry for '%s' has no valid review "
                             "date (expected YYYY-MM-DD)" % pin)
     return problems
@@ -234,6 +236,10 @@ def audit(text, path="<workflow>"):
                             "reviewed commit-to-runtime allowlist; read its "
                             "action.yml and add an entry with the runtime "
                             "and a review date" % pin)
+        elif validate_allowlist({pin: entry}):
+            # The diagnostic was collected above; don't dereference malformed
+            # entries while reporting the rest of the workflow's problems.
+            continue
         elif entry["runtime"] not in SUPPORTED_RUNTIMES:
             problems.append("action '%s' targets runtime '%s' (reviewed "
                             "%s), which is not in the supported set %s; "
@@ -287,17 +293,17 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1111111111111111111111111111111111111111
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
   static-analysis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1111111111111111111111111111111111111111
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
   userspace:
     needs: [build-test, static-analysis]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@1111111111111111111111111111111111111111
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - run: python3 tests/ci_check.py check --workflow x --needs-json '{}'
 """
 
@@ -380,8 +386,7 @@ def run_fixtures():
     def forgotten_job():
         text = FIXTURE_WORKFLOW.replace(
             "needs: [build-test, static-analysis]", "needs: [build-test]")
-        return [p for p in audit(text) if "static-analysis" in p] or \
-            ["audit accepted a job missing from the aggregate needs"]
+        return [p for p in audit(text) if "static-analysis" in p]
 
     expect("job missing from aggregate needs is flagged", forgotten_job(),
            must_fail=True, contains="not listed")
@@ -390,18 +395,16 @@ def run_fixtures():
         text = FIXTURE_WORKFLOW.replace(
             "needs: [build-test, static-analysis]",
             "needs: [build-test, does-not-exist]")
-        return [p for p in audit(text) if "does-not-exist" in p] or \
-            ["audit accepted a dangling needs reference"]
+        return [p for p in audit(text) if "does-not-exist" in p]
 
     expect("dangling aggregate needs reference is flagged", dangling_needs(),
            must_fail=True, contains="does not exist")
 
     def mutable_action():
         text = FIXTURE_WORKFLOW.replace(
-            "actions/checkout@1111111111111111111111111111111111111111",
+            "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
             "actions/checkout@v4", 1)
-        return [p for p in audit(text) if "pinned" in p] or \
-            ["audit accepted a mutable action tag"]
+        return [p for p in audit(text) if "pinned" in p]
 
     expect("unpinned action reference is flagged", mutable_action(),
            must_fail=True, contains="pinned")
@@ -411,8 +414,7 @@ def run_fixtures():
             "  build-test:\n    runs-on: ubuntu-latest",
             "  build-test:\n    strategy:\n      matrix:\n        include:\n"
             "          - cc: gcc\n    runs-on: ubuntu-latest")
-        return [p for p in audit(text) if "fail-fast" in p] or \
-            ["audit accepted a fail-fast matrix job"]
+        return [p for p in audit(text) if "fail-fast" in p]
 
     expect("missing fail-fast is flagged", fail_fast_matrix(),
            must_fail=True, contains="fail-fast")
@@ -420,8 +422,7 @@ def run_fixtures():
     def self_hosted():
         text = FIXTURE_WORKFLOW.replace("runs-on: ubuntu-latest",
                                         "runs-on: self-hosted", 1)
-        return [p for p in audit(text) if "hosted" in p] or \
-            ["audit accepted a self-hosted runner label"]
+        return [p for p in audit(text) if "hosted" in p]
 
     expect("self-hosted runner label is flagged", self_hosted(),
            must_fail=True, contains="hosted")
@@ -429,18 +430,16 @@ def run_fixtures():
     def write_permissions():
         text = FIXTURE_WORKFLOW.replace("  contents: read",
                                         "  contents: write")
-        return [p for p in audit(text) if "permissions" in p] or \
-            ["audit accepted write permissions"]
+        return [p for p in audit(text) if "permissions" in p]
 
     expect("write permissions are flagged", write_permissions(),
            must_fail=True, contains="contents: read")
 
     def unreviewed_pin():
         text = FIXTURE_WORKFLOW.replace(
-            "actions/checkout@1111111111111111111111111111111111111111",
+            "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
             "actions/checkout@2222222222222222222222222222222222222222", 1)
-        return [p for p in audit(text) if "allowlist" in p] or \
-            ["audit accepted a pin absent from the reviewed allowlist"]
+        return [p for p in audit(text) if "allowlist" in p]
 
     expect("action pinned to a commit outside the reviewed allowlist is "
            "flagged", unreviewed_pin(), must_fail=True, contains="allowlist")
@@ -450,10 +449,9 @@ def run_fixtures():
         # which issue #63 is about -- it must fail even though it is fully
         # reviewed and fully SHA-pinned.
         text = FIXTURE_WORKFLOW.replace(
-            "actions/checkout@1111111111111111111111111111111111111111",
+            "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
             "actions/checkout@11d5960a326750d5838078e36cf38b85af677262", 1)
-        return [p for p in audit(text) if "node20" in p] or \
-            ["audit accepted a reviewed pin with an unsupported runtime"]
+        return [p for p in audit(text) if "node20" in p]
 
     expect("action pinned to a reviewed but unsupported runtime is "
            "flagged", unsupported_runtime_pin(), must_fail=True,
@@ -461,8 +459,7 @@ def run_fixtures():
 
     def allowlist_entry_without_review_date():
         bad = {"actions/checkout@" + "3" * 40: {"runtime": "node24"}}
-        return validate_allowlist(bad) or \
-            ["allowlist entry without a review date was accepted"]
+        return validate_allowlist(bad)
 
     expect("allowlist entry without a review date is rejected",
            allowlist_entry_without_review_date(), must_fail=True,
@@ -470,12 +467,29 @@ def run_fixtures():
 
     def allowlist_entry_without_runtime():
         bad = {"actions/checkout@" + "4" * 40: {"reviewed": "2026-09-16"}}
-        return validate_allowlist(bad) or \
-            ["allowlist entry without a runtime was accepted"]
+        return validate_allowlist(bad)
 
     expect("allowlist entry without a runtime is rejected",
            allowlist_entry_without_runtime(), must_fail=True,
            contains="no runtime")
+
+    for reviewed in ("2026-99-99", "2026-02-30", "2026-9-16", "2026-09-16\n"):
+        expect("invalid calendar date %r is rejected" % reviewed,
+               validate_allowlist({"test": {"runtime": "node24", "reviewed": reviewed}}),
+               must_fail=True, contains="review date")
+    expect("valid leap day review date is accepted",
+           validate_allowlist({"test": {"runtime": "node24", "reviewed": "2024-02-29"}}))
+
+    fixture_pin = "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09"
+    for entry in (None, {}, {"reviewed": "2026-09-16"},
+                  {"runtime": []}, {"runtime": "node20"}):
+        saved = ACTION_RUNTIME_ALLOWLIST[fixture_pin]
+        try:
+            ACTION_RUNTIME_ALLOWLIST[fixture_pin] = entry
+            expect("malformed allowlist entry %r returns diagnostics" % entry,
+                   audit(FIXTURE_WORKFLOW), must_fail=True, contains="allowlist entry")
+        finally:
+            ACTION_RUNTIME_ALLOWLIST[fixture_pin] = saved
 
     if failures:
         print("%d/%d fixtures failed" % (len(failures), total[0]))
