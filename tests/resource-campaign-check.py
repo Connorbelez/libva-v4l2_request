@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise real software decoding and fail-closed campaign/cleanup paths."""
 import json
+import importlib.util
 import os
 from pathlib import Path
 import signal
@@ -13,6 +14,18 @@ HERE = Path(__file__).resolve().parent
 
 
 def main():
+    spec = importlib.util.spec_from_file_location('campaign', HERE / 'resource-campaign.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    baseline = {'mapped_bytes': 10000, 'allocator': {'allocated': 1000, 'mmap': 0, 'arena': 5000}}
+    retained = {'mapped_bytes': 12000, 'allocator': {'allocated': 1100, 'mmap': 0, 'arena': 7000}}
+    assert not module.allocator_violations(baseline, retained, 200)
+    unexplained = {'mapped_bytes': 13000, 'allocator': retained['allocator']}
+    assert module.allocator_violations(baseline, unexplained, 200)
+    leaked = {'mapped_bytes': 12000, 'allocator': {'allocated': 1300, 'mmap': 0, 'arena': 7000}}
+    assert module.allocator_violations(baseline, leaked, 200)
+    unknown = {'mapped_bytes': 12000, 'allocator': {'status': 'unavailable'}}
+    assert module.allocator_violations(baseline, unknown, 200)
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         base = [sys.executable, str(HERE / 'resource-campaign.py')]

@@ -153,9 +153,29 @@ PID while it is quiescent, verifies its process identity, writes and fsyncs the
 record, then allows the next cycle. The VA display is not terminated at these
 checkpoints. FD/dma-buf counts and bytes must equal the initial display state,
 so retained allocations cannot be hidden in the warmup baseline. Mapping count
-and bytes must not grow after warmup. The predeclared RSS allowance is 4 MiB for
-resident-page/allocator housekeeping within those fixed mappings; measured RSS
-trends still require explanation, and this allowance does not establish a
+must not grow after warmup. Mapped-byte growth defaults to zero; the M1 campaign
+explicitly allows at most 4 MiB of additional allocator arena capacity, with
+two additional checks: every added mapped byte must be explained by glibc
+arena/mmap accounting, and allocator-accounted allocations (including tcache)
+must remain within 64 KiB of warmup. Unexplained mappings fail even below the
+4 MiB ceiling. On allocators without mallinfo accounting, any mapping growth
+fails. RSS has a separate 4 MiB allowance and its trend remains reviewable.
+
+These are bounds for this fixed 640x360 workload: its largest 10-bit download,
+planar conversion and packed hash buffers total approximately 2 MiB, and the
+allocator may retain freed capacity after those temporary buffers disappear.
+The short instrumented M1 campaign measured about 10 KiB of allocation/cache
+growth that plateaued, with flat FD/dma-buf/mapping counts. This is consistent
+with bounded allocator retention, not proof about every allocation in every
+client. glibc's [dynamic mmap/trim thresholds](https://sourceware.org/glibc/manual/latest/html_node/Memory-Allocation-Tunables.html)
+explain why freeing temporary buffers need not immediately shrink an arena.
+Raw mallinfo arena/allocated/free/mmap values accompany every checkpoint.
+
+The original zero-growth early-export campaign stopped at cycle 909 after a
+2 MiB mapping increase. It had no allocator breakdown, so that event alone
+cannot identify the retained allocation. Preserve it as a failed campaign;
+do not relabel it as a pass. The added accounting and separately declared bounds
+must be applied in a fresh complete campaign, and they do not establish a
 universal bound for other streams/platforms.
 
 `early` additionally uses the existing early-export interposer and requires one
@@ -177,12 +197,12 @@ export LIBVA_DRIVER_NAME=v4l2_request
 export V4L2R_SOURCE_COMMIT=$(git rev-parse HEAD)
 python3 tests/hwguard.py --identity avd --deadline 600 \
   --log /absolute/campaign/normal-guard.jsonl -- \
-  python3 tests/resource-campaign.py run --mode normal --cycles 1000 \
+  python3 tests/resource-campaign.py run --mode normal --cycles 1000 --max-mapped-growth-kib 4096 \
   --directory /absolute/campaign/media --output /absolute/campaign/normal.jsonl
 # Repeat with --mode early and fresh output/guard log paths.
 python3 tests/hwguard.py --identity avd --deadline 3900 \
   --log /absolute/campaign/soak-guard.jsonl -- \
-  python3 tests/resource-campaign.py run --mode early --cycles 1000000 --seconds 3600 \
+  python3 tests/resource-campaign.py run --mode early --cycles 1000000 --seconds 3600 --max-mapped-growth-kib 4096 \
   --directory /absolute/campaign/media --output /absolute/campaign/soak.jsonl
 ```
 

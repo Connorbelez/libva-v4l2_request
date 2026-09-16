@@ -8,6 +8,9 @@
 #include <errno.h>
 #include <dlfcn.h>
 #include <limits.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -203,6 +206,18 @@ int main(int argc, char **argv)
         unsigned stream = i % count;
         if ((ret = lifecycle(device, argv[4 + 2 * stream], argv[5 + 2 * stream], i + 1, stream)) < 0) break;
         if (i + 1 >= warmup) {
+#ifdef __GLIBC__
+#if __GLIBC_PREREQ(2, 33)
+            struct mallinfo2 info = mallinfo2();
+#else
+            struct mallinfo info = mallinfo();
+#endif
+            printf("ALLOCATOR arena=%zu mmap=%zu allocated=%zu free=%zu releasable=%zu\n",
+                   (size_t)info.arena, (size_t)info.hblkhd, (size_t)info.uordblks,
+                   (size_t)info.fordblks, (size_t)info.keepcost);
+#else
+            printf("ALLOCATOR unavailable\n");
+#endif
             printf("CHECKPOINT %d\n", i + 1 - warmup);
             fflush(stdout);
             char command[16];

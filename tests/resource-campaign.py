@@ -75,6 +75,26 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def allocator_violations(baseline, sample, maximum):
+    """A larger allocator arena is acceptable only with bounded live/cache use.
+
+    mallinfo includes tcache chunks as allocated. It is not a driver ownership
+    counter; preserve both these values and the stricter FD/dma-buf checks.
+    """
+    old, new = baseline['allocator'], sample['allocator']
+    mapped_growth = sample['mapped_bytes'] - baseline['mapped_bytes']
+    if 'allocated' not in old or 'allocated' not in new:
+        return ['mapping growth has no allocator explanation'] if mapped_growth > 0 else []
+    violations = []
+    live_growth = new['allocated'] + new['mmap'] - old['allocated'] - old['mmap']
+    if live_growth > maximum:
+        violations.append('allocator-accounted allocation growth exceeds {} bytes'.format(maximum))
+    arena_growth = max(0, new['arena'] - old['arena']) + max(0, new['mmap'] - old['mmap'])
+    if mapped_growth > arena_growth:
+        violations.append('mapping growth exceeds allocator arena accounting')
+    return violations
+
+
 def lines(process, deadline):
     pending = b''
     while True:
@@ -103,7 +123,7 @@ def campaign(args):
         raise ValueError('hardware campaign requires hwguard')
     if args.cycles < 1 or args.cycles > 1000000 or args.seconds < 0 or args.seconds > 86400:
         raise ValueError('invalid finite cycle/duration bound')
-    if min(args.max_map_growth, args.max_mapped_growth_kib, args.max_rss_growth_kib) < 0:
+    if min(args.max_map_growth, args.max_mapped_growth_kib, args.max_rss_growth_kib, args.max_heap_growth_kib) < 0:
         raise ValueError('resource bounds must be nonnegative')
     for item in manifest['inputs']:
         if digest(root / item['name']) != item['sha256']:
@@ -123,12 +143,13 @@ def campaign(args):
         cmd.extend([str(root / item['name']), item['format']])
     limits = {'fds': 0, 'maps': args.max_map_growth, 'mapped_bytes': args.max_mapped_growth_kib * 1024,
               'vmrss_kib': args.max_rss_growth_kib, 'dmabuf_references': 0,
-              'dmabuf_objects': 0, 'dmabuf_bytes': 0}
+              'dmabuf_objects': 0, 'dmabuf_bytes': 0, 'heap_allocated_bytes': args.max_heap_growth_kib * 1024}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     samples, frames, result_count, held_count, last_checkpoint = [], [], 0, 0, -1
     started = time.monotonic()
     baseline_time = None
     initial = None
+    allocator = None
     stop_sent = False
     summary = {'passed': False, 'mode': args.mode, 'limits': limits}
     process = None
@@ -174,6 +195,11 @@ def campaign(args):
                     held_count += 1
                     if line != 'HELD_IMAGE_PASS cycle={}'.format(held_count):
                         raise ValueError('invalid held-image sequence')
+                elif line.startswith('ALLOCATOR '):
+                    match = re.fullmatch(r'ALLOCATOR arena=(\d+) mmap=(\d+) allocated=(\d+) free=(\d+) releasable=(\d+)', line)
+                    if allocator is not None or (not match and line != 'ALLOCATOR unavailable'):
+                        raise ValueError('invalid allocator record')
+                    allocator = dict(zip(['arena', 'mmap', 'allocated', 'free', 'releasable'], map(int, match.groups()))) if match else {'status': 'unavailable'}
                 elif line.startswith('CHECKPOINT '):
                     cycle = int(line.split()[1])
                     if cycle != last_checkpoint + 1 or result_count != (warmup + cycle) * 2 or frames:
@@ -191,6 +217,10 @@ def campaign(args):
                         if sample[key] is None or sample[key] != initial[key]:
                             raise ValueError('{} differs from initialized-display state'.format(key))
                     sample.update(cycle=cycle, decoded_frames=result_count * 24)
+                    if allocator is None:
+                        raise ValueError('missing allocator record')
+                    sample['allocator'] = allocator
+                    allocator = None
                     sampler.write_record(output, sample)
                     samples.append(sample)
                     last_checkpoint = cycle
@@ -198,6 +228,7 @@ def campaign(args):
                     if baseline_time is None:
                         baseline_time = now
                     current = sampler.summarize([samples[0], sample], limits, acceptance=True)
+                    current['violations'].extend(allocator_violations(samples[0], sample, limits['heap_allocated_bytes']))
                     if current['violations']:
                         raise ValueError('; '.join(current['violations']))
                     stop_sent = bool(args.seconds and now - baseline_time >= args.seconds)
@@ -214,6 +245,11 @@ def campaign(args):
             if rc or frames or len(samples) < 2 or (args.seconds and not stop_sent) or (not args.seconds and last_checkpoint != args.cycles):
                 raise ValueError('incomplete/nonzero campaign')
             summary = sampler.summarize(samples, limits, acceptance=True)
+            if all('allocated' in s['allocator'] for s in samples):
+                summary['allocator_bytes'] = {key: {'initial': samples[0]['allocator'][key],
+                    'minimum': min(s['allocator'][key] for s in samples),
+                    'maximum': max(s['allocator'][key] for s in samples),
+                    'final': samples[-1]['allocator'][key]} for key in samples[0]['allocator']}
             summary.update(mode=args.mode, cycles=last_checkpoint, warmup_cycles=warmup, elapsed_seconds=elapsed,
                            sample_span_seconds=(samples[-1]['monotonic_ns'] - samples[0]['monotonic_ns']) / 1e9,
                            decoded_frames=result_count * 24, held_image_checks=held_count, returncode=rc)
@@ -243,6 +279,7 @@ def main():
     parser.add_argument('--max-map-growth', type=int, default=0)
     parser.add_argument('--max-mapped-growth-kib', type=int, default=0)
     parser.add_argument('--max-rss-growth-kib', type=int, default=4096)
+    parser.add_argument('--max-heap-growth-kib', type=int, default=64)
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     if args.action == 'prepare':

@@ -339,7 +339,7 @@ makes the runner fail. The printed pixel format describes the hashed output,
 not the decoder. The hardware guard retains process-group ownership from its fd
 snapshot so reaped short-vector children are not mistaken for foreign clients;
 live foreign and unknown holders still abort.
-# Resource lifecycle qualification
+## Resource lifecycle qualification
 
 `resource-campaign.py` drives a single long-lived decoder process with quiescent
 in-process resource snapshots, software reference hashes, seek/drain, export and
