@@ -1,0 +1,39 @@
+{
+  "name": "TINY",
+  "codec": "VP9",
+  "description": "Non-decodable placeholder suite for the corpus self-test.",
+  "test_vectors": [
+    {
+      "name": "tiny-pass.webm",
+      "source": "https://example.invalid/tiny/tiny-pass.webm",
+      "source_checksum": "436d926fdd4513cbbf30492442e2b951",
+      "input_file": "tiny-pass.webm",
+      "output_format": "yuv420p",
+      "result": "00184151e5e210cfd139223c8153659c"
+    },
+    {
+      "name": "tiny-size-08x08.webm",
+      "source": "https://example.invalid/tiny/tiny-size-08x08.webm",
+      "source_checksum": "d39ba3499b69c165da0c934f6d403e8b",
+      "input_file": "tiny-size-08x08.webm",
+      "output_format": "yuv420p",
+      "result": "c2a903cc9ed1c16e9b832af40371eb73"
+    },
+    {
+      "name": "tiny-resize.ivf",
+      "source": "https://example.invalid/tiny/tiny-resize.ivf",
+      "source_checksum": "d3ff3139882f998faab3893190053d7a",
+      "input_file": "tiny-resize.ivf",
+      "output_format": "yuv420p",
+      "result": "5b94156677e020c9830c14f554647352"
+    },
+    {
+      "name": "tiny-422.webm",
+      "source": "https://example.invalid/tiny/tiny-422.webm",
+      "source_checksum": "590fb1fc4150076a90edfb1879970750",
+      "input_file": "tiny-422.webm",
+      "output_format": "yuv422p",
+      "result": "81ed4897152f51c9c4965231747980e0"
+    }
+  ]
+}
