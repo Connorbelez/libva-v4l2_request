@@ -21,6 +21,15 @@ if not os.environ.get('LIBVA_HW_GUARD_LEASE'):
     parser.error('hardware interruption requires hwguard')
 if args.output.exists():
     parser.error('output must be fresh')
+def interrupted(signum, frame):
+    raise SystemExit(128 + signum)
+
+
+# Let the owned coordinator's cleanup run when hwguard stops this wrapper.
+# Python's default SIGTERM action would bypass the finally block below.
+for sig in (signal.SIGINT, signal.SIGTERM):
+    signal.signal(sig, interrupted)
+
 command = [sys.executable, str(Path(__file__).with_name('resource-campaign.py')), 'run',
            '--directory', str(args.directory), '--mode', 'early', '--cycles', '1000000',
            '--output', str(args.output)]
@@ -66,6 +75,8 @@ with args.output.with_suffix('.coordinator.log').open('x') as log:
                           'last_complete_cycle': summary.get('cycles'),
                           'kernel_health_and_final_idle': 'owned by outer hwguard'}))
     finally:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, signal.SIG_IGN)
         if coordinator.poll() is None:
             coordinator.terminate()
             try:

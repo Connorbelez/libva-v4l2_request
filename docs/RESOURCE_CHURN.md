@@ -200,6 +200,10 @@ python3 tests/hwguard.py --identity avd --deadline 600 \
   python3 tests/resource-campaign.py run --mode normal --cycles 1000 --max-mapped-growth-kib 4096 \
   --directory /absolute/campaign/media --output /absolute/campaign/normal.jsonl
 # Repeat with --mode early and fresh output/guard log paths.
+python3 tests/hwguard.py --identity avd --deadline 60 \
+  --log /absolute/campaign/interrupt-guard.jsonl -- \
+  python3 tests/resource-interrupt.py --directory /absolute/campaign/media \
+  --output /absolute/campaign/interrupt.jsonl
 python3 tests/hwguard.py --identity avd --deadline 3900 \
   --log /absolute/campaign/soak-guard.jsonl -- \
   python3 tests/resource-campaign.py run --mode early --cycles 1000000 --seconds 3600 --max-mapped-growth-kib 4096 \
@@ -218,6 +222,16 @@ logs distinguish selected userspace from the unknown loaded kernel-module hash.
 These measurements cover the decoder process, not global kernel memory or
 another application's allocations. A result does not qualify browser rendering,
 concurrent decoder calls, other dimensions or boot behavior.
+
+The interrupted-client check requires Linux pidfds and Python's `os.pidfd_open`
+and `signal.pidfd_send_signal` APIs. It waits for completed in-process checkpoints,
+binds the recorded decoder child by pidfd plus start time and parent identity,
+then sends SIGKILL to that exact process. Its expected result is a failed campaign
+and a healthy, idle outer guard. A following normal campaign establishes continued
+decode usability. Neither this process-exit case nor its reclaimed resources count
+as in-process cleanup evidence. A stop signal to the interruption wrapper also
+runs bounded coordinator cleanup; offline fixtures exercise responsive and stalled
+coordinators without opening any decoder.
 
 The offline campaign regression executes the real software workload, verifies
 checkpoints/pixels, rejects a wrong reference and changed input, refuses unguarded

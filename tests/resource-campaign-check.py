@@ -5,12 +5,51 @@ import importlib.util
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import tempfile
 import time
 
 HERE = Path(__file__).resolve().parent
+
+
+def interrupt_wrapper_check(root):
+    """A guard stop must clean up the wrapper's coordinator, even if stalled."""
+    fixture = root / 'interrupt-wrapper'
+    fixture.mkdir()
+    shutil.copyfile(HERE / 'resource-interrupt.py', fixture / 'resource-interrupt.py')
+    # No hardware or actual campaign: the coordinator only records its identity
+    # and waits. The second case forces the bounded SIGKILL cleanup path.
+    (fixture / 'resource-campaign.py').write_text(
+        "import os, signal, time\n"
+        "from pathlib import Path\n"
+        "if os.environ.get('FIXTURE_IGNORE_TERM'):\n"
+        "    signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "Path(os.environ['FIXTURE_PID']).write_text(str(os.getpid()))\n"
+        "time.sleep(60)\n")
+    for stubborn in (False, True):
+        pidfile = fixture / ('stubborn.pid' if stubborn else 'responsive.pid')
+        output = fixture / ('stubborn.jsonl' if stubborn else 'responsive.jsonl')
+        env = dict(os.environ, LIBVA_HW_GUARD_LEASE='offline-fixture', FIXTURE_PID=str(pidfile))
+        env.pop('FIXTURE_IGNORE_TERM', None)
+        if stubborn:
+            env['FIXTURE_IGNORE_TERM'] = '1'
+        process = subprocess.Popen([sys.executable, str(fixture / 'resource-interrupt.py'),
+                                    '--directory', str(fixture), '--output', str(output)], env=env)
+        try:
+            deadline = time.monotonic() + 5
+            while not pidfile.exists() and time.monotonic() < deadline and process.poll() is None:
+                time.sleep(0.02)
+            assert pidfile.exists(), 'fixture coordinator did not start'
+            child = int(pidfile.read_text())
+            process.send_signal(signal.SIGTERM)
+            assert process.wait(timeout=8) == 128 + signal.SIGTERM
+            assert not Path('/proc', str(child)).exists(), 'wrapper left its coordinator alive'
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
 
 
 def main():
@@ -28,6 +67,7 @@ def main():
     assert module.allocator_violations(baseline, unknown, 200)
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
+        interrupt_wrapper_check(root)
         base = [sys.executable, str(HERE / 'resource-campaign.py')]
         subprocess.run(base + ['prepare', '--directory', str(root)], check=True, timeout=90)
         run = base + ['run', '--directory', str(root), '--cycles', '4']
