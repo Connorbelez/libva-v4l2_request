@@ -130,7 +130,11 @@ def infer_driver_path(cmd: list[str]) -> str | None:
 def foreign_holders(state: DecoderState, child_pid: int) -> list[dict[str, Any]]:
     return [
         holder for holder in state.holders
-        if not is_owned_holder(int(holder.get("pid") or 0), child_pid)
+        # A short vector can finish between the fd scan and classification.
+        # Preserve ownership observed during the scan instead of treating a
+        # vanished /proc entry as evidence of a foreign decoder client.
+        if holder.get("pgrp") != child_pid
+        and not is_owned_holder(int(holder.get("pid") or 0), child_pid)
     ]
 
 
@@ -208,13 +212,15 @@ class LinuxBackend:
             for pid_dir in Path("/proc").iterdir():
                 if not pid_dir.name.isdigit():
                     continue
+                pgrp = process_group(int(pid_dir.name))
                 try:
                     fds = [os.readlink(fd) for fd in (pid_dir / "fd").iterdir()]
                 except OSError:
                     continue
                 if nodes.intersection(fds):
                     cmdline = (_read(pid_dir / "cmdline") or "").replace("\0", " ").strip()
-                    holders.append({"pid": int(pid_dir.name), "cmd": cmdline[:160]})
+                    holders.append({"pid": int(pid_dir.name), "pgrp": pgrp,
+                                    "cmd": cmdline[:160]})
         stuck: list[dict[str, Any]] = []
         for pid_dir in Path("/proc").iterdir():
             if not pid_dir.name.isdigit():
@@ -612,6 +618,17 @@ def run_self_test() -> int:
     fake_root = work / "fake"
 
     sleeper = [sys.executable, "-c", "import time; time.sleep(30)"]
+
+    # Reaped vector children no longer have a queryable process group. The
+    # group observed alongside their open fd still proves lease ownership.
+    gone_pid = 999999999
+    snapshot = DecoderState(True, "/dev/video-fake", None, holders=[
+        {"pid": gone_pid, "pgrp": os.getpid()},
+        {"pid": gone_pid, "pgrp": gone_pid},
+        {"pid": gone_pid},
+    ])
+    check(foreign_holders(snapshot, os.getpid()) == snapshot.holders[1:],
+          "exited owned holder must stay owned; foreign/unknown must not")
 
     holder_script = work / "holder.py"
     holder_script.write_text(
