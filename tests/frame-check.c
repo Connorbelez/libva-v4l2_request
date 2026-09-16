@@ -44,6 +44,7 @@ static int hash_frame(struct check *check, AVFrame *frame)
     }
     if (check->hardware) {
         if (frame->format != AV_PIX_FMT_VAAPI) {
+            fprintf(stderr, "frame-check: software frame rejected in hardware mode\n");
             ret = AVERROR_INVALIDDATA;
             goto done;
         }

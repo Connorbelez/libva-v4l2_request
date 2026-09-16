@@ -22,7 +22,6 @@ from conformance_result import (
     SuiteResult,
     VectorResult,
     infer_category,
-    log_indicates_fallback,
     parse_frame_log,
     redact_argv,
     redact_text,
@@ -138,7 +137,12 @@ def main():
                 # The helper rejects non-VAAPI source frames in hardware
                 # mode. Its printed format describes downloaded/hash pixels,
                 # not the decoder that produced them.
-                fallback = mode == "hardware" and log_indicates_fallback(log_text)
+                # FFmpeg's "Failed setup for format vaapi" means rejection,
+                # not fallback: this helper refuses software frames. Use its
+                # explicit source-frame verdict instead of a generic log hint.
+                fallback = mode == "hardware" and (
+                    "frame-check: software frame rejected in hardware mode" in log_text
+                )
                 success = status == 0 and actual == vector["result"] and not fallback
                 failures += not success
                 sizes = []

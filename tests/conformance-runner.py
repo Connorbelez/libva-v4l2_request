@@ -65,10 +65,17 @@ class Runner(unittest.TestCase):
         self.assertEqual(result['vectors'][0]['category'], 'software_pass')
 
     def test_fallback_cannot_pass_even_with_matching_digest(self):
-        code, result = self.run_case(log='Failed setup for format vaapi: hwaccel initialisation returned error.')
+        code, result = self.run_case(log='frame-check: software frame rejected in hardware mode')
         self.assertEqual(code, 1)
         self.assertFalse(result['vectors'][0]['success'])
         self.assertEqual(result['vectors'][0]['category'], 'software_fallback')
+
+    def test_hardware_format_rejection_is_not_software_output(self):
+        code, result = self.run_case(status=1,
+            log='Failed setup for format vaapi: hwaccel initialisation returned error.')
+        self.assertEqual(code, 1)
+        self.assertFalse(result['vectors'][0]['success'])
+        self.assertEqual(result['vectors'][0]['category'], 'decode_error')
 
     def test_bad_summary_is_a_runner_failure(self):
         code, result = self.run_case(summary_error=True)
