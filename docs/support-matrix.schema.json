@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/iconidentify/libva-v4l2_request/docs/support-matrix.schema.json",
+  "title": "libva-v4l2_request support matrix",
+  "description": "Versioned codec/device/client support contract. A supported row must carry hardware provenance and a linked result artifact. Raw suite totals cannot be replaced by eligible-subset percentages.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "contract_id",
+    "driver_version",
+    "layers",
+    "outcomes",
+    "tiers",
+    "promotion_rules",
+    "demotion_rules",
+    "proposed_production_gate",
+    "platforms",
+    "advertised_va_profiles",
+    "suites",
+    "rows"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "contract_id": { "type": "string", "const": "libva-v4l2_request-support-matrix" },
+    "driver_version": { "type": "string", "minLength": 1 },
+    "date": { "type": "string" },
+    "evidence_record": { "type": "string", "minLength": 1 },
+    "pass_set_file": { "type": "string" },
+    "disclaimer": { "type": "string" },
+    "layers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "required": ["decode", "encode", "demux", "drm", "tone_mapping"]
+    },
+    "outcomes": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "string",
+        "enum": [
+          "hardware_pass",
+          "software_fallback",
+          "expected_rejection",
+          "wrong_output",
+          "untested"
+        ]
+      }
+    },
+    "tiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supported", "experimental", "unsupported", "untested"],
+      "properties": {
+        "supported": { "type": "string" },
+        "experimental": { "type": "string" },
+        "unsupported": { "type": "string" },
+        "untested": { "type": "string" }
+      }
+    },
+    "promotion_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "demotion_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "proposed_production_gate": { "type": "object" },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "backend", "device"],
+        "properties": {
+          "id": { "type": "string" },
+          "backend": { "type": "string" },
+          "device": { "type": "string" }
+        }
+      }
+    },
+    "advertised_va_profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["va_profile", "codec", "default_advertised"],
+        "additionalProperties": true,
+        "properties": {
+          "va_profile": { "type": "string", "pattern": "^VAProfile" },
+          "codec": { "type": "string" },
+          "default_advertised": { "type": "boolean" }
+        }
+      }
+    },
+    "suites": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "passed", "total"],
+        "properties": {
+          "name": { "type": "string" },
+          "passed": { "type": "integer", "minimum": 0 },
+          "total": { "type": "integer", "minimum": 1 },
+          "passing_frames": { "type": "integer" },
+          "pass_set_key": { "type": "string" },
+          "primary": { "type": "boolean" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/row" }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "backend",
+        "device",
+        "codec",
+        "va_profile",
+        "bit_depth",
+        "chroma",
+        "coded_picture",
+        "client",
+        "api",
+        "kernel",
+        "library",
+        "tier",
+        "criticality",
+        "outcome",
+        "layer"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "backend": { "type": "string", "minLength": 1 },
+        "device": { "type": "string", "minLength": 1 },
+        "codec": { "type": "string", "minLength": 1 },
+        "va_profile": { "type": "string" },
+        "bit_depth": { "type": ["integer", "string"] },
+        "chroma": { "type": "string" },
+        "coded_picture": { "type": "string" },
+        "level": { "type": "string" },
+        "client": { "type": "string" },
+        "api": { "type": "string" },
+        "kernel": { "type": "string" },
+        "library": { "type": "string" },
+        "tier": {
+          "type": "string",
+          "enum": ["supported", "experimental", "unsupported", "untested"]
+        },
+        "criticality": { "type": "string", "enum": ["critical", "optional"] },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "hardware_pass",
+            "software_fallback",
+            "expected_rejection",
+            "wrong_output",
+            "untested"
+          ]
+        },
+        "outcome_scope": {
+          "type": "string",
+          "enum": ["full_suite", "exact_pass_set", "generated_matrix", "detection_only"]
+        },
+        "layer": {
+          "type": "string",
+          "enum": ["decode", "encode", "demux", "drm", "tone_mapping", "client", "display"]
+        },
+        "hardware_provenance": { "type": "object" },
+        "result_artifact": { "type": "string" },
+        "open_p0": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "file": "pass-supported-with-provenance.json",
+    "ok": true
+  },
+  {
+    "file": "fail-supported-missing-provenance.json",
+    "ok": false,
+    "error": "hardware_provenance"
+  },
+  {
+    "file": "fail-supported-missing-artifact.json",
+    "ok": false,
+    "error": "result_artifact"
+  },
+  {
+    "file": "fail-subset-percentage.json",
+    "ok": false,
+    "error": "73/135"
+  },
+  {
+    "file": "fail-missing-profile.json",
+    "ok": false,
+    "error": "VAProfileAV1Profile0"
+  }
+]
