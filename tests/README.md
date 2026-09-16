@@ -43,9 +43,10 @@ unavailable references at random-access points, and failed-picture submission. T
 `hevc-capability-*` cases pin the range-extension boundary from
 [docs/HEVC_RANGE_EXTENSIONS.md](../docs/HEVC_RANGE_EXTENSIONS.md): only Main and Main10 are
 enumerated, every libva RExt/SCC profile and every non-4:2:0 or wrong-depth RT format is
-refused at `vaCreateConfig` without leaking a handle, and unequal-depth, 12-bit, monochrome,
-4:2:2, 4:4:4 and separate-plane pictures are refused at `vaRenderPicture` with no SPS staged
-and no ioctl issued, while 8/10-bit 4:2:0 pictures are staged unchanged. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
+refused at `vaCreateConfig` without leaking a handle, and unequal-depth, equal 9/11-bit, 12-bit,
+monochrome, 4:2:2, 4:4:4 and separate-plane pictures are refused at `vaRenderPicture` with no
+SPS staged and no ioctl issued, in both AVD and generic contexts, while 8/10-bit 4:2:0 pictures
+are staged unchanged. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
 rejection, High 10 quantizer modes and fake-device capability checks. Three H.264 submission
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery

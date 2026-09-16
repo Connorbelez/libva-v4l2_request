@@ -1240,10 +1240,10 @@ static VAStatus hevc_store_slice_params(struct hevc_context *codec,
  * 4:2:0 output at 8 or 10 bits and its CAPTURE buffers are sized for that.
  * Reject a picture outside that contract before any control is built from it:
  * unequal luma/chroma depth faulted the AVD firmware and reset the decoder for
- * every other context (TSUNEQBD_A_MAIN10_Technicolor_2), and 12-bit, 4:2:2,
- * 4:4:4 or monochrome pictures have no exportable CAPTURE layout here, so a
- * backend that accepted them would decode into buffers of the wrong size or
- * with unwritten chroma. The companion kernel rejects some of these too; this
+ * every other context (TSUNEQBD_A_MAIN10_Technicolor_2), and 9-bit, 12-bit,
+ * 4:2:2, 4:4:4 or monochrome pictures have no exportable CAPTURE layout here,
+ * so a backend that accepted them would decode into buffers of the wrong size
+ * or with unwritten chroma. The companion kernel rejects some of these too; this
  * check keeps the boundary in the driver for every backend, so a client sees
  * the same rejection whether or not its kernel was patched.
  */
@@ -1260,6 +1260,10 @@ static VAStatus hevc_check_picture_format(struct v4l2r_context *ctx,
 		reason = "only 4:2:0 output is negotiated";
 	else if (luma != chroma)
 		reason = "unequal luma/chroma bit depth";
+	else if (luma != 8 && luma != 10)
+		/* format_infos[] has 8- and 10-bit layouts only; an equal 9-bit
+		 * (or 11-bit) picture has no CAPTURE format on any backend. */
+		reason = "bit depth without a CAPTURE layout";
 	else if (luma > max_depth)
 		reason = "bit depth exceeds the negotiated profile";
 	else

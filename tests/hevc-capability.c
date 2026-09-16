@@ -157,6 +157,10 @@ static struct v4l2r_context ctx;
 static VAPictureParameterBufferHEVC pic;
 static struct v4l2r_buffer pic_buffer;
 
+/* The boundary is a driver contract, not an AVD quirk: every case below runs
+ * once as an AVD context and once as a generic V4L2 context. */
+static bool generic_backend;
+
 static void context_init(VAProfile profile)
 {
     memset(&codec, 0, sizeof(codec));
@@ -165,7 +169,7 @@ static void context_init(VAProfile profile)
     ctx.codec_priv = &codec;
     ctx.profile = profile;
     ctx.bit_depth = v4l2r_profile_bit_depth(profile);
-    ctx.is_avd = true;
+    ctx.is_avd = !generic_backend;
     assert(hevc_begin_picture(&ctx) == VA_STATUS_SUCCESS);
 }
 
@@ -216,10 +220,8 @@ static void rejected(VAProfile profile, unsigned int chroma_format_idc,
     assert(hevc_begin_picture(&ctx) == VA_STATUS_SUCCESS && !codec.failed);
 }
 
-static void picture(void)
+static void picture_cases(void)
 {
-    driver_init(true);
-
     /* Supported: 4:2:0 at the negotiated depth. A Main10 decoder also takes
      * 8-bit pictures, as the HEVC profile constraints permit. */
     accepted(VAProfileHEVCMain, 1, 8, 8);
@@ -233,6 +235,13 @@ static void picture(void)
     rejected(VAProfileHEVCMain10, 1, 10, 8, false);
     rejected(VAProfileHEVCMain, 1, 8, 9, false);
     rejected(VAProfileHEVCMain, 1, 9, 8, false);
+
+    /* Equal depths with no CAPTURE layout: 9-bit fits under the Main10 maximum
+     * and 11-bit does not, and neither has an 8- or 10-bit buffer format. The
+     * first review found 9/9 slipping through an equality-plus-maximum check. */
+    rejected(VAProfileHEVCMain, 1, 9, 9, false);
+    rejected(VAProfileHEVCMain10, 1, 9, 9, false);
+    rejected(VAProfileHEVCMain10, 1, 11, 11, false);
 
     /* Depth above the negotiated profile: Main12/Main16 pictures, and a 10-bit
      * picture inside an 8-bit context whose CAPTURE buffers are NV12. */
@@ -271,7 +280,15 @@ static void picture(void)
     picture_init(1, 10, 9);
     pic_buffer.element_size = sizeof(pic) - 1;
     assert(hevc_render_buffer(&ctx, &pic_buffer) == VA_STATUS_ERROR_INVALID_BUFFER);
+}
 
+static void picture(void)
+{
+    driver_init(true);
+    generic_backend = false;
+    picture_cases();
+    generic_backend = true;
+    picture_cases();
     driver_destroy();
     assert(!ioctls);
 }

@@ -28,7 +28,7 @@ Symbol names locate the relevant code even when line numbers move.
 | P | [Companion kernel patches at `05a9a0b5d414e4ed29f84abc7a2f799e3f33c9d3`](https://github.com/iconidentify/omarchy-m1-video/tree/05a9a0b5d414e4ed29f84abc7a2f799e3f33c9d3/patches): `0009-media-apple-avd-hevc-reject-unequal-bit-depths-and-n.patch` (blob `5588565f`) and `0015-media-apple-avd-accept-HEVC-4-2-2-again-reject-forma.patch` (blob `e0b68228`). Together they make `avd_hevc_validate_sps()` return `-EINVAL` for unequal luma/chroma depth, any depth other than 8 or 10, and 10-bit 4:2:2. |
 | D | This repository at the base of the change (`0758361796905981d8855988f71f4c2ca5a66ff4`): `src/codec_hevc.c` `hevc_profiles[]`, `hevc_fill_sps_pps()`; `src/driver.c` `v4l2r_profile_bit_depth()`, `v4l2r_profile_rt_format()`, `format_infos[]`, `driver_supports_profile()`, `v4l2r_CreateConfig()`; `src/context.c` capture-format selection by `bit_depth`; `src/surface.c` P010 backing probe. |
 | R | [r11 record, companion `4e2f52d95fa92b3a6d5a57b6fb4fc6e217420128`](https://github.com/iconidentify/omarchy-m1-video/blob/4e2f52d95fa92b3a6d5a57b6fb4fc6e217420128/docs/codec-validation-r11-2026-09-15.json) and this repository's `docs/r11-pass-sets.json`: JCT-VC-HEVC_V1 144/147 on Apple M1 T8103; non-passes `RPS_E_qualcomm_5`, `TSUNEQBD_A_MAIN10_Technicolor_2` (`expected_rejection`) and `VPSSPSPPS_A_MainConcept_1`. |
-| C | [Fluster `f3ad284a9e6cac70dc01b02e0de71c2994181d34`](https://github.com/fluendo/fluster/tree/f3ad284a9e6cac70dc01b02e0de71c2994181d34/test_suites/h265): `JCT-VC-RExt.json`, `JCT-VC-SCC.json`, `JCT-VC-MV-HEVC.json` are prospective inputs only; their terms are `not-established` under [CORPUS.md](CORPUS.md), and nothing from them was acquired for this decision. |
+| C | [Fluster `f3ad284a9e6cac70dc01b02e0de71c2994181d34`, `test_suites/h.265`](https://github.com/fluendo/fluster/tree/f3ad284a9e6cac70dc01b02e0de71c2994181d34/test_suites/h.265): `JCT-VC-RExt.json` and `JCT-VC-MV-HEVC.json` are prospective inputs only and are listed under `excluded_suites` in `tests/corpus/manifest.json` (reason codes `unsupported-hardware-format` and `outside-tested-scope`); `JCT-VC-SCC.json` is not referenced by the manifest at all. Their terms are `not-established` under [CORPUS.md](CORPUS.md), and nothing from them was acquired for this decision. |
 
 ## What the driver negotiates today
 
@@ -60,8 +60,9 @@ promoted by this document.
 
 | Requested format | VA representation | V4L2 / AVD representation | Driver path | Decision |
 | --- | --- | --- | --- | --- |
-| Main, 8-bit 4:2:0 | `VAProfileHEVCMain`, `YUV420`, NV12 | K SPS depth 0/0, `chroma_format_idc` 1; A NV12 | Advertised; CAPTURE NV12; image/export contract in place | **Supported, experimental** per [SUPPORT.md](SUPPORT.md) row `avd-m1-hevc-main-8-420`; r11 evidence R. |
-| Main10, 10-bit 4:2:0 | `VAProfileHEVCMain10`, `YUV420_10`, P010 | K SPS depth 2/2; A P010 | Advertised when the P010 probe passes; CAPTURE P010; 10-bit backing sized for references | **Supported, experimental** per row `avd-m1-hevc-main10-10-420`; r11 evidence R. |
+| Main, 8-bit 4:2:0 | `VAProfileHEVCMain`, `YUV420`, NV12 | K SPS depth 0/0, `chroma_format_idc` 1; A NV12 | Advertised; CAPTURE NV12; image/export contract in place | **Experimental** (not `supported`: the contract has no `supported` row) per [SUPPORT.md](SUPPORT.md) row `avd-m1-hevc-main-8-420`; evidence is the M1 T8103 r11 run R only, HEVC 144/147 with `RPS_E_qualcomm_5` and `VPSSPSPPS_A_MainConcept_1` still failing. |
+| Main10, 10-bit 4:2:0 | `VAProfileHEVCMain10`, `YUV420_10`, P010 | K SPS depth 2/2; A P010 | Advertised when the P010 probe passes; CAPTURE P010; 10-bit backing sized for references | **Experimental** per row `avd-m1-hevc-main10-10-420`; same single-device r11 evidence R, shared with the Main row's suite total. |
+| Equal 9-bit (or 11-bit) 4:2:0 | Representable in `VAPictureParameterBufferHEVC`; no HEVC profile below Main12 permits it | K SPS depth 1/1; A `avd_hevc_get_image_fmt()` recognises only depth 0 and 2 and returns `AVD_IMG_FMT_ANY`; P 0015 returns `-EINVAL` for any depth other than 8 or 10 | `format_infos[]` has 8- and 10-bit layouts only, so no CAPTURE format exists on any backend; **refused** by the explicit depth set {8, 10} | **Unsupported: no CAPTURE layout.** The first review of this change found equal 9-bit under Main10 passing an equality-plus-maximum check and being staged; the set check and the `hevc-capability-picture` 9/9 and 11/11 regressions (AVD and generic contexts) close that. |
 | 8-bit pictures in a Main10 context | Same profile; HEVC Main10 decoders accept Main streams | K SPS depth 0/0 into a P010 CAPTURE queue | Accepted by the new check (depth below the negotiated maximum) | **Unchanged.** Clients pick the profile from `general_profile_idc`, so r11 vectors with 8-bit content under Main10 signalling reached the decoder this way. Rejecting it would lose passing vectors; it is left as before and is not separately qualified. |
 | Unequal luma/chroma depth (e.g. 10-bit luma, 9-bit chroma) | Representable in `VAPictureParameterBufferHEVC`; no profile allows it except range extensions | K SPS carries both depths; A (unpatched) forwards them to the firmware, which faults (H0 error) and resets the decoder for every context; P 0009 returns `-EINVAL` | **Refused** by `hevc_check_picture_format()` with `VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT` and a `unsupported` diagnostic (`op` `hevc-picture-format`) | **Unsupported: firmware reset.** `TSUNEQBD_A_MAIN10_Technicolor_2` remains `expected_rejection` in the r11 pass sets and support matrix. The known fault was **not** replayed for this decision. Software decoding is the alternative. |
 | Main12, 12-bit 4:2:0 | `VAProfileHEVCMain12`, `YUV420_12`, P012/P016 | K SPS depth 4/4; A returns `AVD_IMG_FMT_ANY` (no decoded format); P 0015 returns `-EINVAL` | Profile not advertised; no 12-bit `format_infos` entry, image layout or export path; picture refused if a client forces it through a Main10 config | **Unsupported: no backend output format and no driver output contract.** Depends on a kernel/firmware 12-bit decoded format that does not exist in A or P. |
@@ -70,7 +71,7 @@ promoted by this document.
 | Main 4:2:2 10 at 10 bits (10-bit 4:2:2) | `VAProfileHEVCMain422_10`, `YUV422_10` | K SPS `chroma_format_idc` 2, depth 2/2; A maps it to P010 (`TODO: missing P210`), whose buffer is too small for 4:2:2 chroma; P 0015 returns `-EINVAL` | Not advertised; NV20 entry has no VA FOURCC; picture refused | **Unsupported: no P210 decoded format in the kernel.** Depends on a kernel P210 (or NV20) decoded format before any userspace work. |
 | Main 4:2:2 12 | `VAProfileHEVCMain422_12`, `YUV422_12` | K SPS depth 4/4; A `AVD_IMG_FMT_ANY`; P 0015 `-EINVAL` | Not advertised; refused | **Unsupported:** both the 12-bit and the 4:2:2-at-high-depth gaps above. |
 | Main 4:4:4, Main 4:4:4 10, Main 4:4:4 12 | `VAProfileHEVCMain444*`, `YUV444*` | K SPS `chroma_format_idc` 3; A folds it into the 4:2:0 image format (no 4:4:4 decoded format); P does not add one | Not advertised; no 4:4:4 `format_infos` entry; picture refused | **Unsupported: no backend output format.** A's "up to 4:4:4" comment is not evidence of a decoded-format path. Depends on kernel work plus a driver 4:4:4 contract. |
-| Monochrome (4:0:0) at 8, 10, 12 or 16 bits | Range-extension monochrome profiles; `YUV400`/`Y800` in VA | K SPS `chroma_format_idc` 0; A folds it into 4:2:0 and writes no chroma (H.264 needed P 0008/0014 to grey-fill; HEVC has no such fill); P accepts it at 8/10 bits | Not advertised; refused | **Unsupported: unqualified backend behaviour.** Accepting it would produce green pictures on AVD. A grey-fill or a true 4:0:0 CAPTURE format is kernel-side work, then a driver YUV400 contract. |
+| Monochrome (4:0:0) at 8, 10, 12 or 16 bits | Range-extension monochrome profiles; `YUV400`/`Y800` in VA | K SPS `chroma_format_idc` 0; A folds it into the 4:2:0 image format; P accepts it at 8/10 bits. For H.264 4:0:0 the companion needed P 0008/0014 to grey-fill the chroma plane because the firmware left it zero (green output); `avd-hevc.c` has no equivalent fill. | Not advertised; no YUV400 image/export contract; refused | **Unsupported: unqualified backend behaviour.** Hypothesis from source, not an HEVC measurement: the H.264 evidence suggests HEVC 4:0:0 would also decode with unwritten chroma into a 4:2:0 buffer, but no HEVC monochrome stream has been run on AVD. A grey-fill or a true 4:0:0 CAPTURE format is kernel-side work, then a driver YUV400 contract. |
 | `separate_colour_plane_flag` (4:4:4 as three planes) | Representable | K `V4L2_HEVC_SPS_FLAG_SEPARATE_COLOUR_PLANE`; A has no plane-separated decoded format | Refused | **Unsupported:** same 4:4:4 gap, plus per-plane slice semantics no backend here implements. |
 | Screen-content coding (SCC) profiles | `VAProfileHEVCScc*`, `VAPictureParameterBufferHEVCScc` | No SCC fields in K's HEVC controls | Not advertised | **Unsupported: no V4L2 control fields for SCC tools.** Kernel UAPI first. |
 | Range-extension coding tools on a 4:2:0 8/10-bit stream (e.g. `implicit_rdpcm`, `extended_precision_processing`) | `VAPictureParameterBufferHEVCRext` (libva ≥ 1.2) | No corresponding fields in K's SPS/PPS controls; the driver ignores the Rext buffer | Client would negotiate a range-extension profile, which is refused | **Unsupported: no V4L2 representation.** Even if a kernel accepted such a stream, the tools could not be conveyed, so the picture would decode wrongly. Kernel UAPI first. |
@@ -96,7 +97,9 @@ picture is staged:
 
 1. `chroma_format_idc` must be 1 and `separate_colour_plane_flag` clear.
 2. Luma and chroma bit depth must be equal.
-3. The depth must not exceed the context's negotiated depth (8 for Main,
+3. The depth must be 8 or 10, the only depths with a CAPTURE layout in
+   `format_infos[]`.
+4. The depth must not exceed the context's negotiated depth (8 for Main,
    10 for Main10).
 
 A refused picture returns `VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT`, stages
@@ -118,7 +121,7 @@ What the check deliberately does **not** do:
 ### Effect on existing results
 
 The r11 HEVC pass set is 4:2:0 at equal 8- or 10-bit depth throughout; every
-one of the 144 passing vectors satisfies the three rules, so their control
+one of the 144 passing vectors satisfies the four rules, so their control
 contents are unchanged. `TSUNEQBD_A_MAIN10_Technicolor_2` now fails at
 `vaRenderPicture` in userspace instead of at `VIDIOC_S_EXT_CTRLS` in the kernel;
 it stays `expected_rejection`, not a pass. This is a source-level argument plus
@@ -139,10 +142,14 @@ decoder drops Main10 and still exposes nothing else.
 `hevc-capability-picture`: 8-bit 4:2:0 under Main, 10-bit and 8-bit 4:2:0 under
 Main10 are staged with the expected SPS depths. Refused, with no SPS change, a
 poisoned picture and a clean next picture: five unequal-depth pairings
-including the TSUNEQBD 10/9 case, 10-bit under Main, 12-bit and 16-bit under
-Main10, monochrome, 4:2:2 and 4:4:4 at 8/10/12 bits, separate colour planes,
-and an unequal-depth picture following an accepted one in the same context. A
-short picture buffer is still `INVALID_BUFFER`. `ioctl()` is never called.
+including the TSUNEQBD 10/9 case, equal 9-bit under Main and Main10 and equal
+11-bit under Main10, 10-bit under Main, 12-bit and 16-bit under Main10,
+monochrome, 4:2:2 and 4:4:4 at 8/10/12 bits, separate colour planes, and an
+unequal-depth picture following an accepted one in the same context. A short
+picture buffer is still `INVALID_BUFFER`. Every case runs once as an AVD
+context and once as a generic V4L2 context with identical results, because
+the boundary is a driver contract rather than a backend quirk. `ioctl()` is
+never called.
 
 Both cases run under ASan/UBSan in CI. The twenty `hevc-picture-format`
 records the picture case emits with `LIBVA_V4L2_DIAG=json` were checked with
