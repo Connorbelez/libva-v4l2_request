@@ -13,10 +13,11 @@ claims stay in [SUPPORT.md](SUPPORT.md) and the [support matrix](support-matrix.
 | Layer | Pinned by | Checked by |
 |---|---|---|
 | Upstream suite definitions | Fluster commit + `suite_file_sha256` per suite | `corpus.py validate --fluster DIR` |
+| Usage terms | `terms_status`/`terms_reference`/`terms_checked`/`terms_note` per entry | `corpus.py validate` rejects a title or URL presented as a licence |
 | Upstream downloads | `source_checksum` (MD5) from the pinned suite file | `corpus.py fetch` before an asset is accepted |
 | Assets consumed by the runner | `asset_sha256` (SHA-256) of the extracted input file | `corpus.py verify`, and `corpus.py lock` for assets not yet recorded |
 | Failure reasons | 13 documented classes with the explicit vector lists they cover | `corpus.py validate` re-derives each list and proves the r11 failing sets are fully covered, without contradiction |
-| Generated matrices | producer script, exact command, frame counts, determinism rules | `corpus.py validate` cross-checks the frame counts against `docs/r11-pass-sets.json` |
+| Generated matrices | producer script + runnable invocation, frame counts, determinism rules | `corpus.py validate` checks the producer exists, the invocation runs it, and cross-checks frame counts against `docs/r11-pass-sets.json` |
 
 Two hash layers are deliberate. SHA-256 identifies the bytes a result was produced from.
 The upstream MD5 only detects that the distributor replaced a file; it is taken from the
@@ -33,6 +34,9 @@ python3 tests/corpus.py fetch --fluster /path/to/fluster --cache ~/.cache/libva-
 
 # Offline integrity check of what is in the cache
 python3 tests/corpus.py verify --fluster /path/to/fluster --cache ~/.cache/libva-corpus --require smoke
+
+# See what a suite-wide acquisition would select, without acquiring anything
+python3 tests/corpus.py fetch --fluster /path/to/fluster --cache ~/.cache/libva-corpus --all --dry-run
 
 # Report SHA-256 for acquired assets; a reviewer records them in the manifest
 python3 tests/corpus.py lock --fluster /path/to/fluster --cache ~/.cache/libva-corpus
@@ -53,21 +57,53 @@ python3 tests/conformance.py /path/to/fluster/test_suites/h.265/JCT-VC-HEVC_V1.j
   ~/.cache/libva-corpus --driver /path/to/build/src --output /path/to/new-results
 ```
 
-`fetch` never pulls the whole corpus unless `--all --confirm-large-corpus` is given, so a
-harness cannot turn a smoke run into a multi-gigabyte download by accident.
+**Selection enumerates the pinned suite definition, not the manifest's pinned assets.** Pinning
+a vector's SHA-256 and acquiring it are separate steps:
+
+| Selection | Resolves to | Needs |
+|---|---|---|
+| `--smoke` | the bounded smoke entries | nothing beyond the manifest |
+| `--suite ID` | every vector of that suite in the pinned definition | `--fluster` |
+| `--vector SUITE#NAME` | that vector, pinned or not | `--fluster` |
+| `--all` | every vector of every suite (662 here) | `--fluster` + `--confirm-large-corpus` |
+
+`--dry-run` prints the plan (per suite, and how many of the selection carry a recorded
+SHA-256) and acquires nothing, so a large selection can be inspected before it runs. `validate`
+prints the same plan and **fails if the full-corpus selection does not match the declared vector
+counts** — the regression for a defect where `--all` silently resolved to the 13 pinned assets.
+`fetch` refuses `--all` without `--confirm-large-corpus`, so a harness cannot turn a smoke run
+into a multi-gigabyte download by accident, and it stops after a bounded number of reported
+failures while still exiting non-zero.
+
+`verify --require smoke` means the smoke subset; `verify --require all` means the whole corpus
+and reports per-suite missing counts, so a smoke-only cache can no longer satisfy it. Assets
+acquired without a recorded SHA-256 are still covered: `fetch` writes the identities it acquired
+to `<cache>/corpus-lock.json`, and `verify` checks any asset in that lock, so a tampered
+unpinned vector is caught before anyone records a hash as an expectation.
 
 ## Licence policy
 
-Nothing in this repository redistributes third-party media. Every suite entry declares
-`download-on-demand-only`: the vectors stay with their distributor, and only acquisition
-metadata, checksums and classifications are committed. Generated clips declare
-`generated-locally` and are built from synthetic `lavfi` sources.
+Nothing in this repository redistributes third-party media, and the manifest records **both** the
+decision and whether usable terms were actually found:
+
+| Suite family | terms_status | What was checked (2026-09-16) |
+|---|---|---|
+| ITU/JCT-VC and JVT (HEVC, AVC, FRExt) | `not-established` | ITU's Disclaimer and Copyright notice states that permission to reproduce ITU materials should be requested from `jur@itu.int` and that third-party copyrights must be respected; it grants no redistribution right, and the wftp3 working file area carries no per-file terms |
+| VP9 (WebM project test data) | `not-established` | the `test_data/libvpx/` directory carries no LICENSE file (404) and the WebM project licence page covers the project's software and format, not this data |
+| Generated clips | `identified` | produced locally from synthetic `lavfi` sources by this repository's scripts; the repository licence in `COPYING` (GPL-3.0-or-later) applies and no third-party media is copied |
+
+A suite title or a storage URL is not a licence, so the validator requires a real answer:
+`terms_status` is `identified` or `not-established`, `terms_checked` is a date, and `terms_note`
+must say what was checked. Terms that are `not-established` must state that explicitly (or point
+at the place where terms would be stated), may not be marked `redistributable`, and are recorded
+as a gap instead of an assumption. `identified` terms require a named licence and a reference.
 
 Rules the validator enforces:
 
-- A `redistributable` entry needs a named licence and a licence reference. An assumption is
+- `redistributable` requires identified terms, a named licence and a reference. An assumption is
   not accepted, and there is currently no redistributable third-party media here.
-- `download-on-demand-only` entries must record where the upstream terms are stated.
+- `download-on-demand-only` entries must record where the upstream terms are stated, or say that
+  no terms source could be found.
 - Personal recordings, private media, tokens, process arguments and extracted core dumps are
   rejected. The validator walks every string in the manifest and fails on host paths such as
   `/Users/<name>/...` or `~`.
@@ -127,9 +163,11 @@ The generated matrices (`frame-check.sh`, `hwdownload.sh`, `h264-high10.sh`,
 `shared-contexts.sh`, `vp9-matrix.sh`) build synthetic `lavfi` clips and compare decoded output
 with the software decoder on the same machine. No encoder hash is committed: encoder output
 depends on tool version and thread count, so a committed hash would either drift silently or
-pin a toolchain instead of a behaviour. Each entry records the exact command, the frame counts
-and `expected_asset_hashes_committed: false`; the validator rejects a "compared" entry that
-claims committed hashes. Frame counts are cross-checked against `docs/r11-pass-sets.json`
+pin a toolchain instead of a behaviour. Each entry records the **producer script, its runnable
+invocation** (through `tests/hwguard.py` for the hardware scripts) and a description of what it
+generates — not a prose sentence presented as an exact command. The validator fails if the
+producer is not a file in this repository or if the invocation does not run it. `expected_asset_hashes_committed: false` is
+required and a "compared" entry that claims committed hashes is rejected. Frame counts are cross-checked against `docs/r11-pass-sets.json`
 (HEVC 144/147, AVC 73/135, FRExt 27/69, VP9 216/305; 144 + 384 + 336 = 864 generated
 comparisons), so the manifest cannot quietly inflate the evidence.
 
@@ -149,13 +187,18 @@ Observations worth keeping:
 - Fluster `input_file` may contain a directory component (for example
   `RPS_E_qualcomm_5/RPS_E_qualcomm_5.bit`). Tools that assume a flat vector directory miss those
   assets; the cache layout keeps the declared relative path.
-- `corpus.py self-test` runs 22 checks with no network and no decoder, including a valid
+- `corpus.py self-test` runs 31 checks with no network and no decoder, including a valid
   fixture, suite-digest drift, unlicensed redistribution, missing provenance, an unverified
   hash presented as an expectation, classification drift, an undocumented r11 failure, a
   passing vector classified as a failure, the smoke budget, missing required coverage, leaked
-  host paths, acquisition into the Fluster layout, cache reuse, partial-cache tolerance, a
-  missing smoke asset, a tampered asset, refusal to overwrite a pinned asset, offline failure
-  with an actionable command, an upstream checksum mismatch, and lock output.
+  host paths, suite-wide selection enumerating the pinned definition rather than the pinned
+  assets, explicit selection of an unpinned vector, a licence declared without being named,
+  redistribution on unidentified terms, a licence field that is only a title, a reproduction
+  path that does not point at a repository script, an invocation that does not run it,
+  acquisition into the Fluster layout, cache reuse, partial-cache tolerance, a missing smoke
+  asset, a tampered pinned asset, a tampered unpinned asset caught by the acquisition lock,
+  refusal to overwrite a pinned asset, offline failure with an actionable command, an upstream
+  checksum mismatch, and lock output.
 
 ## Known gaps
 
@@ -163,7 +206,12 @@ Observations worth keeping:
   which pin it used; totals are only reproducible against a stated pin.
 - Per-vector SHA-256 is pinned for the smoke subset. Other vectors are verified against the
   upstream MD5 on acquisition and receive a SHA-256 through `corpus.py lock`, which a reviewer
-  records deliberately. Commands are never silently rewritten into expectations.
+  records deliberately. Commands are never silently rewritten into expectations, and acquired
+  identities live in the cache lock as evidence rather than in the manifest.
+- Usage terms for the official vectors are **not established** and are recorded that way: the ITU
+  notice grants no reproduction right and the WebM test-data directory carries no licence. Nothing
+  here is redistributed; anyone redistributing those bitstreams must settle terms with the
+  distributor first.
 - The classifications encode the documented reasons behind the r11 failures, not proof that no
   other reason applies to a specific vector. They are re-checked against the pass sets on every
   run and must be re-reviewed when a suite pin or a driver behaviour changes.

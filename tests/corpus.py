@@ -62,6 +62,7 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ASSET_REF_RE = re.compile(r"^(?P<suite>[^#]+)#(?P<vector>.+)$")
 SIZE_RE = re.compile(r"-size-(\d+)x(\d+)")
 
+TERMS_STATUS_VALUES = ["identified", "not-established"]
 REDISTRIBUTION_VALUES = ["generated-locally", "download-on-demand-only", "redistributable"]
 ASSET_CLASSES = [
     "pass",
@@ -157,27 +158,58 @@ def _require_keys(obj: dict, keys: list[str], where: str, issues: list[str]) -> 
 
 
 def _check_license(obj: object, where: str, issues: list[str]) -> None:
+    """A redistribution decision is not a licence, and a licence is not a title.
+
+    Every entry states whether usable terms were actually identified, where they were checked,
+    and what that implies. "Not established" is a valid, explicit answer; presenting a suite
+    title or a storage URL as licence terms is not.
+    """
     if not isinstance(obj, dict):
         issues.append(f"{where}: license must be an object")
         return
-    _require_keys(obj, ["redistribution", "basis", "license_reference", "notes"], where + ".license", issues)
+    _require_keys(
+        obj,
+        ["redistribution", "terms_status", "terms_reference", "terms_checked", "terms_note", "basis", "notes"],
+        where + ".license",
+        issues,
+    )
     value = obj.get("redistribution")
     if value not in REDISTRIBUTION_VALUES:
         issues.append(f"{where}: license.redistribution must be one of {REDISTRIBUTION_VALUES}, got {value!r}")
         return
+    terms = obj.get("terms_status")
+    if terms not in TERMS_STATUS_VALUES:
+        issues.append(f"{where}: license.terms_status must be one of {TERMS_STATUS_VALUES}, got {terms!r}")
+        return
+    if not isinstance(obj.get("terms_note"), str) or not obj.get("terms_note", "").strip():
+        issues.append(f"{where}: license.terms_note must describe what was checked for terms")
+    if not DATE_RE.match(str(obj.get("terms_checked", ""))):
+        issues.append(f"{where}: license.terms_checked must be YYYY-MM-DD")
+    reference = obj.get("terms_reference")
+    if terms == "identified":
+        if not obj.get("license_name"):
+            issues.append(f"{where}: terms_status 'identified' needs a named licence in license_name")
+        if not reference:
+            issues.append(f"{where}: terms_status 'identified' needs terms_reference pointing at the terms")
+    else:
+        if not isinstance(reference, str) and reference is not None:
+            issues.append(f"{where}: terms_reference must be a string or null for not-established terms")
+        if reference is None and "no terms" not in str(obj.get("terms_note", "")).lower():
+            issues.append(
+                f"{where}: terms_reference is null, so terms_note must state explicitly that no terms "
+                "source could be found"
+            )
     if value == "redistributable":
+        if terms != "identified":
+            issues.append(
+                f"{where}: redistribution is 'redistributable' but the terms are not identified; "
+                "nothing may be redistributed on an assumption"
+            )
         if not obj.get("license_name"):
             issues.append(
                 f"{where}: license.redistribution is 'redistributable' but license_name is missing; "
                 "a redistributed asset needs a named licence, not an assumption"
             )
-        if not obj.get("license_reference"):
-            issues.append(f"{where}: redistributable asset needs license_reference")
-    if value == "download-on-demand-only" and not obj.get("license_reference"):
-        issues.append(
-            f"{where}: download-on-demand-only assets must record where the upstream terms "
-            "are stated (license_reference)"
-        )
     if obj.get("contains_personal_media"):
         issues.append(f"{where}: personal recordings must never enter the corpus")
 
@@ -233,9 +265,11 @@ def validate_schema(manifest: dict) -> list[str]:
     if not isinstance(policy, dict):
         issues.append("policy must be an object")
     else:
-        _require_keys(policy, ["redistribution_values", "asset_classes", "coverage_vocabulary", "hash_pinning", "redaction"], "policy", issues)
+        _require_keys(policy, ["redistribution_values", "terms_status_values", "asset_classes", "coverage_vocabulary", "hash_pinning", "redaction"], "policy", issues)
         if policy.get("redistribution_values") != REDISTRIBUTION_VALUES:
             issues.append("policy.redistribution_values must match the tool's redistribution vocabulary")
+        if policy.get("terms_status_values") != TERMS_STATUS_VALUES:
+            issues.append("policy.terms_status_values must match the tool's terms vocabulary")
         if policy.get("asset_classes") != ASSET_CLASSES:
             issues.append("policy.asset_classes must match the tool's asset class vocabulary")
         if policy.get("coverage_vocabulary") != COVERAGE_VALUES:
@@ -377,8 +411,31 @@ def validate_schema(manifest: dict) -> list[str]:
         if not isinstance(entry, dict):
             issues.append(f"{where}: must be an object")
             continue
-        _require_keys(entry, ["id", "kind", "codec", "producer", "command", "frames", "checksum_policy", "determinism", "covers", "license", "tools"], where, issues)
+        _require_keys(entry, ["id", "kind", "codec", "producer", "reproduction", "frames", "checksum_policy", "determinism", "covers", "license", "tools"], where, issues)
         _require_keys(entry, ["r11_part", "r11_frames"], where, issues)
+        reproduction = entry.get("reproduction")
+        if not isinstance(reproduction, dict):
+            issues.append(f"{where}: reproduction must be an object describing the producer script and its invocation")
+        else:
+            _require_keys(reproduction, ["producer", "invocation", "description"], where + ".reproduction", issues)
+            producer = reproduction.get("producer")
+            invocation = reproduction.get("invocation")
+            description = reproduction.get("description")
+            if not isinstance(description, str) or not description.strip():
+                issues.append(f"{where}: reproduction.description must explain what the producer generates")
+            if isinstance(producer, str) and producer:
+                if not (ROOT / producer).is_file():
+                    issues.append(
+                        f"{where}: reproduction.producer {producer!r} is not a file in this repository; "
+                        "a reproduction path must point at the checked-in script that generates the input"
+                    )
+                if entry.get("producer") and entry.get("producer") != producer:
+                    issues.append(f"{where}: producer and reproduction.producer disagree")
+                if isinstance(invocation, str) and producer not in invocation:
+                    issues.append(
+                        f"{where}: reproduction.invocation must be the executable command for {producer} "
+                        "(it does not reference it)"
+                    )
         if entry.get("kind") != "generated":
             issues.append(f"{where}: kind must be 'generated'")
         if entry.get("checksum_policy") not in CHECKSUM_POLICIES:
@@ -962,6 +1019,64 @@ def verify_cache(
                 issues.append(
                     f"size mismatch for {ref}: expected {asset['bytes']} bytes, found {record['bytes']}"
                 )
+
+    # ``--require all`` means the whole corpus, not the small set of assets with a recorded
+    # SHA-256. Without this pass a smoke-only cache would satisfy it, which is exactly the
+    # difference between "the smoke subset is present" and "the suite is present".
+    if require == "all":
+        if fluster_dir is None:
+            issues.append(
+                "--require all needs --fluster: vector names come from the pinned suite definitions, "
+                "which are the only source of the full vector list"
+            )
+        else:
+            for suite in manifest["suites"]:
+                index = SuiteIndex(suite, fluster_dir)
+                missing = []
+                for vector in sorted(index.by_name):
+                    path = cache / suite["suite_name"] / vector / index.by_name[vector]["input_file"]
+                    if not path.is_file():
+                        missing.append(vector)
+                if missing:
+                    issues.append(
+                        f"suite {suite['id']}: {len(missing)} of {len(index.by_name)} vectors are missing "
+                        f"from {cache / suite['suite_name']} (first: {', '.join(missing[:3])})\n"
+                        f"        run: python3 tests/corpus.py fetch --fluster DIR --cache {cache} "
+                        f"--suite {suite['id']}"
+                    )
+
+    # Assets acquired but not yet pinned in the manifest still have an identity in the local
+    # acquisition lock. Checking them here means a tampered file is caught before anyone records
+    # a hash as an expectation, including for suite-wide acquisitions.
+    suite_by_id = {suite["id"]: suite for suite in manifest["suites"]}
+    pinned = pinned_refs(manifest)
+    for ref, record in sorted(lock.items()):
+        if ref in pinned:
+            continue
+        match = ASSET_REF_RE.match(ref)
+        if not match:
+            continue
+        suite_id, vector = match.group("suite"), match.group("vector")
+        suite = suite_by_id.get(suite_id)
+        if suite is None:
+            issues.append(f"lock entry {ref} refers to a suite that is not in the manifest")
+            continue
+        target = cache / suite["suite_name"] / vector / str(record.get("file", ""))
+        if not target.is_file():
+            continue
+        actual = describe_asset(target)
+        if record.get("asset_sha256") and actual["sha256"] != record["asset_sha256"]:
+            issues.append(
+                f"hash mismatch against the local acquisition lock for {ref}: {target}\n"
+                f"        lock sha256 {record['asset_sha256']}\n"
+                f"        actual      sha256 {actual['sha256']}\n"
+                "        Re-acquire the asset (delete it) and re-check before pinning anything."
+            )
+        elif record.get("bytes") is not None and actual["bytes"] != record["bytes"]:
+            issues.append(
+                f"size mismatch against the local acquisition lock for {ref}: "
+                f"expected {record['bytes']} bytes, found {actual['bytes']}"
+            )
     return issues
 
 
@@ -1036,19 +1151,41 @@ def parse_asset_ref(ref: str) -> tuple[str, str]:
     return match.group("suite"), match.group("vector")
 
 
-def select_assets(manifest: dict, args) -> list[tuple[dict, str]]:
+def select_assets(
+    manifest: dict,
+    args,
+    fluster_dir: Path | None = None,
+) -> list[tuple[dict, str]]:
+    """Resolve the requested selection to (suite, vector) pairs.
+
+    Selections that name a suite enumerate the **pinned suite definition**, not the small
+    set of assets the manifest happens to pin hashes for. Pinning a vector's SHA-256 is a
+    separate, deliberate step (see ``lock``); acquiring it is not gated on that.
+    """
     suites = {suite["id"]: suite for suite in manifest["suites"]}
     selected: list[tuple[dict, str]] = []
+    needs_definition = bool(args.all or args.suite or args.vector)
+    if needs_definition and fluster_dir is None:
+        raise CorpusError(
+            "--fluster is required to enumerate suite vectors: vector names come from the pinned "
+            "suite definition, not from the manifest"
+        )
+    indexes: dict[str, SuiteIndex] = {}
+
+    def vectors_of(suite: dict) -> list[str]:
+        index = indexes.setdefault(suite["id"], SuiteIndex(suite, fluster_dir))
+        return sorted(index.by_name)
+
     if args.vector:
         for ref in args.vector:
             suite_id, vector = parse_asset_ref(ref)
             if suite_id not in suites:
                 raise CorpusError(f"unknown suite {suite_id!r}; known suites: {sorted(suites)}")
             suite = suites[suite_id]
-            if vector not in (suite.get("assets") or {}):
+            if vector not in vectors_of(suite):
                 raise CorpusError(
-                    f"{ref} is not pinned in the manifest. Fetching an unpinned vector is allowed with "
-                    f"--suite {suite_id} + --record, which reports the hash for review instead of assuming it."
+                    f"{ref} is not in the pinned suite definition; check the vector name against "
+                    f"{suite['suite_file']} in the pinned Fluster commit"
                 )
             selected.append((suite, vector))
     elif args.suite:
@@ -1056,8 +1193,7 @@ def select_assets(manifest: dict, args) -> list[tuple[dict, str]]:
             if suite_id not in suites:
                 raise CorpusError(f"unknown suite {suite_id!r}; known suites: {sorted(suites)}")
             suite = suites[suite_id]
-            for vector in sorted(suite.get("assets") or {}):
-                selected.append((suite, vector))
+            selected.extend((suite, vector) for vector in vectors_of(suite))
     elif args.smoke:
         for ref in manifest["smoke"]["entries"]:
             match = ASSET_REF_RE.match(ref)
@@ -1068,17 +1204,48 @@ def select_assets(manifest: dict, args) -> list[tuple[dict, str]]:
             if suite_id in suites:
                 selected.append((suites[suite_id], vector))
     elif args.all:
-        if not args.confirm_large_corpus:
+        if not args.confirm_large_corpus and not args.dry_run:
             raise CorpusError(
-                "--all downloads the entire corpus (gigabytes) and will not run without "
-                "--confirm-large-corpus. Smoke-covered work should use --smoke."
+                "--all downloads the entire corpus (multiple gigabytes) and will not run without "
+                "--confirm-large-corpus. Smoke-covered work should use --smoke; use --dry-run to "
+                "see the selection first."
             )
         for suite in manifest["suites"]:
-            for vector in (suite.get("assets") or {}):
-                selected.append((suite, vector))
+            selected.extend((suite, vector) for vector in vectors_of(suite))
     else:
         raise CorpusError("select assets with --smoke, --suite, --vector or --all")
     return selected
+
+
+def pinned_refs(manifest: dict) -> set[str]:
+    """Asset references with a recorded SHA-256.
+
+    An asset block without a hash is a placeholder for a reviewed pin, not a pin: the
+    distinction matters when reporting how much of a selection is hash-verified.
+    """
+    return {
+        f"{suite['id']}#{vector}"
+        for suite in manifest["suites"]
+        for vector, asset in (suite.get("assets") or {}).items()
+        if asset.get("asset_sha256")
+    }
+
+
+def print_selection_plan(selected: list[tuple[dict, str]], manifest: dict) -> None:
+    pinned = pinned_refs(manifest)
+    per_suite: dict[str, int] = {}
+    for suite, _vector in selected:
+        per_suite[suite["id"]] = per_suite.get(suite["id"], 0) + 1
+    print(f"selection: {len(selected)} vector(s) across {len(per_suite)} suite(s)")
+    for suite_id, count in sorted(per_suite.items()):
+        declared = next(s["vector_count"] for s in manifest["suites"] if s["id"] == suite_id)
+        note = "" if count == declared else f" (suite declares {declared})"
+        print(f"  {suite_id}: {count}{note}")
+    unpinned = [ref for ref in (f"{s['id']}#{v}" for s, v in selected) if ref not in pinned]
+    print(
+        f"  pinned assets with a recorded SHA-256: {len(selected) - len(unpinned)}; "
+        f"unpinned (hash reported by lock, upstream MD5 still verified on acquisition): {len(unpinned)}"
+    )
 
 
 def cmd_validate(args) -> int:
@@ -1088,18 +1255,20 @@ def cmd_validate(args) -> int:
         pass_sets = load_json(args.pass_sets, "r11 pass sets")
     else:
         pass_sets = {}
-    if args.fluster:
-        fluster = Path(args.fluster)
+    fluster = Path(args.fluster) if args.fluster else None
+    if fluster is not None:
         if not fluster.is_dir():
             issues.append(f"--fluster directory does not exist: {fluster}")
+            fluster = None
         else:
             try:
                 issues.extend(cross_check(manifest, fluster, pass_sets))
             except CorpusError as error:
                 issues.append(str(error))
     else:
-        print("note: --fluster was not given, so pinned suite digests, failure classifications and "
-              "pass/fail completeness were not checked (run with a pinned Fluster checkout in CI).")
+        print("note: --fluster was not given, so pinned suite digests, failure classifications, "
+              "pass/fail completeness and the full-corpus selection were not checked (run with a "
+              "pinned Fluster checkout in CI).")
     for issue in issues:
         print(f"FAIL: {issue}", file=sys.stderr)
     if issues:
@@ -1112,9 +1281,34 @@ def cmd_validate(args) -> int:
         for vector, asset in (suite.get("assets") or {}).items()
         if f"{suite['id']}#{vector}" in manifest["smoke"]["entries"]
     )
+    declared_total = sum(suite["vector_count"] for suite in manifest["suites"])
+    if fluster is not None:
+        # Regression for a real defect: --all used to enumerate only the handful of assets the
+        # manifest pins hashes for. The full-corpus selection must match the declared vectors.
+        try:
+            plan = select_assets(
+                manifest,
+                argparse.Namespace(vector=None, suite=None, smoke=False, all=True,
+                                   confirm_large_corpus=True, dry_run=True),
+                fluster,
+            )
+        except CorpusError as error:
+            plan = []
+            issues.append(f"full-corpus selection failed: {error}")
+        if len(plan) != declared_total:
+            issues.append(
+                f"full-corpus selection resolves {len(plan)} vectors but the suites declare "
+                f"{declared_total}; `fetch --all` would not acquire the documented corpus"
+            )
+        if issues:
+            for issue in issues:
+                print(f"FAIL: {issue}", file=sys.stderr)
+            print(f"\n{len(issues)} problem(s); the manifest is not usable as written.", file=sys.stderr)
+            return 1
+        print_selection_plan(plan, manifest)
     print(
         f"manifest OK: {len(manifest['suites'])} suites, "
-        f"{sum(suite['vector_count'] for suite in manifest['suites'])} upstream vectors, "
+        f"{declared_total} upstream vectors, "
         f"{len(manifest['known_issues'])} documented failure classes, "
         f"{vectors} pinned assets ({smoke_bytes} smoke bytes of "
         f"{manifest['smoke']['max_bytes']} allowed), "
@@ -1168,18 +1362,31 @@ def cmd_fetch(args) -> int:
             print(f"FAIL: {issue}", file=sys.stderr)
         return 1
     cache = Path(args.cache)
-    selected = select_assets(manifest, args)
+    selected = select_assets(manifest, args, fluster)
+    if args.dry_run:
+        print_selection_plan(selected, manifest)
+        print("dry run: nothing acquired, no cache or network access.")
+        return 0
     indexes: dict[str, SuiteIndex] = {}
     fetched = 0
     cached = 0
     downloaded_bytes = 0
+    skipped: list[str] = []
     for suite, vector in selected:
         index = indexes.setdefault(suite["id"], SuiteIndex(suite, fluster))
         try:
             record = acquire(cache, index, vector, mirror=args.mirror, offline=args.offline)
         except CorpusError as error:
-            print(f"FAIL: {error}", file=sys.stderr)
-            return 1
+            # A single unreachable distributor must not hide the assets that were acquired;
+            # failures are reported, capped so a large selection stays readable, and the exit
+            # status stays non-zero.
+            if len(skipped) < 5:
+                print(f"FAIL: {error}", file=sys.stderr)
+            elif len(skipped) == 5:
+                print("FAIL: further failures suppressed; each is reported when its vector is "
+                      "selected individually with --vector", file=sys.stderr)
+            skipped.append(f"{suite['id']}#{vector}")
+            continue
         pinned = (suite.get("assets") or {}).get(vector, {}).get("asset_sha256")
         state = "pinned" if pinned else "unpinned (hash reported, not recorded in the manifest)"
         print(f"{record['action']:8} {suite['id']}#{vector} sha256={record['sha256'][:16]}… {state}")
@@ -1187,14 +1394,20 @@ def cmd_fetch(args) -> int:
         cached += record["action"] == "cached"
         downloaded_bytes += record.get("download_bytes", 0)
     print(
-        f"\n{fetched} fetched, {cached} already cached under {cache}; "
+        f"\n{fetched} fetched, {cached} already cached, {len(skipped)} failed under {cache}; "
         f"downloaded {downloaded_bytes} bytes of upstream files (excluding the pinned Fluster checkout)"
     )
+    if fetched:
+        written = write_lock(cache, manifest, fluster, cache / "corpus-lock.json")
+        print(
+            f"recorded {len(written['assets'])} asset identit(ies) in {cache / 'corpus-lock.json'} "
+            "(evidence for verify; the manifest is never edited)"
+        )
     print("The cache keeps the Fluster layout, so it can be passed to tests/conformance.py as --resources.")
     if any(not (suite.get("assets") or {}).get(vector, {}).get("asset_sha256") for suite, vector in selected):
-        print("Some assets are unpinned: run `corpus.py lock` and have a reviewer record the hashes "
-              "in tests/corpus/manifest.json (never automatically).")
-    return 0
+        print("Some selected vectors are unpinned: run `corpus.py lock` and have a reviewer record the "
+              "hashes in tests/corpus/manifest.json (never automatically).")
+    return 1 if skipped else 0
 
 
 def cmd_lock(args) -> int:
@@ -1292,6 +1505,51 @@ def self_test(fixtures: Path) -> int:
     else:
         print("PASS: classifications and pass sets agree with the pinned suite")
 
+    # Selection regression: a suite-wide command must enumerate the pinned suite definition, not
+    # the handful of assets the manifest happens to pin hashes for (one asset in this fixture).
+    def stub_args(**kwargs):
+        base = {"vector": None, "suite": None, "smoke": False, "all": False,
+                "confirm_large_corpus": False, "dry_run": True}
+        base.update(kwargs)
+        return argparse.Namespace(**base)
+
+    vector_count = len(json.loads((fluster / manifest["suites"][0]["suite_file"]).read_text())["test_vectors"])
+    pinned_count = len(pinned_refs(manifest))
+    if pinned_count >= vector_count:
+        failures.append("fixture is not exercising the selection bug: every vector has a recorded hash")
+        print("FAIL: fixture selection preconditions")
+        pinned_count = vector_count
+    try:
+        all_selection = select_assets(manifest, stub_args(all=True, confirm_large_corpus=True), fluster)
+        suite_selection = select_assets(manifest, stub_args(suite=[manifest["suites"][0]["id"]]), fluster)
+        suite_id = manifest["suites"][0]["id"]
+        hash_pinned = {
+            ref.split("#", 1)[1] for ref in pinned_refs(manifest) if ref.startswith(suite_id + "#")
+        }
+        unpinned_vector = sorted({vector for _suite, vector in all_selection} - hash_pinned)[0]
+        single = select_assets(
+            manifest,
+            stub_args(vector=[f"{manifest['suites'][0]['id']}#{unpinned_vector}"]),
+            fluster,
+        )
+    except CorpusError as error:
+        failures.append(f"selection failed: {error}")
+        print("FAIL: selection")
+        all_selection = suite_selection = single = []
+    if len(all_selection) != vector_count or len(suite_selection) != vector_count:
+        failures.append(
+            f"suite-wide selection resolves {len(all_selection)}/{len(suite_selection)} vectors, "
+            f"the pinned definition declares {vector_count}"
+        )
+        print("FAIL: suite-wide selection enumerates pinned assets instead of the suite")
+    else:
+        print(f"PASS: --suite/--all enumerate the pinned definition ({vector_count} vectors, {pinned_count} pinned)")
+    if len(single) != 1:
+        failures.append("an unpinned vector cannot be selected explicitly")
+        print("FAIL: unpinned --vector selection")
+    else:
+        print("PASS: an unpinned vector can be selected explicitly and is reported, not silently pinned")
+
     _expect_failure(
         "suite digest drift is detected",
         "suite definition changed",
@@ -1366,6 +1624,66 @@ def self_test(fixtures: Path) -> int:
         lambda: validate_schema(_mutate(manifest, ["suites", 0, "acquisition", "tool"], "sh /Users/someone/run.sh")),
         failures,
     )
+    _expect_failure(
+        "declaring a licence without naming it is rejected",
+        "needs a named licence",
+        lambda: validate_schema(
+            _mutate(
+                manifest,
+                ["suites", 0, "license"],
+                {**manifest["suites"][0]["license"], "terms_status": "identified", "license_name": None},
+            )
+        ),
+        failures,
+    )
+    _expect_failure(
+        "redistributing on unidentified terms is rejected",
+        "not identified",
+        lambda: validate_schema(
+            _mutate(
+                manifest,
+                ["suites", 0, "license"],
+                {**manifest["suites"][0]["license"], "redistribution": "redistributable"},
+            )
+        ),
+        failures,
+    )
+    _expect_failure(
+        "a licence field that is only a title is no longer enough",
+        "describe what was checked",
+        lambda: validate_schema(
+            _mutate(
+                manifest,
+                ["suites", 0, "license"],
+                {**manifest["suites"][0]["license"], "terms_note": ""},
+            )
+        ),
+        failures,
+    )
+    _expect_failure(
+        "a reproduction path must point at a checked-in producer script",
+        "is not a file in this repository",
+        lambda: validate_schema(
+            _mutate(
+                manifest,
+                ["generated", 0, "reproduction"],
+                {**manifest["generated"][0]["reproduction"], "producer": "tests/does-not-exist.sh"},
+            )
+        ),
+        failures,
+    )
+    _expect_failure(
+        "an invocation that does not run the producer is rejected",
+        "does not reference it",
+        lambda: validate_schema(
+            _mutate(
+                manifest,
+                ["generated", 0, "reproduction"],
+                {**manifest["generated"][0]["reproduction"], "invocation": "make all"},
+            )
+        ),
+        failures,
+    )
 
     with tempfile.TemporaryDirectory() as tmp:
         cache = Path(tmp)
@@ -1434,7 +1752,30 @@ def self_test(fixtures: Path) -> int:
             failures,
         )
 
-        lock = write_lock(cache, manifest, fluster, None)
+        unpinned = next(
+            vector
+            for vector in sorted(index.by_name)
+            if not (manifest["suites"][0]["assets"] or {}).get(vector, {}).get("asset_sha256")
+        )
+        acquire(cache, index, unpinned, mirror=str(mirror))
+        lock = write_lock(cache, manifest, fluster, cache / "corpus-lock.json")
+        lock_ref = f"{manifest['suites'][0]['id']}#{unpinned}"
+        if lock_ref not in lock["assets"]:
+            failures.append(f"an unpinned acquired asset is missing from the lock: {lock_ref}")
+            print("FAIL: lock coverage for unpinned assets")
+        else:
+            print("PASS: the lock records an unpinned asset that the manifest does not pin")
+        unpinned_path = asset_path(cache, index, unpinned)
+        unpinned_original = unpinned_path.read_bytes()
+        unpinned_path.write_bytes(unpinned_original + b"tampered")
+        _expect_failure(
+            "a tampered unpinned asset is caught by the acquisition lock",
+            "hash mismatch against the local acquisition lock",
+            lambda: verify_cache(manifest, cache, fluster, "none"),
+            failures,
+        )
+        unpinned_path.write_bytes(unpinned_original)
+
         ref = f"{manifest['suites'][0]['id']}#{vector}"
         if lock["assets"].get(ref, {}).get("asset_sha256") != manifest["suites"][0]["assets"][vector]["asset_sha256"]:
             failures.append("lock output does not match the independently computed hash")
@@ -1479,8 +1820,9 @@ def build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--smoke", action="store_true", help="fetch only the bounded smoke subset")
     fetch.add_argument("--suite", action="append", help="fetch every pinned asset of this suite id")
     fetch.add_argument("--vector", action="append", help="fetch one '<suite id>#<vector>' asset")
-    fetch.add_argument("--all", action="store_true", help="fetch every pinned asset (requires --confirm-large-corpus)")
+    fetch.add_argument("--all", action="store_true", help="fetch every vector of every suite (requires --confirm-large-corpus)")
     fetch.add_argument("--confirm-large-corpus", action="store_true", help="acknowledge the full-corpus download")
+    fetch.add_argument("--dry-run", action="store_true", help="print the selection plan without acquiring anything")
     fetch.add_argument("--offline", action="store_true", help="refuse network access; only accept cached assets")
     fetch.set_defaults(func=cmd_fetch)
 

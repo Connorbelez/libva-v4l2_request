@@ -84,10 +84,19 @@ python3 tests/corpus.py fetch  --fluster /path/to/fluster --smoke             # 
 python3 tests/corpus.py verify --fluster /path/to/fluster --require smoke     # offline, needs no network
 ```
 
-`fetch` refuses to pull the whole corpus without `--all --confirm-large-corpus`, so a script
-cannot turn the smoke subset into a multi-gigabyte download by accident. A hash becomes an
-expectation only when a reviewer records it in the manifest; `corpus.py lock` reports the
-SHA-256 of acquired assets instead of editing anything.
+A suite-wide selection enumerates the **pinned suite definition**, not the manifest's pinned
+assets: `fetch --suite ID` takes every vector of that suite, `--all` takes all 662 (and refuses
+without `--confirm-large-corpus`), and `--dry-run` prints the plan while acquiring nothing. The
+same choice appears in `verify`: `--require smoke` checks the smoke subset, `--require all`
+checks the whole corpus. Pinning a vector's SHA-256 is a separate, reviewed step — `fetch` writes
+the identities it acquires to `<cache>/corpus-lock.json`, `verify` checks anything in that lock,
+and `corpus.py lock` reports hashes for review instead of editing the manifest.
+
+Licence decisions are recorded with the evidence behind them: each entry states whether usable
+terms were `identified` or `not-established`, where they were checked and what that implies. For
+the official vectors the honest answer is `not-established` (the ITU notice grants no
+reproduction right; the WebM test-data directory has no licence file), so nothing is
+redistributed and the vectors stay download-on-demand.
 
 The manifest also records **why** each r11 failure is expected
 (`unimplemented-syntax`, `requires-profile-override`, `unsupported-hardware-format`,

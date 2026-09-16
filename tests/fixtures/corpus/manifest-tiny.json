@@ -43,9 +43,14 @@
     "hash_pinning": {
       "corpus_identity": "sha256",
       "upstream_checksum": "md5 (source_checksum from the pinned suite, used only to detect a changed upstream file)",
-      "rule": "A hash becomes an expectation only when a reviewer records it in the manifest; corpus.py never edits the manifest."
+      "rule": "A hash becomes an expectation only when a reviewer records it in the manifest; corpus.py never edits the manifest.",
+      "licence_rule": "terms_status distinguishes an identified licence from not-established terms."
     },
-    "redaction": "Publishable manifests and logs carry no personal paths, media, tokens, process arguments or core dumps."
+    "redaction": "Publishable manifests and logs carry no personal paths, media, tokens, process arguments or core dumps.",
+    "terms_status_values": [
+      "identified",
+      "not-established"
+    ]
   },
   "upstreams": {
     "fluster": {
@@ -75,8 +80,12 @@
       },
       "license": {
         "redistribution": "download-on-demand-only",
+        "terms_status": "not-established",
+        "terms_reference": null,
+        "terms_checked": "2026-09-16",
+        "terms_note": "Self-test fixture: no terms source could be found for the placeholder files, so no terms are established.",
+        "license_name": null,
         "basis": "Placeholder fixtures written by this repository for the self-test.",
-        "license_reference": "tests/fixtures/corpus/manifest-tiny.json",
         "notes": "Not real media and not part of any conformance claim."
       },
       "assets": {
@@ -183,7 +192,6 @@
       "kind": "generated",
       "codec": "h264",
       "producer": "tests/frame-check.sh",
-      "command": "head -c 12 clip.h264 > truncated.h264",
       "frames": null,
       "checksum_policy": "derived-at-runtime",
       "expected_asset_hashes_committed": false,
@@ -199,8 +207,12 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "derived from a synthetic lavfi clip",
-        "license_reference": "tests/frame-check.sh",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "Produced locally by the repository's own script; the repository licence applies.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Derived from a synthetic lavfi clip grown by tests/frame-check.sh.",
         "notes": "Corrupt by construction; must be rejected."
       },
       "tools": [
@@ -210,7 +222,12 @@
         }
       ],
       "r11_part": null,
-      "r11_frames": null
+      "r11_frames": null,
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "First 12 bytes of the concatenated clip used as corrupt input."
+      }
     }
   ],
   "smoke": {

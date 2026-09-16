@@ -44,9 +44,14 @@
       "corpus_identity": "sha256 of the extracted input file consumed by tests/conformance.py",
       "upstream_checksum": "md5 (source_checksum) of the upstream download, taken from the pinned suite file and verified before an asset is accepted; the pinned suite digest makes that value itself tamper-evident",
       "suite_definition": "sha256 of the pinned Fluster suite file; a changed definition invalidates names, checksums and totals",
-      "rule": "A hash becomes an expectation only when a reviewer records it here. tests/corpus.py lock reports hashes and never edits this file."
+      "rule": "A hash becomes an expectation only when a reviewer records it here. tests/corpus.py lock reports hashes and never edits this file.",
+      "licence_rule": "Each entry states whether usable terms were identified or not established (terms_status), where terms were checked (terms_reference, terms_checked) and what that implies. Nothing may be redistributed without an identified licence; 'not established' is recorded explicitly instead of inferred."
     },
-    "redaction": "Publishable manifests, logs and lock files carry no personal paths, media, tokens, process arguments or extracted core dumps."
+    "redaction": "Publishable manifests, logs and lock files carry no personal paths, media, tokens, process arguments or extracted core dumps.",
+    "terms_status_values": [
+      "identified",
+      "not-established"
+    ]
   },
   "upstreams": {
     "fluster": {
@@ -76,9 +81,13 @@
       },
       "license": {
         "redistribution": "download-on-demand-only",
-        "basis": "Vectors stay with their upstream distributor; this repository commits only acquisition metadata, checksums and classifications.",
-        "license_reference": "JCT-VC HEVC version 1",
-        "notes": "ITU/JCT-VC draft conformance bitstreams. Some hosts are blocked by the distributor's request filtering; see known_gaps."
+        "terms_status": "not-established",
+        "terms_reference": "https://www.itu.int/en/Pages/copyright.aspx",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors are distributed from the ITU wftp3 working file area with no per-file terms page. ITU's Disclaimer and Copyright notice (terms_reference) states that permission to reproduce ITU materials should be requested from jur@itu.int and that third-party copyrights must be respected; it grants no redistribution right. Reproduction of the bitstreams is therefore not established, and the resulting decision is download-on-demand-only, local testing, no redistribution. Fluster's own documentation states terms only for the tool (LGPL-3.0), not for the resources.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Usage terms are not established for the ITU/JCT-VC and JVT bitstreams, which is recorded rather than implied."
       },
       "r11_expected": {
         "passed": 144,
@@ -142,9 +151,13 @@
       },
       "license": {
         "redistribution": "download-on-demand-only",
-        "basis": "Vectors stay with their upstream distributor; this repository commits only acquisition metadata, checksums and classifications.",
-        "license_reference": "JVT Advanced Video Coding v1 test suite",
-        "notes": "ITU/JVT draft conformance bitstreams. Some hosts are blocked by the distributor's request filtering; see known_gaps."
+        "terms_status": "not-established",
+        "terms_reference": "https://www.itu.int/en/Pages/copyright.aspx",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors are distributed from the ITU wftp3 working file area with no per-file terms page. ITU's Disclaimer and Copyright notice (terms_reference) states that permission to reproduce ITU materials should be requested from jur@itu.int and that third-party copyrights must be respected; it grants no redistribution right. Reproduction of the bitstreams is therefore not established, and the resulting decision is download-on-demand-only, local testing, no redistribution. Fluster's own documentation states terms only for the tool (LGPL-3.0), not for the resources.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Usage terms are not established for the ITU/JCT-VC and JVT bitstreams, which is recorded rather than implied."
       },
       "r11_expected": {
         "passed": 73,
@@ -201,9 +214,13 @@
       },
       "license": {
         "redistribution": "download-on-demand-only",
-        "basis": "Vectors stay with their upstream distributor; this repository commits only acquisition metadata, checksums and classifications.",
-        "license_reference": "JVT Fidelity Range Extension test suite",
-        "notes": "Fidelity-range extensions: High 10 is opt-in, 4:2:2/4:4:4 remain outside the tested hardware formats."
+        "terms_status": "not-established",
+        "terms_reference": "https://www.itu.int/en/Pages/copyright.aspx",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors are distributed from the ITU wftp3 working file area with no per-file terms page. ITU's Disclaimer and Copyright notice (terms_reference) states that permission to reproduce ITU materials should be requested from jur@itu.int and that third-party copyrights must be respected; it grants no redistribution right. Reproduction of the bitstreams is therefore not established, and the resulting decision is download-on-demand-only, local testing, no redistribution. Fluster's own documentation states terms only for the tool (LGPL-3.0), not for the resources.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Usage terms are not established for the ITU/JCT-VC and JVT bitstreams, which is recorded rather than implied."
       },
       "r11_expected": {
         "passed": 27,
@@ -242,9 +259,13 @@
       },
       "license": {
         "redistribution": "download-on-demand-only",
-        "basis": "Vectors stay with their upstream distributor; this repository commits only acquisition metadata, checksums and classifications.",
-        "license_reference": "VP9 Test Vector Catalogue from https://storage.googleapis.com/downloads.webmproject.org/test_data/libvpx/",
-        "notes": "WebM project test data, fetched from the distributor named in each vector's source URL."
+        "terms_status": "not-established",
+        "terms_reference": "https://www.webmproject.org/license/",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors come from the WebM project test-data bucket named in each vector source. The bucket's test_data/libvpx/ directory carries no LICENSE file (checked 2026-09-16: 404), and the WebM project licence page (terms_reference) states terms for the project's software and format, not for this test data. No usable per-file terms could be found, so the decision is download-on-demand-only, local testing, no redistribution.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Terms not established; recorded explicitly instead of inferred from the catalogue description."
       },
       "r11_expected": {
         "passed": 216,
@@ -308,9 +329,13 @@
       },
       "license": {
         "redistribution": "download-on-demand-only",
-        "basis": "Vectors stay with their upstream distributor; this repository commits only acquisition metadata, checksums and classifications.",
-        "license_reference": "VP9 High Bit Depth Test Vectors from https://storage.googleapis.com/downloads.webmproject.org/test_data/libvpx/",
-        "notes": "Six high-bit-depth vectors; r9 passed only the 10-bit 4:2:0 one, the rest are outside the tested hardware formats."
+        "terms_status": "not-established",
+        "terms_reference": "https://www.webmproject.org/license/",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors come from the WebM project test-data bucket named in each vector source. The bucket's test_data/libvpx/ directory carries no LICENSE file (checked 2026-09-16: 404), and the WebM project licence page (terms_reference) states terms for the project's software and format, not for this test data. No usable per-file terms could be found, so the decision is download-on-demand-only, local testing, no redistribution.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Terms not established; recorded explicitly instead of inferred from the catalogue description."
       },
       "r11_expected": {
         "passed": 1,
@@ -790,7 +815,6 @@
       "kind": "generated",
       "codec": "h264",
       "producer": "tests/frame-check.sh",
-      "command": "ffmpeg -f lavfi -i testsrc2=size=64x48:rate=1 -frames:v 2 -c:v libx264 -preset ultrafast -f h264 64x48.h264; repeat at 128x96; cat 64x48.h264 128x96.h264 > change.h264",
       "frames": 4,
       "checksum_policy": "compare-to-software-output",
       "expected_asset_hashes_committed": false,
@@ -809,23 +833,31 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "generated from lavfi synthetic sources; no third-party media is copied",
-        "license_reference": "tests/frame-check.sh",
-        "notes": "Native-size hashing across a mid-stream resolution change; both sizes must appear in the frame log."
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
       },
       "tools": [
         {
           "name": "ffmpeg",
           "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
         }
-      ]
+      ],
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "Two 2-frame libx264 clips (64x48 and 128x96, testsrc2 rate=1, preset ultrafast) concatenated into one stream, using the script's `cat` step; the frame log must show both native sizes."
+      }
     },
     {
       "id": "generated/frame-check-crop",
       "kind": "generated",
       "codec": "h264",
       "producer": "tests/frame-check.sh",
-      "command": "ffmpeg -i 64x48.h264 -c copy -bsf:v h264_metadata=crop_left=2:crop_right=2:crop_top=2:crop_bottom=2 crop.h264",
       "frames": 2,
       "checksum_policy": "compare-to-software-output",
       "expected_asset_hashes_committed": false,
@@ -843,23 +875,31 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "generated from lavfi synthetic sources; no third-party media is copied",
-        "license_reference": "tests/frame-check.sh",
-        "notes": "Cropped 60x44 output; the reference is an explicit pixel crop of the uncropped clip, not a metadata-cropped decode."
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
       },
       "tools": [
         {
           "name": "ffmpeg",
           "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
         }
-      ]
+      ],
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "The same 64x48 clip copied with the h264_metadata bitstream filter cropping 2 pixels on every side (crop_left/right/top/bottom=2), expected as 60x44; the reference is an explicit pixel crop of the uncropped clip, not a metadata-cropped decode."
+      }
     },
     {
       "id": "generated/frame-check-truncated",
       "kind": "generated",
       "codec": "h264",
       "producer": "tests/frame-check.sh",
-      "command": "head -c 12 change.h264 > truncated.h264",
       "frames": null,
       "checksum_policy": "derived-at-runtime",
       "expected_asset_hashes_committed": false,
@@ -877,23 +917,31 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "generated from lavfi synthetic sources; no third-party media is copied",
-        "license_reference": "tests/frame-check.sh",
-        "notes": "Corrupt fixture by construction: the run must fail without producing reference hashes. Corrupt fixture: expected to fail and never treated as reference output."
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Corrupt fixture: expected to fail and never treated as reference output."
       },
       "tools": [
         {
           "name": "ffmpeg",
           "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
         }
-      ]
+      ],
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "The first 12 bytes of the concatenated clip (`head -c 12`) used as corrupt input; the run must fail without producing reference hashes."
+      }
     },
     {
       "id": "generated/vp9-matrix",
       "kind": "generated",
       "codec": "vp9",
       "producer": "tests/vp9-matrix.sh",
-      "command": "8 clips: ffmpeg -f lavfi -i testsrc2=size=640x360:rate=30,scale=in_range=tv:out_range=$range,format=$fmt -frames:v 24 -c:v libvpx-vp9 -deadline good -cpu-used 5 -threads 2 -tile-columns 1 -tile-rows 1 -lag-in-frames 12 -auto-alt-ref 1 -g 12 -lossless $lossless -crf $quality -b:v 0 -color_range $range",
       "frames": 192,
       "checksum_policy": "compare-to-software-output",
       "expected_asset_hashes_committed": false,
@@ -916,23 +964,31 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "generated from lavfi synthetic sources; no third-party media is copied",
-        "license_reference": "tests/vp9-matrix.sh",
-        "notes": "8 clips x 24 frames; 384 hardware comparisons in the r11 record are normal plus early-export runs of the same 192 frames."
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
       },
       "tools": [
         {
           "name": "ffmpeg",
           "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
         }
-      ]
+      ],
+      "reproduction": {
+        "producer": "tests/vp9-matrix.sh",
+        "invocation": "python3 tests/hwguard.py -- sh tests/vp9-matrix.sh BUILD/src",
+        "description": "Eight 24-frame 640x360 clips: 8-bit/10-bit yuv420p x tv/pc range x lossy/lossless, encoded with libvpx-vp9 (-deadline good -cpu-used 5 -threads 2 -tile-columns 1 -tile-rows 1 -lag-in-frames 12 -auto-alt-ref 1 -g 12 -b:v 0), each decoded normally and with early export."
+      }
     },
     {
       "id": "generated/h264-high10",
       "kind": "generated",
       "codec": "h264-frext",
       "producer": "tests/h264-high10.sh",
-      "command": "6 clips: CABAC/CAVLC, QP 1/21/51, four slices, B pictures, cropped 640x360 output, encoded with a 10-bit libx264 build",
       "frames": 72,
       "checksum_policy": "compare-to-software-output",
       "expected_asset_hashes_committed": false,
@@ -953,23 +1009,31 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "generated from lavfi synthetic sources; no third-party media is copied",
-        "license_reference": "tests/h264-high10.sh",
-        "notes": "6 clips x 12 frames; 144 in the r11 record counts normal and export-before-decode runs. Requires the explicit FFmpeg compatibility mode (LIBVA_V4L2_H264_HIGH10=ffmpeg)."
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
       },
       "tools": [
         {
           "name": "ffmpeg",
           "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
         }
-      ]
+      ],
+      "reproduction": {
+        "producer": "tests/h264-high10.sh",
+        "invocation": "python3 tests/hwguard.py --deadline 180 -- sh tests/h264-high10.sh BUILD/src",
+        "description": "Six 12-frame 10-bit libx264 clips from a 10-bit-capable build: CABAC and CAVLC, QP 1/21/51, four slices, B pictures and a cropped 640x360 output, each decoded normally and with early export under LIBVA_V4L2_H264_HIGH10=ffmpeg."
+      }
     },
     {
       "id": "generated/shared-contexts",
       "kind": "generated",
       "codec": "h264+hevc+vp9",
       "producer": "tests/shared-contexts.sh",
-      "command": "4 clips of 24/36/48/60 frames interleaved on one VA display: H.264, HEVC and 8/10-bit VP9",
       "frames": 168,
       "checksum_policy": "compare-to-software-output",
       "expected_asset_hashes_committed": false,
@@ -990,23 +1054,31 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "generated from lavfi synthetic sources; no third-party media is copied",
-        "license_reference": "tests/shared-contexts.sh",
-        "notes": "168 frames counted twice in the r11 record (normal and early-export). Interleaves work in one thread; it does not measure concurrent API calls."
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
       },
       "tools": [
         {
           "name": "ffmpeg",
           "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
         }
-      ]
+      ],
+      "reproduction": {
+        "producer": "tests/shared-contexts.sh",
+        "invocation": "python3 tests/hwguard.py -- sh tests/shared-contexts.sh BUILD/src",
+        "description": "Four clips of 24/36/48/60 frames (H.264, HEVC, 8-bit and 10-bit VP9) interleaved on one VA display so earlier contexts are destroyed while later ones continue; 168 frames compared twice (normal and early export) for 336 comparisons."
+      }
     },
     {
       "id": "generated/hwdownload",
       "kind": "generated",
       "codec": "h264+hevc",
       "producer": "tests/hwdownload.sh",
-      "command": "H.264 640x360/1920x1080 and HEVC 640x360 clips, compared with software for the first 30 frames, with and without vaDeriveImage",
       "frames": 30,
       "checksum_policy": "compare-to-software-output",
       "expected_asset_hashes_committed": false,
@@ -1026,16 +1098,25 @@
       ],
       "license": {
         "redistribution": "generated-locally",
-        "basis": "generated from lavfi synthetic sources; no third-party media is copied",
-        "license_reference": "tests/hwdownload.sh",
-        "notes": "Requires FFmpeg development libraries and a decoder; software comparison only, no committed reference hash."
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
       },
       "tools": [
         {
           "name": "ffmpeg",
           "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
         }
-      ]
+      ],
+      "reproduction": {
+        "producer": "tests/hwdownload.sh",
+        "invocation": "python3 tests/hwguard.py --deadline 180 -- sh tests/hwdownload.sh BUILD/src [10-bit-clip]",
+        "description": "H.264 640x360 and 1920x1080 and HEVC 640x360 clips plus an optional 10-bit HEVC clip, compared with software for the first 30 frames both normally and with vaDeriveImage disabled; NV12 and P010 must match byte for byte."
+      }
     }
   ],
   "smoke": {
@@ -1127,7 +1208,9 @@
     "The r11 records store pass/fail per vector but not the reason. The classifications here are derived from the pinned suites plus the documented notes; they are re-checked on every validate run against the pass sets, and drift fails the check.",
     "On a macOS host the ITU (JVT/JCT-VC) archives were rejected by the distributor's request filtering, while the same URLs downloaded from an Ubuntu container. Contributors on macOS need a Linux environment or a mirror for those suites; the VP9 vectors downloaded from both.",
     "Generated matrices are compared against software output recomputed locally rather than against committed hashes, because encoder output depends on tool versions and thread counts. A tool change is therefore visible as a new software reference, not as a silent pass.",
-    "No hardware-qualification evidence is produced by this manifest: it describes acquisition and provenance, not decoding support. Hardware runs stay in tests/hwguard.py with an exclusive lease."
+    "No hardware-qualification evidence is produced by this manifest: it describes acquisition and provenance, not decoding support. Hardware runs stay in tests/hwguard.py with an exclusive lease.",
+    "Usage terms for the official vectors are recorded as not established: the ITU/JCT-VC and JVT bitstreams come from the ITU working file area whose copyright notice grants no reproduction right, and the WebM test-data directory carries no licence file. Nothing is redistributed here, and anyone redistributing them must settle terms with the distributor first.",
+    "Pinning a vector's SHA-256 is separate from acquiring it: `fetch --suite`/`--all` enumerate the pinned suite definition (see `fetch --dry-run`), while the manifest records hashes only for reviewed assets."
   ],
   "evidence": {
     "pass_set_file": "docs/r11-pass-sets.json",
