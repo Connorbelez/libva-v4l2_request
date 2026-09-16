@@ -1131,12 +1131,15 @@ next:
 		   "decoding %s via %s [%s] (media %s)",
 		   ctx->codec->name, decoder->video_path, decoder->card,
 		   decoder->media_path);
+	bool hold_capture = false;
+#ifdef V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF
+	hold_capture = ctx->output_capabilities & V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF;
+#endif
 	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_INFO,
 		   "context-capabilities", 0,
 		   "decoder %s: %ux%u, hold-capture %s, avd %s",
 		   decoder->card, picture_width, picture_height,
-		   (ctx->output_capabilities &
-		    V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF) ? "yes" : "no",
+		   hold_capture ? "yes" : "no",
 		   ctx->is_avd ? "yes" : "no");
 
 	for (unsigned int i = 0; i < V4L2R_OUTPUT_BUFFERS; i++) {

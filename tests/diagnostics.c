@@ -352,8 +352,12 @@ static void test_context_identity(void)
     VAConfigID config_id = v4l2r_handles_alloc(&drv.configs, sizeof(*config));
     config = V4L2R_CONFIG(&drv, config_id);
     config->profile = VAProfileMPEG2Main;
-    config->codec = v4l2r_codec_for_profile(VAProfileMPEG2Main);
-    assert(config->codec);
+    /* Context identity is independent of optional codec implementations.
+     * No decoder is present, so this fake codec never submits controls. */
+    static const struct v4l2r_codec identity_codec = {
+        .name = "test-codec", .pixelformat = v4l2_fourcc('T', 'E', 'S', 'T'),
+    };
+    config->codec = &identity_codec;
     buf = NULL;
     sink = open_memstream(&buf, &size);
     v4l2r_diag_configure(&(struct v4l2r_diag_options) {
@@ -371,7 +375,7 @@ static void test_context_identity(void)
         const char *ctxfield = strstr(line, "\"ctx\":");
         assert(ctxfield && sscanf(ctxfield, "\"ctx\":%u", &serials[i]) == 1);
         assert(strstr(line, "\"va_context\":\"0x02000001\"") &&
-               strstr(line, "\"codec\":\"mpeg2\""));
+               strstr(line, "\"codec\":\"test-codec\""));
         line = strchr(line, '\n');
     }
     assert(serials[0] && serials[1] && serials[0] != serials[1]);
@@ -566,7 +570,8 @@ static void emit_samples(void)
 
     c.diag_serial = v4l2r_diag_context_serial();
     snprintf(d.decoders[0].card, sizeof(d.decoders[0].card), "avd \"quoted\"");
-    d.decoders[0].pixelformats[0] = V4L2_PIX_FMT_H264_SLICE;
+    /* Synthetic schema input, also buildable without stateless H.264 UAPI. */
+    d.decoders[0].pixelformats[0] = v4l2_fourcc('S', '2', '6', '4');
     d.decoders[0].pixelformats[1] = 0x01020304;
     d.decoders[0].nb_pixelformats = 2;
     d.decoders[0].hevc_10bit = true;
