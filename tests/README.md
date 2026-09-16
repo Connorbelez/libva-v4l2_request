@@ -150,11 +150,11 @@ when the codec is compiled in):
 
 | Configuration | Codecs | Expected tests |
 | --- | --- | --- |
-| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 46 (full suite) |
-| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 39 (no hevc-parser, vp9-\*, image-bounds) |
-| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 34 (regression minus image-bounds, picture, python checks) |
-| all codecs disabled (any headers) | none | 35 on 6.8 headers (core plus image-bounds) |
-| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 42 (core plus codec tests of every compiled-in codec except vp9-\*) |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 53 (full suite) |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 46 (no hevc-parser, vp9-\*, image-bounds) |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 41 (regression minus image-bounds, picture, python checks) |
+| all codecs disabled (any headers) | none | 42 on 6.8 headers (core plus image-bounds) |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 49 (core plus codec tests of every compiled-in codec except vp9-\*) |
 
 `deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
 auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all
@@ -299,3 +299,12 @@ With r10's reference checks, both timeout-producing resize streams are rejected 
 without new kernel messages. Their decoding support remains open. The installer repository's
 [codec status](https://github.com/iconidentify/omarchy-m1-video/blob/main/docs/CODEC_STATUS.md)
 records release-package results and exact vector lists.
+
+
+`conformance-runner` exercises the actual runner with an intercepted frame-check
+process: downloaded `yuv420p` hashes are valid hardware results when the strict
+VAAPI helper succeeds, explicit fallback stays a failure, and an invalid summary
+makes the runner fail. The printed pixel format describes the hashed output,
+not the decoder. The hardware guard retains process-group ownership from its fd
+snapshot so reaped short-vector children are not mistaken for foreign clients;
+live foreign and unknown holders still abort.
