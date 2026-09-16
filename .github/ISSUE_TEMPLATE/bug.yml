@@ -1,0 +1,73 @@
+name: Report a bug
+description: Report a reproducible failure in an existing path.
+body:
+- type: markdown
+  attributes:
+    value: 'This is a public report. For a suspected vulnerability, stop here and follow [SECURITY.md](https://github.com/iconidentify/libva-v4l2_request/blob/avd-fixes/SECURITY.md).
+
+      Share only a minimal synthetic or redistributable example and relevant redacted excerpts. Do
+      not upload private media, credentials, personal paths/URLs, core dumps or unrelated process
+      logs. Do not rerun a known decoder wedge. Routine reports stay in these forks.'
+- type: textarea
+  id: environment
+  attributes:
+    label: Source and environment
+    description: Give source commit/package version, device/SoC, OS/kernel, client/version and driver
+      selection where relevant. Distinguish installed from loaded module identity. Write unknown or
+      not applicable instead of guessing.
+  validations:
+    required: true
+- type: dropdown
+  id: decoder
+  attributes:
+    label: Observed decode path
+    description: Choose what the evidence establishes. A compiled codec or successful API call does
+      not prove correct hardware output.
+    options:
+    - Hardware frames verified
+    - Software fallback
+    - Expected rejection
+    - Wrong output
+    - Not run
+    - Unknown
+  validations:
+    required: true
+- type: textarea
+  id: reproducer
+  attributes:
+    label: Minimal reproducer
+    description: Give exact safe steps, frequency and a synthetic recipe or licensed sample reference.
+      Sanitise command paths/URLs. Do not attach private recordings or repeat a known wedge.
+  validations:
+    required: true
+- type: textarea
+  id: expected
+  attributes:
+    label: Expected behaviour
+    description: Describe the expected result and link an existing support claim if relevant.
+  validations:
+    required: true
+- type: textarea
+  id: actual
+  attributes:
+    label: Actual behaviour and evidence
+    description: Describe the failure. Include only relevant redacted lines, frame/checksum differences
+      or an existing run record. Say if the run aborted and why.
+  validations:
+    required: true
+- type: textarea
+  id: attribution
+  attributes:
+    label: AI assistance and imported work
+    description: If applicable, describe AI assistance and credit imported material with its source
+      and licence.
+  validations:
+    required: false
+- type: checkboxes
+  id: privacy
+  attributes:
+    label: Before submitting
+    description: Review the public text and attachments.
+    options:
+    - label: I have removed sensitive data and this is not a private vulnerability report.
+      required: true
