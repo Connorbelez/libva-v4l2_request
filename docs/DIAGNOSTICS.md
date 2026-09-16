@@ -106,3 +106,15 @@ Reproduce with `LIBVA_V4L2_DIAG=json`, keep the records for the failing `ctx`,
 and include them with the driver version from the `driver-init` record. Review
 the log before posting it: client applications print their own messages to
 the same stream, and those are not redacted by the driver.
+
+
+## M1 regression evidence
+
+The [16 September validation record](diagnostics-validation-2026-09-16.json)
+identifies the tested driver, guard window, full-suite denominators, exact r11
+pass sets and generated normal/early-export comparisons with JSON diagnostics.
+It retains the known failures: in particular, FM1_FT_E refuses a software frame
+with zero accepted output on both the preceding and diagnostic builds. The
+strict full AVC comparison therefore remains non-green even though no prior
+hardware pass is lost. This is regression evidence, not expanded support or
+boot/display qualification.
