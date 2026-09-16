@@ -65,7 +65,7 @@ Parent: [iconidentify/libva-v4l2_request#9](https://github.com/iconidentify/libv
 - [iconidentify/libva-v4l2_request#15](https://github.com/iconidentify/libva-v4l2_request/issues/15) — Define codec, device and client support tiers with explicit release gates (P0, M0). Contract: [SUPPORT.md](SUPPORT.md).
 - [iconidentify/libva-v4l2_request#16](https://github.com/iconidentify/libva-v4l2_request/issues/16) — Publish a licensed, checksum-pinned codec regression corpus manifest (P1, M0).
 - [iconidentify/libva-v4l2_request#21](https://github.com/iconidentify/libva-v4l2_request/issues/21) — Make conformance results schema-validated and compare exact passing vectors (P0, M0). Shipped: `python3 tests/compare-results.py` ([PR #52](https://github.com/iconidentify/libva-v4l2_request/pull/52)).
-- [iconidentify/libva-v4l2_request#17](https://github.com/iconidentify/libva-v4l2_request/issues/17) — Ship a portable hardware guard with an exclusive device lease and durable logs (P0, M0).
+- [iconidentify/libva-v4l2_request#17](https://github.com/iconidentify/libva-v4l2_request/issues/17) — Ship a portable hardware guard with an exclusive device lease and durable logs (P0, M0). Guard: `python3 tests/hwguard.py`.
 - [iconidentify/libva-v4l2_request#18](https://github.com/iconidentify/libva-v4l2_request/issues/18) — Expand build and sanitizer CI across supported compilers, architectures and API versions (P1, M0).
 - [iconidentify/libva-v4l2_request#22](https://github.com/iconidentify/libva-v4l2_request/issues/22) — Add coverage-guided parser and VA-API sequence fuzzing with replayable failures (P1, M1).
 

@@ -44,8 +44,8 @@ rejection, High 10 quantizer modes and fake-device capability checks. Three H.26
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
-35 sanitizer Meson cases plus the `support-matrix` and `conformance-result`
-contract checks (37 tests).
+35 sanitizer Meson cases plus the `support-matrix`, `conformance-result` and
+`hwguard` checks.
 The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.
@@ -72,17 +72,21 @@ This interleaves work in one thread; it does not measure concurrent API calls or
 Use a normal, unsanitized build, close all video clients, and check that the decoder is idle
 and the kernel has no existing decoder faults first. The scripts load the selected userspace
 library through `LIBVA_DRIVERS_PATH`; they do not install it or reload the kernel module.
-Run them through a hardware watchdog such as `avd-lab`'s `avdlab.guard.run`, with a finite
-deadline and `wedge_monitor`. Stop after a wedge; do not repeatedly open a stuck decoder.
-A userspace timeout cannot recover a wedged kernel. Also monitor the kernel journal for new
-AVD firmware errors/timeouts and stop the run if one appears, even if the child exits normally.
+Run them through `python3 tests/hwguard.py`, which holds an exclusive OS lock for
+the decoder identity, does a read-only idle/fault preflight, monitors new AVD
+journal errors and foreign clients, and uses a finite child deadline. Stop after
+a wedge; do not repeatedly open a stuck decoder. A userspace timeout cannot
+recover a wedged kernel. The guard never unloads modules. Hardware scripts refuse
+to run without `LIBVA_HW_GUARD_LEASE` from this wrapper. Publishable logs redact
+paths and URLs; `--verbose-log` is a local opt-in.
 
 ```sh
+python3 tests/hwguard.py --self-test
 meson setup build
 meson compile -C build
-sh tests/hwdownload.sh "$PWD/build/src" /path/to/main10.bit
-sh tests/early-export.sh "$PWD/build/src"
-sh tests/h264-high10.sh "$PWD/build/src"
+python3 tests/hwguard.py --deadline 180 -- sh tests/hwdownload.sh "$PWD/build/src" /path/to/main10.bit
+python3 tests/hwguard.py --deadline 180 -- sh tests/early-export.sh "$PWD/build/src"
+python3 tests/hwguard.py --deadline 180 -- sh tests/h264-high10.sh "$PWD/build/src"
 ```
 
 `hwdownload.sh` creates short H.264 640x360/1920x1080 and HEVC 640x360 clips and compares the
@@ -107,15 +111,13 @@ mode for this process. The checksum helper requires hardware frames in both mode
 
 ## Full conformance
 
-From the separate `avd-lab` checkout, with Fluster and its downloaded suites:
+Wrap in-tree runners with the portable guard. Fluster suites still come from a
+separate checkout:
 
 ```sh
-python -m avdlab.conformance -d FFmpeg-H.265-VAAPI -ts JCT-VC-HEVC_V1 \
-  -j 1 --deadline 180 --libva-build /path/to/build/src
-python -m avdlab.conformance -d FFmpeg-H.265-VAAPI -ts JCT-VC-HEVC_V1 \
-  -j 4 --deadline 180 --libva-build /path/to/build/src
-python -m avdlab.conformance -d FFmpeg-H.264-VAAPI -ts JVT-AVC_V1 \
-  -j 4 --deadline 180 --libva-build /path/to/build/src
+python3 tests/hwguard.py --deadline 180 -- \
+  python3 tests/conformance.py /path/to/fluster/test_suites/h.265/JCT-VC-HEVC_V1.json \
+  /path/to/fluster/resources --driver /path/to/build/src --output /path/to/new-results
 ```
 
 Record the driver commit, kernel package, installed patch digest, loaded-module provenance,
@@ -167,11 +169,11 @@ strict frame check above. Also, `VPSSPSPPS_A_MainConcept_1` loses pictures in FF
 parser; preserving native sizes alone does not fix it. Direct GStreamer V4L2 passes that vector.
 
 To test the checksum helper independently, run `sh tests/frame-check.sh`. The optional driver
-argument adds a guarded hardware comparison of a generated H.264 resolution change.
+argument is a guarded hardware comparison: `python3 tests/hwguard.py -- sh tests/frame-check.sh BUILD/src`.
 
 ## VP9 validation
 
-Run `sh tests/vp9-matrix.sh /path/to/build/src` through the hardware guard. It needs a
+Run `python3 tests/hwguard.py -- sh tests/vp9-matrix.sh /path/to/build/src`. It needs a
 high-bit-depth-capable libvpx-vp9 encoder and the FFmpeg development libraries. Eight generated
 640x360 clips cover 8/10-bit 4:2:0, limited/full range and lossy/lossless encoding, with tile
 settings, alternate-reference encoding enabled and two keyframe intervals. Each 24-frame clip

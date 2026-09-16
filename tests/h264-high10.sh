@@ -3,6 +3,10 @@
 # Guarded hardware test: h264-high10.sh BUILD/src
 # Requires a 10-bit-capable libx264 encoder and FFmpeg/libva development files.
 set -eu
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=require-hw-guard.sh
+. "$script_dir/require-hw-guard.sh"
+require_hw_guard "$@" || exit $?
 export LIBVA_DRIVERS_PATH=$(realpath "$1")
 export LIBVA_DRIVER_NAME=v4l2_request
 export LIBVA_V4L2_H264_HIGH10=ffmpeg

@@ -5,6 +5,10 @@
 # Usage: hwdownload.sh BUILD/src [MAIN10_CLIP]
 # MAIN10_CLIP replaces the generated 10-bit clip on 8-bit-only x265 builds.
 set -eu
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=require-hw-guard.sh
+. "$script_dir/require-hw-guard.sh"
+require_hw_guard "$@" || exit $?
 export LIBVA_DRIVERS_PATH=$(realpath "$1")
 export LIBVA_DRIVER_NAME=v4l2_request
 main10=${2:-}

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Check downloaded Fluster vectors without resizing frames or allowing fallback.
 
-Run hardware checks through avd-lab's guard with a finite outer deadline.
+Run hardware checks through tests/hwguard.py with a finite outer deadline.
 This script builds frame-check.c, records every frame checksum, and stops on timeout.
 It also writes a schema-validated summary.json for tests/compare-results.py.
 """
@@ -77,6 +77,11 @@ def main():
     decoder = "software"
     mode = "software"
     if args.driver:
+        if not os.environ.get("LIBVA_HW_GUARD_LEASE"):
+            print("ungarded hardware run refused; use: "
+                  "python3 tests/hwguard.py -- python3 tests/conformance.py ... --driver DIR",
+                  file=sys.stderr)
+            return 2
         decoder = "vaapi"
         mode = "hardware"
         env.update(LIBVA_DRIVERS_PATH=str(args.driver.resolve()), LIBVA_DRIVER_NAME="v4l2_request")
