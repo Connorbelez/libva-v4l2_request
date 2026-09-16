@@ -25,7 +25,6 @@ LEASE_ENV = "LIBVA_HW_GUARD_LEASE"
 IDENTITY_ENV = "LIBVA_HW_GUARD_IDENTITY"
 BUSY_EXIT = 75
 AVD_JOURNAL_MARKERS = (
-    "apple_avd",
     "avd firmware",
     "avd_timeout",
     "H2 timeout",
@@ -34,6 +33,15 @@ AVD_JOURNAL_MARKERS = (
     "Internal error: Oops",
     "kernel BUG at",
 )
+def is_avd_fault(line: str) -> bool:
+    if any(marker in line for marker in AVD_JOURNAL_MARKERS):
+        return True
+    if "apple_avd:" not in line:
+        return False
+    lowered = line.lower()
+    if "taint" in lowered:
+        return False
+    return any(token in lowered for token in ("error", "timeout", "fault", "fail", "oops"))
 DECODER_WCHANS = ("video_do_ioctl", "v4l2_", "vb2_", "m2m", "avd_", "media_request")
 REDACT = re.compile(r"(https?://\S+)|(/\S+)|([A-Za-z]:\\[^\s]+)")
 WEDGE_GRACE_S = 10.0
@@ -228,7 +236,7 @@ class LinuxBackend:
             raise GuardError(f"journalctl is not available: {exc}") from exc
         if proc.returncode != 0:
             raise GuardError(f"journalctl failed ({proc.returncode})")
-        return [line for line in proc.stdout.splitlines() if any(m in line for m in AVD_JOURNAL_MARKERS)]
+        return [line for line in proc.stdout.splitlines() if is_avd_fault(line)]
 
 
 class FakeBackend:
@@ -247,7 +255,7 @@ class FakeBackend:
         stuck = json.loads((self.root / "stuck.json").read_text() or "[]")
         faults = [
             line for line in (self.root / "journal").read_text().splitlines()
-            if any(m in line for m in AVD_JOURNAL_MARKERS)
+            if is_avd_fault(line)
         ]
         return DecoderState(
             module_loaded=(self.root / "module").read_text().strip() == "1",
@@ -262,7 +270,7 @@ class FakeBackend:
         del since
         return [
             line for line in (self.root / "journal").read_text().splitlines()
-            if any(m in line for m in AVD_JOURNAL_MARKERS)
+            if is_avd_fault(line)
         ]
 
     def inject_fault(self, line: str) -> None:
@@ -621,6 +629,10 @@ def run_self_test() -> int:
     proc1.terminate()
     proc1.wait(timeout=5)
 
+    check(not is_avd_fault("apple_avd: loading out-of-tree module taints kernel."),
+          "module taint line must not count as a decoder fault")
+    check(is_avd_fault("apple_avd: firmware timeout H3"),
+          "firmware timeout must count as a decoder fault")
     check(journalctl_cmd()[-1] == "-b", "boot journal query must use journalctl -b")
     check("--since" not in journalctl_cmd(), "boot journal query must not use --since")
     check(infer_driver_path(["sh", "tests/hwdownload.sh", "/tmp/build/src"]) == "/tmp/build/src",

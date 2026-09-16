@@ -96,7 +96,7 @@ Parent: [iconidentify/libva-v4l2_request#11](https://github.com/iconidentify/lib
 
 Parent: [iconidentify/libva-v4l2_request#12](https://github.com/iconidentify/libva-v4l2_request/issues/12). Explain and fix the remaining reference corruption and intermittent parallel mismatches; qualify parameter-set changes and format boundaries without per-vector hacks.
 
-- [iconidentify/libva-v4l2_request#38](https://github.com/iconidentify/libva-v4l2_request/issues/38) — Isolate the HEVC RPS_E reference corruption with frame and command evidence (P0, M1).
+- [iconidentify/libva-v4l2_request#38](https://github.com/iconidentify/libva-v4l2_request/issues/38) — Isolate the HEVC RPS_E reference corruption with frame and command evidence (P0, M1). Record: [RPS_E.md](RPS_E.md).
 - [iconidentify/libva-v4l2_request#42](https://github.com/iconidentify/libva-v4l2_request/issues/42) — Correct HEVC long-term reference handling for RPS_E without regressions (P0, M1).
 - [iconidentify/libva-v4l2_request#39](https://github.com/iconidentify/libva-v4l2_request/issues/39) — Make intermittent multi-process HEVC corruption reproducible (P0, M1).
 - [iconidentify/libva-v4l2_request#43](https://github.com/iconidentify/libva-v4l2_request/issues/43) — Fix the isolated HEVC concurrency defect and lock in its regression (P0, M1).

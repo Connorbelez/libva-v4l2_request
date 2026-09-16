@@ -1,0 +1,297 @@
+{
+  "stream": {
+    "name": "RPS_E_qualcomm_5",
+    "sha256": "b82c5c8c251943cc41b59e7f63f72890641fdcdbcec8e916223e4ee28a16c7ad",
+    "fluster_source_checksum": "3d9272247bf25e276ea7d50f1c6e5373",
+    "width": 416,
+    "height": 240,
+    "frames": 300,
+    "format": "yuv420p"
+  },
+  "rps_b": {
+    "name": "RPS_B_qualcomm_5",
+    "sha256": "a5e2097201740c15824b75540b6d0d5050763681bedf7209cde80d93a3b88996",
+    "expected_md5": "6d1ed392b067050ebd3a24a37281da03",
+    "vaapi_md5": "6d1ed392b067050ebd3a24a37281da03",
+    "gst_v4l2_md5": "6d1ed392b067050ebd3a24a37281da03",
+    "wrong_frames": 0
+  },
+  "expected_md5": "c30d38bbd7ea483dc7ffe81325118e16",
+  "software_md5": "c30d38bbd7ea483dc7ffe81325118e16",
+  "vaapi_md5": "b09ac8e0bd31a96d8354505d7c2ebdd5",
+  "gst_v4l2_md5": "53952960ec7512d9cb64f8c7020ece03",
+  "r11_vaapi_md5": "b09ac8e0bd31a96d8354505d7c2ebdd5",
+  "vaapi_wrong_indices": [
+    31,
+    73,
+    74,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    117,
+    123,
+    221
+  ],
+  "gst_v4l2_wrong_indices": [
+    26,
+    28,
+    29,
+    30,
+    31,
+    74,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    85,
+    88,
+    91,
+    94,
+    181,
+    185,
+    217,
+    218,
+    220,
+    221,
+    283
+  ],
+  "mismatches": [
+    {
+      "index": 26,
+      "software_md5": "bfea9cb197390d1e74acc5ee9b95948c",
+      "vaapi_md5": "bfea9cb197390d1e74acc5ee9b95948c",
+      "gst_v4l2_md5": "1153b7f1895db770282f4cbda03aa0a3"
+    },
+    {
+      "index": 28,
+      "software_md5": "8d4c24a50d764fb8c174260913818502",
+      "vaapi_md5": "8d4c24a50d764fb8c174260913818502",
+      "gst_v4l2_md5": "68f428a4e4b163860de6d85ead6c08ee"
+    },
+    {
+      "index": 29,
+      "software_md5": "5739dfcc294ce3730cf1446fafa17eac",
+      "vaapi_md5": "5739dfcc294ce3730cf1446fafa17eac",
+      "gst_v4l2_md5": "4877709e16553f7851a584aff8a17fd0"
+    },
+    {
+      "index": 30,
+      "software_md5": "9f0d30557353f6d06abc0fe05764a5c0",
+      "vaapi_md5": "9f0d30557353f6d06abc0fe05764a5c0",
+      "gst_v4l2_md5": "594ca70f7f61fddd3800e0819f95544f"
+    },
+    {
+      "index": 31,
+      "software_md5": "b388b06bcb1280db34a5b05b3492cfae",
+      "vaapi_md5": "3a0a5ad17a8cb9fd0c8ae740860682a5",
+      "gst_v4l2_md5": "e418965c86363098b994b6e5e3d75af3"
+    },
+    {
+      "index": 73,
+      "software_md5": "083ddcce57eb1f629e007676a4945386",
+      "vaapi_md5": "8f52f77460db09eb92b6104e8340b2d6",
+      "gst_v4l2_md5": "083ddcce57eb1f629e007676a4945386"
+    },
+    {
+      "index": 74,
+      "software_md5": "dc4e8ae85761bfcff9c130429f9052a9",
+      "vaapi_md5": "cf64480040c7518123c7091cbd36f32c",
+      "gst_v4l2_md5": "922f8a301c901c8623653cafc1886204"
+    },
+    {
+      "index": 76,
+      "software_md5": "4a7d0b8d8a229d07a58e8ae6e783a261",
+      "vaapi_md5": "7d71963955e86ba770dcbbbe3875662b",
+      "gst_v4l2_md5": "bd8d0adae3a02541bedb95dc48c9de07"
+    },
+    {
+      "index": 77,
+      "software_md5": "a4cbcde882265dc4f6b771ec7d34bde9",
+      "vaapi_md5": "bd80fbe6885f3f65cc99679d8c5020aa",
+      "gst_v4l2_md5": "bd80fbe6885f3f65cc99679d8c5020aa"
+    },
+    {
+      "index": 78,
+      "software_md5": "df6dab478cacdb9d632f5d8d96319f02",
+      "vaapi_md5": "f796cd2299e36779d2930ef0e68d27f0",
+      "gst_v4l2_md5": "f796cd2299e36779d2930ef0e68d27f0"
+    },
+    {
+      "index": 79,
+      "software_md5": "3fa81761c562e78605f7e9ae7d495e93",
+      "vaapi_md5": "1fa882544013dac30f0a61cc2b12123e",
+      "gst_v4l2_md5": "1fa882544013dac30f0a61cc2b12123e"
+    },
+    {
+      "index": 80,
+      "software_md5": "3816adb2e9d54ed57c62f9684383b6e7",
+      "vaapi_md5": "52f8c40b9006430d3390de6c37d6baf0",
+      "gst_v4l2_md5": "52f8c40b9006430d3390de6c37d6baf0"
+    },
+    {
+      "index": 81,
+      "software_md5": "c989a1a86948eda7119ac6491fd9f3d2",
+      "vaapi_md5": "ac324313e2413508ccaf8abbf51a3aad",
+      "gst_v4l2_md5": "86a6dc1cee26bf79e7a37e40b0345617"
+    },
+    {
+      "index": 82,
+      "software_md5": "c4d69163dc8175af7191212866e191ff",
+      "vaapi_md5": "2a86367a7365a5febd463e2d45ebef5d",
+      "gst_v4l2_md5": "5025778d5ddd521ef4d3e5153af91691"
+    },
+    {
+      "index": 83,
+      "software_md5": "316fbe51751f79ac4f3f3ffef8e19292",
+      "vaapi_md5": "d01d2e7fd8fcb8de908c5fa3af9ba190",
+      "gst_v4l2_md5": "abef042cfdef68c6eb63f462c7459737"
+    },
+    {
+      "index": 84,
+      "software_md5": "1cc03cbc772e8dc8c14a8cc3a9558a25",
+      "vaapi_md5": "f61d85ccca4bdc0acf9045e803414ce8",
+      "gst_v4l2_md5": "1cc03cbc772e8dc8c14a8cc3a9558a25"
+    },
+    {
+      "index": 85,
+      "software_md5": "d22f31191547f56271937c9764fefb4b",
+      "vaapi_md5": "dfc1984f3e83e862e0f9a7e0ff621ce5",
+      "gst_v4l2_md5": "0f1bc16ff5043559d53f543cb78dbac7"
+    },
+    {
+      "index": 86,
+      "software_md5": "917ca0f7c0a2d7dc434b6bd4d1760134",
+      "vaapi_md5": "8debccf67f833a48f3d4ba9dda5bf314",
+      "gst_v4l2_md5": "917ca0f7c0a2d7dc434b6bd4d1760134"
+    },
+    {
+      "index": 87,
+      "software_md5": "bf1366fd281c850a6a0ccd73e635532f",
+      "vaapi_md5": "78345a7ce4e38eebe8018a2de25ff5c4",
+      "gst_v4l2_md5": "bf1366fd281c850a6a0ccd73e635532f"
+    },
+    {
+      "index": 88,
+      "software_md5": "1b7cf7a275cc2d2ffc32bbcfb88cab1c",
+      "vaapi_md5": "d3f9cad6de2a6bfb008e03c8e46d129b",
+      "gst_v4l2_md5": "e0124ff3a61f829929d9a6e6d9221596"
+    },
+    {
+      "index": 89,
+      "software_md5": "43859bc3cd4717a8b5891780b93eb772",
+      "vaapi_md5": "041d5973e7b9de80b08f8c31ad04d6fa",
+      "gst_v4l2_md5": "43859bc3cd4717a8b5891780b93eb772"
+    },
+    {
+      "index": 90,
+      "software_md5": "9c5ce7c190871e95a9d72149b29814e6",
+      "vaapi_md5": "b925a25d3e8d8764f6a98be64807f78d",
+      "gst_v4l2_md5": "9c5ce7c190871e95a9d72149b29814e6"
+    },
+    {
+      "index": 91,
+      "software_md5": "bcbd17547d2243810aa50534610b785b",
+      "vaapi_md5": "0113ac9531dcd59088d9c0b11d20866a",
+      "gst_v4l2_md5": "71aefd42f107048512aba70340131ade"
+    },
+    {
+      "index": 92,
+      "software_md5": "006df0a2d00c9e49094038f3f79275ec",
+      "vaapi_md5": "48ea9f6b470fb53e5083085cea4be5d4",
+      "gst_v4l2_md5": "006df0a2d00c9e49094038f3f79275ec"
+    },
+    {
+      "index": 93,
+      "software_md5": "461b7d60a72b959dbe8ad707abbea29d",
+      "vaapi_md5": "068ebf93a2b55801cfb9494a6de20382",
+      "gst_v4l2_md5": "461b7d60a72b959dbe8ad707abbea29d"
+    },
+    {
+      "index": 94,
+      "software_md5": "f6ce88e0d5176af8c80dd1d2dfe09f5d",
+      "vaapi_md5": "2a7450906af8105ab028d4655f1dc6b0",
+      "gst_v4l2_md5": "da0d71b445e64f4171dd5398e15e59d7"
+    },
+    {
+      "index": 95,
+      "software_md5": "04bd94759d109088cd98cf9efc474c0c",
+      "vaapi_md5": "db3e770cf64aa87125ca8c32c0329fb1",
+      "gst_v4l2_md5": "04bd94759d109088cd98cf9efc474c0c"
+    },
+    {
+      "index": 117,
+      "software_md5": "cd8ba708d3c1bcd969ff5de976a0d727",
+      "vaapi_md5": "357cba5d305bf2766fafdf9580b1bd4b",
+      "gst_v4l2_md5": "cd8ba708d3c1bcd969ff5de976a0d727"
+    },
+    {
+      "index": 123,
+      "software_md5": "1d0d44630ccd570c1033c64760e8241a",
+      "vaapi_md5": "c705643f89970f79c46d2cb4422ec1a5",
+      "gst_v4l2_md5": "1d0d44630ccd570c1033c64760e8241a"
+    },
+    {
+      "index": 181,
+      "software_md5": "21e54fa3e065e007bbaa99965cd84ea2",
+      "vaapi_md5": "21e54fa3e065e007bbaa99965cd84ea2",
+      "gst_v4l2_md5": "54cd2f2cc53ba0e8c8fd91579a5dacc4"
+    },
+    {
+      "index": 185,
+      "software_md5": "45e4b2d7b6c98700a706817200a68035",
+      "vaapi_md5": "45e4b2d7b6c98700a706817200a68035",
+      "gst_v4l2_md5": "f1e66c3c14e7e369c8d0d769928b2d42"
+    },
+    {
+      "index": 217,
+      "software_md5": "2b821a022dccaa9224647fe4225235ea",
+      "vaapi_md5": "2b821a022dccaa9224647fe4225235ea",
+      "gst_v4l2_md5": "770aeb5ba78213a112e20ff985b119c5"
+    },
+    {
+      "index": 218,
+      "software_md5": "9a0ac823e3a55502be16adc58b8d541f",
+      "vaapi_md5": "9a0ac823e3a55502be16adc58b8d541f",
+      "gst_v4l2_md5": "500998573300b4f988f103530420b957"
+    },
+    {
+      "index": 220,
+      "software_md5": "9d80db928a33dd7ed8e1c70cab835b5a",
+      "vaapi_md5": "9d80db928a33dd7ed8e1c70cab835b5a",
+      "gst_v4l2_md5": "b28437c0f288249c662d001b906f1bfc"
+    },
+    {
+      "index": 221,
+      "software_md5": "f123373a71b9bcd75beedc26e7d61bea",
+      "vaapi_md5": "641bae9242209f47c377aa17dbab9eea",
+      "gst_v4l2_md5": "b8eff605701095b42fb1d48942353741"
+    },
+    {
+      "index": 283,
+      "software_md5": "806014c14aab65d6c01d3d84a60d4d58",
+      "vaapi_md5": "806014c14aab65d6c01d3d84a60d4d58",
+      "gst_v4l2_md5": "d15832014a9f41f44334793666c47923"
+    }
+  ]
+}
