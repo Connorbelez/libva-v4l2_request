@@ -107,9 +107,26 @@ VAStatus v4l2r_DestroySurfaces(VADriverContextP va_ctx, VASurfaceID *surface_lis
 			if (surface_list[i] == surface_list[j])
 				return VA_STATUS_ERROR_INVALID_SURFACE;
 		}
-		struct v4l2r_surface *surface = V4L2R_SURFACE_GET(drv, surface_list[i]);
+		pthread_mutex_lock(&drv->mutex);
+		struct v4l2r_surface *surface = V4L2R_SURFACE(drv, surface_list[i]);
+		bool image_busy = surface && surface->image_refs;
+		/* VPP retains its input between RenderPicture and EndPicture.
+		 * That source need not belong to the VPP context itself. */
+		bool vpp_busy = false;
+		unsigned int iter = 0;
+		struct v4l2r_context *ctx;
+		while (surface && (ctx = v4l2r_handles_next(&drv->contexts, &iter, NULL))) {
+			if (ctx->in_picture && ctx->vpp && ctx->vpp->have_params &&
+			    ctx->vpp->src_surface == surface) {
+				vpp_busy = true;
+				break;
+			}
+		}
+		pthread_mutex_unlock(&drv->mutex);
 		if (!surface)
 			return VA_STATUS_ERROR_INVALID_SURFACE;
+		if (image_busy || vpp_busy)
+			return VA_STATUS_ERROR_SURFACE_BUSY;
 		if (surface->ctx && surface->ctx->in_picture &&
 		    surface->ctx->pic.target == surface)
 			return VA_STATUS_ERROR_SURFACE_BUSY;
@@ -169,6 +186,11 @@ VAStatus v4l2r_QuerySurfaceStatus(VADriverContextP va_ctx,
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
 	/* A frame held back for reordering reports rendering until submitted. */
+	if (surface->ctx && surface->ctx->in_picture &&
+	    surface->ctx->pic.target == surface) {
+		*status = VASurfaceRendering;
+		return VA_STATUS_SUCCESS;
+	}
 	VAStatus flush_status = v4l2r_flush_surface(surface);
 	if (flush_status != VA_STATUS_SUCCESS)
 		return flush_status;
@@ -277,6 +299,12 @@ VAStatus v4l2r_QuerySurfaceAttributes(VADriverContextP va_ctx, VAConfigID config
 VAStatus v4l2r_surface_ready(struct v4l2r_surface *surface)
 {
 	VAStatus status;
+
+	/* BeginPicture reserves the target before there is a queued request to
+	 * wait on. Reading/exporting it now would expose old or partial pixels. */
+	if (surface->ctx && surface->ctx->in_picture &&
+	    surface->ctx->pic.target == surface)
+		return VA_STATUS_ERROR_SURFACE_BUSY;
 
 	status = v4l2r_flush_surface(surface);
 	if (status != VA_STATUS_SUCCESS)

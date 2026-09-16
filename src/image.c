@@ -240,6 +240,10 @@ VAStatus v4l2r_DeriveImage(VADriverContextP va_ctx, VASurfaceID surface_id,
 
 	image->buf = buffer_id;
 	image_object->image = *image;
+	pthread_mutex_lock(&drv->mutex);
+	image_object->source = surface;
+	surface->image_refs++;
+	pthread_mutex_unlock(&drv->mutex);
 
 	return VA_STATUS_SUCCESS;
 }
@@ -257,6 +261,8 @@ VAStatus v4l2r_DestroyImage(VADriverContextP va_ctx, VAImageID image_id)
 		return VA_STATUS_ERROR_INVALID_IMAGE;
 	}
 	buffer_id = image_object->image.buf;
+	if (image_object->source)
+		image_object->source->image_refs--;
 	/* The image, rather than the caller of DestroyBuffer, owns this ID.
 	 * Releasing that ownership here prevents an image retaining an ID
 	 * that could otherwise be recycled for an unrelated parameter buffer. */
@@ -342,6 +348,8 @@ VAStatus v4l2r_GetImage(VADriverContextP va_ctx, VASurfaceID surface_id,
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 	if (!image_object)
 		return VA_STATUS_ERROR_INVALID_IMAGE;
+	if (image_object->source == surface)
+		return VA_STATUS_ERROR_SURFACE_BUSY;
 
 	image = &image_object->image;
 
@@ -398,6 +406,8 @@ VAStatus v4l2r_PutImage(VADriverContextP va_ctx, VASurfaceID surface_id,
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 	if (!image_object)
 		return VA_STATUS_ERROR_INVALID_IMAGE;
+	if (image_object->source == surface)
+		return VA_STATUS_ERROR_SURFACE_BUSY;
 
 	image = &image_object->image;
 

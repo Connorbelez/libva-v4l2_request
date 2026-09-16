@@ -129,15 +129,20 @@ int main(int argc, char **argv)
     } else if (!strcmp(test, "surface-parameters")) {
         VASurfaceID out = VA_INVALID_ID;
         assert(v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, 0, 64, &out, 1, NULL, 0) == VA_STATUS_ERROR_INVALID_PARAMETER);
+        assert(v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, UINT_MAX, 64, &out, 1, NULL, 0) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(v4l2r_CreateSurfaces(&va, -1, 64, VA_RT_FORMAT_YUV420, 1, &out) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(v4l2r_CreateSurfaces(&va, 64, 64, VA_RT_FORMAT_YUV420, -1, &out) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, 64, 64, &out, 1, NULL, 1) == VA_STATUS_ERROR_INVALID_PARAMETER);
+        VASurfaceAttrib attr = {.type = VASurfaceAttribPixelFormat,
+            .flags = VA_SURFACE_ATTRIB_SETTABLE, .value.type = VAGenericValueTypePointer};
+        assert(v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, 64, 64, &out, 1, &attr, 1) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(out == VA_INVALID_ID);
         assert(v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, 64, 64, NULL, 0, NULL, 0) == VA_STATUS_SUCCESS);
         VASurfaceID recovery = surface();
         assert(table.vaDestroySurfaces(&va, &recovery, 1) == VA_STATUS_SUCCESS);
     } else if (!strcmp(test, "surface-null-output")) {
         assert(v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, 64, 64, NULL, 1, NULL, 0) == VA_STATUS_ERROR_INVALID_PARAMETER);
+        assert(surface() != VA_INVALID_ID);
     } else if (!strcmp(test, "surface-query-null")) {
         assert(table.vaQuerySurfaceStatus(&va, sid, NULL) == VA_STATUS_ERROR_INVALID_PARAMETER);
         VASurfaceStatus status;
@@ -165,12 +170,15 @@ int main(int argc, char **argv)
         assert(v4l2r_GetConfigAttributes(&va, VAProfileNone, VAEntrypointVideoProc, NULL, 1) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(v4l2r_GetConfigAttributes(&va, VAProfileNone, VAEntrypointVideoProc, NULL, -1) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(v4l2r_GetConfigAttributes(&va, VAProfileNone, VAEntrypointVideoProc, NULL, 0) == VA_STATUS_SUCCESS);
+        VAConfigAttrib attr = {.type = VAConfigAttribRTFormat};
+        assert(v4l2r_GetConfigAttributes(&va, VAProfileNone, VAEntrypointVideoProc, &attr, 1) == VA_STATUS_SUCCESS && attr.value);
         VAConfigID cfg = config();
         assert(v4l2r_QueryConfigAttributes(&va, cfg, NULL, NULL, NULL, NULL) == VA_STATUS_SUCCESS);
         assert(v4l2r_DestroyConfig(&va, cfg) == VA_STATUS_SUCCESS);
         assert(v4l2r_QueryConfigAttributes(&va, cfg, NULL, NULL, NULL, NULL) == VA_STATUS_ERROR_INVALID_CONFIG);
     } else if (!strcmp(test, "config-null-output")) {
         assert(v4l2r_CreateConfig(&va, VAProfileNone, VAEntrypointVideoProc, NULL, 0, NULL) == VA_STATUS_ERROR_INVALID_PARAMETER);
+        assert(config() != VA_INVALID_ID);
     } else if (!strcmp(test, "config-query-null")) {
         int n;
         VAProfile profiles[V4L2R_MAX_PROFILES];
@@ -183,6 +191,7 @@ int main(int argc, char **argv)
         assert(v4l2r_QueryConfigEntrypoints(&va, VAProfileNone, entries, &n) == VA_STATUS_SUCCESS && n == 1);
     } else if (!strcmp(test, "buffer-null-output")) {
         assert(v4l2r_CreateBuffer(&va, a, VAPictureParameterBufferType, 16, 1, NULL, NULL) == VA_STATUS_ERROR_INVALID_PARAMETER);
+        assert(buffer(a) != VA_INVALID_ID);
     } else if (!strcmp(test, "buffer-null-map")) {
         assert(v4l2r_MapBuffer(&va, bid, NULL) == VA_STATUS_ERROR_INVALID_PARAMETER);
         void *ptr;
@@ -196,7 +205,8 @@ int main(int argc, char **argv)
         assert(v4l2r_CreateBuffer(&va, a, VASliceDataBufferType, 16, 0, NULL, &out) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(out == VA_INVALID_ID);
         assert(v4l2r_DestroyBuffer(&va, bid) == VA_STATUS_SUCCESS);
-        assert(v4l2r_MapBuffer(&va, bid, (void **)&out) == VA_STATUS_ERROR_INVALID_BUFFER);
+        void *ptr;
+        assert(v4l2r_MapBuffer(&va, bid, &ptr) == VA_STATUS_ERROR_INVALID_BUFFER);
         assert(v4l2r_DestroyBuffer(&va, bid) == VA_STATUS_ERROR_INVALID_BUFFER);
         VABufferID replacement = buffer(a);
         picture(a, sid, replacement);
@@ -246,6 +256,42 @@ int main(int argc, char **argv)
         assert(v4l2r_QueryImageFormats(&va, NULL, &n) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(v4l2r_QueryImageFormats(&va, formats, NULL) == VA_STATUS_ERROR_INVALID_PARAMETER);
         assert(v4l2r_QueryImageFormats(&va, formats, &n) == VA_STATUS_SUCCESS && n == 2);
+    } else if (!strcmp(test, "surface-active-access")) {
+        backing(sid);
+        VAImage image, derived;
+        assert(v4l2r_CreateImage(&va, &format, 64, 64, &image) == VA_STATUS_SUCCESS);
+        assert(table.vaBeginPicture(&va, a, sid) == VA_STATUS_SUCCESS);
+        VASurfaceStatus status;
+        assert(table.vaQuerySurfaceStatus(&va, sid, &status) == VA_STATUS_SUCCESS && status == VASurfaceRendering);
+        assert(table.vaSyncSurface(&va, sid) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(table.vaDeriveImage(&va, sid, &derived) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(table.vaGetImage(&va, sid, 0, 0, 64, 64, image.image_id) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(table.vaPutImage(&va, sid, image.image_id, 0, 0, 64, 64, 0, 0, 64, 64) == VA_STATUS_ERROR_SURFACE_BUSY);
+        VADRMPRIMESurfaceDescriptor desc;
+        assert(table.vaExportSurfaceHandle(&va, sid, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(table.vaEndPicture(&va, a) == VA_STATUS_SUCCESS);
+        assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
+        assert(table.vaGetImage(&va, sid, 0, 0, 64, 64, image.image_id) == VA_STATUS_SUCCESS);
+        assert(table.vaPutImage(&va, sid, image.image_id, 0, 0, 64, 64, 0, 0, 64, 64) == VA_STATUS_SUCCESS);
+        assert(table.vaDeriveImage(&va, sid, &derived) == VA_STATUS_SUCCESS);
+        assert(v4l2r_DestroyImage(&va, derived.image_id) == VA_STATUS_SUCCESS);
+    } else if (!strcmp(test, "image-surface-lifetime")) {
+        backing(sid);
+        VAImage one, two;
+        assert(table.vaDeriveImage(&va, sid, &one) == VA_STATUS_SUCCESS);
+        assert(table.vaDeriveImage(&va, sid, &two) == VA_STATUS_SUCCESS);
+        VASurfaceID spare = surface(), list[] = {spare, sid};
+        assert(table.vaDestroySurfaces(&va, list, 2) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(V4L2R_SURFACE(drv, spare));
+        assert(table.vaGetImage(&va, sid, 0, 0, 64, 64, one.image_id) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(table.vaPutImage(&va, sid, one.image_id, 0, 0, 64, 64, 0, 0, 64, 64) == VA_STATUS_ERROR_SURFACE_BUSY);
+        backing(spare);
+        assert(table.vaGetImage(&va, spare, 0, 0, 64, 64, one.image_id) == VA_STATUS_SUCCESS);
+        assert(table.vaPutImage(&va, spare, one.image_id, 0, 0, 64, 64, 0, 0, 64, 64) == VA_STATUS_SUCCESS);
+        assert(v4l2r_DestroyImage(&va, one.image_id) == VA_STATUS_SUCCESS);
+        assert(table.vaDestroySurfaces(&va, &sid, 1) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(v4l2r_DestroyImage(&va, two.image_id) == VA_STATUS_SUCCESS);
+        assert(table.vaDestroySurfaces(&va, list, 2) == VA_STATUS_SUCCESS);
     } else if (!strcmp(test, "context-abort-reuse")) {
         assert(table.vaBeginPicture(&va, a, sid) == VA_STATUS_SUCCESS);
         assert(table.vaDestroyContext(&va, a) == VA_STATUS_SUCCESS);
@@ -266,6 +312,23 @@ int main(int argc, char **argv)
         assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
         picture(b, other, other_buffer);
         assert(table.vaDestroySurfaces(&va, &sid, 1) == VA_STATUS_SUCCESS);
+    } else if (!strcmp(test, "vpp-source-lifetime")) {
+        VAConfigID cfg = config();
+        VAContextID vpp;
+        assert(table.vaCreateContext(&va, cfg, 64, 64, 0, NULL, 0, &vpp) == VA_STATUS_SUCCESS);
+        VASurfaceID target = surface(), spare = surface();
+        assert(table.vaBeginPicture(&va, vpp, target) == VA_STATUS_SUCCESS);
+        VAProcPipelineParameterBuffer params = {.surface = sid};
+        VABufferID param;
+        assert(v4l2r_CreateBuffer(&va, vpp, VAProcPipelineParameterBufferType,
+            sizeof(params), 1, &params, &param) == VA_STATUS_SUCCESS);
+        assert(table.vaRenderPicture(&va, vpp, &param, 1) == VA_STATUS_SUCCESS);
+        VASurfaceID list[] = {spare, sid};
+        assert(table.vaDestroySurfaces(&va, list, 2) == VA_STATUS_ERROR_SURFACE_BUSY);
+        assert(V4L2R_SURFACE(drv, spare));
+        /* Abandoning the VPP context releases the retained source as well. */
+        assert(table.vaDestroyContext(&va, vpp) == VA_STATUS_SUCCESS);
+        assert(table.vaDestroySurfaces(&va, list, 2) == VA_STATUS_SUCCESS);
     } else {
         assert(!"unknown case");
     }

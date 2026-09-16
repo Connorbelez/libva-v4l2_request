@@ -72,7 +72,8 @@ foreach case : ['surface-duplicates', 'surface-parameters', 'surface-null-output
                 'buffer-null-output', 'buffer-null-map', 'buffer-context',
                 'buffer-owner', 'buffer-recycled-context', 'image-buffer-lifetime',
                 'image-derived-null', 'image-query-null', 'context-abort-reuse',
-                'context-isolation']
+                'context-isolation', 'surface-active-access', 'image-surface-lifetime',
+                'vpp-source-lifetime']
   test('api-' + case, api_lifecycle, args: [case], timeout: 10)
 endforeach
 

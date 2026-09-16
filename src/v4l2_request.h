@@ -244,6 +244,8 @@ struct v4l2r_surface {
 	/* Completion and decode success are separate: a failed frame is ready
 	 * for reuse, but must not be reported as successfully decoded. */
 	VAStatus decode_status;
+	/* Derived images pin their source surface; protected by drv->mutex. */
+	unsigned int image_refs;
 	struct v4l2r_surface_backing *backing;
 	/* A finished decode still needs (or is undergoing) format conversion
 	 * into the backing. Protected by ctx->mutex. */
@@ -325,12 +327,14 @@ struct v4l2r_buffer {
 	void *data;
 	/* Derived images own a dma-buf mapping, released with munmap(). */
 	bool derived;
-	/* Only DestroyImage may release or resize an image's backing buffer. */
+	/* Image storage has a fixed layout and is released by DestroyImage. */
 	bool image_owned;
 };
 
 struct v4l2r_image {
 	VAImage image;
+	/* Non-NULL only for DeriveImage, held live through surface->image_refs. */
+	struct v4l2r_surface *source;
 };
 
 /* Payload byte size of a VA buffer (element_size * nb_elements). Client
