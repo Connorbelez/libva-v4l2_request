@@ -67,6 +67,61 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
+## CI matrix, codec options and the aggregate required check
+
+`.github/workflows/checks.yml` runs on GitHub-hosted runners only and never opens a
+decoder. The `userspace` job is the stable aggregate required check: it evaluates the
+`needs` context of every child job through `tests/ci_check.py check` and passes only when
+each required child job actually ran and succeeded. A failing, cancelled, skipped or
+missing child can never leave the aggregate green, and the aggregate itself evaluates
+after dependency failures. `tests/ci_check.py fixtures` (Meson test
+`ci-aggregate-fixtures`) reproduces each of those failure states offline, and
+`tests/ci_check.py audit --workflow .github/workflows/checks.yml` (Meson test
+`ci-workflow-audit`) revalidates the actual wiring: every child job must appear in the
+aggregate's `needs`, external actions and container images must be pinned by full commit
+SHA or sha256 digest, only hosted runner labels are permitted, matrix jobs must not be
+fail-fast, and the workflow may only hold `permissions: contents: read`.
+
+Codec build options `-Dcodec_h264|hevc|mpeg2|vp8|vp9|av1=auto|enabled|disabled`
+(auto-detect by default) control which codecs compile in. A codec enabled explicitly
+without its kernel UAPI fails configuration with the missing control, the first mainline
+kernel providing it (h264 5.11, vp8 5.13, mpeg2 5.14, vp9 5.17, hevc 6.0, av1 6.5) and
+the remediation; auto-detection compiles the codec out instead. The `image-bounds` test
+needs the P010 capture format (Linux 6.0 UAPI) independent of the codec options, and the
+HEVC `num_delta_pocs_of_ref_rps_idx` member probe tracks its Linux 6.5 addition. The
+multi-slice `V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF` API pair (Linux 5.9) predates every
+supported codec pixelformat, so its decode-path uses are compile-time guarded and
+unreachable on headers that lack it rather than degraded.
+libva's pkg-config Version is the VA API version (libva 2.20 reports 1.20.0), so the
+`libva >= 1.7.0` build floor means library release 2.7 — the oldest combination verified
+to build and pass the offline suite (Ubuntu 20.04: libva 2.7, gcc 9, 5.4 headers).
+
+Executed CI configurations and their expected Meson test sets (counts from the r11
+suite plus the two ci-aggregate/ci-workflow checks; codec-gated tests register only
+when the codec is compiled in):
+
+| Configuration | Codecs | Expected tests |
+| --- | --- | --- |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 43 (full suite) |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 37 (no hevc-parser, vp9-\*, image-bounds) |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 32 (regression minus image-bounds, picture, python checks) |
+| all codecs disabled (any headers) | none | 33 on 6.8 headers (core plus image-bounds) |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 39 (core plus codec tests of every compiled-in codec except vp9-\*) |
+
+`deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
+auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all
+three dependency tiers, keeping its FFmpeg-facing helpers compatible with FFmpeg 6.1,
+4.4 and 4.2; `shared-contexts.sh` runs on the 6.1 and 4.4 tiers only, because its
+10-bit VP9 test vector needs the libvpx-vp9 encoder wrapper from FFmpeg >= 4.3.
+`static-analysis` builds with
+`-Dwerror=true` under both compilers and runs bounded cppcheck at warning level over
+the driver target's translation units (the compile database is filtered to them,
+since the assert-driven offline suite calls `assert()` with side effects by design
+under `-UNDEBUG`); the style-level suggestions that predate this matrix across the
+parser suite (const-parameter, shadowed locals) are left for a dedicated cleanup
+instead of blanket category disables, and findings that do appear are triaged into
+narrow inline suppressions or fixes, never blanket disables.
+
 ## Hardware pixel comparisons
 
 Use a normal, unsanitized build, close all video clients, and check that the decoder is idle

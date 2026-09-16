@@ -205,6 +205,7 @@ int main(int argc, char **argv)
         /* Odd widths still need both components of the last chroma pair. */
         assert(!memcmp((char *)b->data + image.offsets[1], pixels + 64 * 4, 4));
         assert(v4l2r_DestroyImage(&va, image.image_id) == VA_STATUS_SUCCESS);
+#if HAVE_V4L2_PIX_FMT_P010
     } else if (!strcmp(argv[1], "image-bounds")) {
         VAImage image;
         VAImageFormat format = { .fourcc = VA_FOURCC_P010 };
@@ -221,6 +222,7 @@ int main(int argc, char **argv)
         b->element_size = 1;
         assert(v4l2r_GetImage(&va, sid, 0, 0, 3, 3, image.image_id) != VA_STATUS_SUCCESS);
         assert(v4l2r_DestroyImage(&va, image.image_id) == VA_STATUS_SUCCESS);
+#endif
     } else if (!strcmp(argv[1], "buffer-zero")) {
         VABufferID id;
         assert(v4l2r_CreateBuffer(&va, VA_INVALID_ID, VAImageBufferType, 16, 1, NULL, &id) == VA_STATUS_SUCCESS);

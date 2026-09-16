@@ -308,8 +308,7 @@ void v4l2r_surface_free_backing(struct v4l2r_surface *surface)
 static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 				uint32_t width, uint32_t height)
 {
-	struct v4l2_ctrl_h264_sps h264 = {0};
-	struct v4l2_ctrl_hevc_sps hevc = {0};
+#if HAVE_V4L2_PIX_FMT_P010
 	struct v4l2_ext_control control = {0};
 	struct v4l2_ext_controls controls = {
 		.which = V4L2_CTRL_WHICH_CUR_VAL,
@@ -321,7 +320,9 @@ static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 		return;
 
 	switch (coded) {
-	case V4L2_PIX_FMT_H264_SLICE:
+#if HAVE_V4L2_CTRL_H264
+	case V4L2_PIX_FMT_H264_SLICE: {
+		struct v4l2_ctrl_h264_sps h264 = {0};
 		h264.profile_idc = 110;		/* High 10 */
 		h264.chroma_format_idc = 1;
 		h264.bit_depth_luma_minus8 = 2;
@@ -333,7 +334,11 @@ static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 		control.ptr = &h264;
 		control.size = sizeof(h264);
 		break;
-	case V4L2_PIX_FMT_HEVC_SLICE:
+	}
+#endif
+#if HAVE_V4L2_CTRL_HEVC
+	case V4L2_PIX_FMT_HEVC_SLICE: {
+		struct v4l2_ctrl_hevc_sps hevc = {0};
 		hevc.pic_width_in_luma_samples = width;
 		hevc.pic_height_in_luma_samples = height;
 		hevc.chroma_format_idc = 1;
@@ -343,11 +348,26 @@ static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 		control.ptr = &hevc;
 		control.size = sizeof(hevc);
 		break;
+	}
+#endif
 	default:
 		return;
 	}
 
+	/* Referenced by the codec cases above; the no-op casts keep them used
+	 * when neither codec is compiled in. */
+	(void)width;
+	(void)height;
 	(void)ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls);
+#else
+	/* Without the P010 UAPI there is nothing to pre-size: the P010 capture
+	 * format cannot be requested in the first place. */
+	(void)fd;
+	(void)coded;
+	(void)pixelformat;
+	(void)width;
+	(void)height;
+#endif
 }
 
 /*
@@ -572,8 +592,16 @@ VAStatus v4l2r_surface_alloc_backing(struct v4l2r_driver *drv,
 	if (surface->fourcc == VA_FOURCC_P010 ||
 	    (!surface->fourcc &&
 	     (surface->rt_format & VA_RT_FORMAT_YUV420_10) &&
-	     !v4l2r_converter_available(drv)))
+	     !v4l2r_converter_available(drv))) {
+#if HAVE_V4L2_PIX_FMT_P010
 		pixelformat = V4L2_PIX_FMT_P010;
+#else
+		/* No P010 capture format in the installed UAPI (first in Linux
+		 * 6.0): refuse rather than allocate NV12 storage that would
+		 * reinterpret 10-bit data as 8-bit. */
+		return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+#endif
+	}
 
 	return backing_alloc(drv, surface, surface->width, surface->height,
 			     pixelformat);

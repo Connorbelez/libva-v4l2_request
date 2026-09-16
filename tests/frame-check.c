@@ -148,7 +148,13 @@ int main(int argc, char **argv)
     AVCodecContext *decoder = NULL;
     AVBufferRef *device = NULL;
     AVPacket *packet = NULL;
+    /* av_find_best_stream() takes const AVCodec ** from libavcodec 59 (FFmpeg
+     * 5.0); older FFmpeg (4.4 on Ubuntu 22.04, 4.2 on 20.04) wants AVCodec **. */
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(59, 0, 100)
     const AVCodec *codec = NULL;
+#else
+    AVCodec *codec = NULL;
+#endif
     int ret = AVERROR(EINVAL);
     av_log_set_level(AV_LOG_WARNING);
     if (check.format == AV_PIX_FMT_NONE)
