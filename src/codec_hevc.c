@@ -23,6 +23,7 @@
 #if HAVE_V4L2_CTRL_HEVC
 
 #include <va/va_dec_hevc.h>
+#include <va/va_str.h>
 
 /*
  * Downstream Rockchip control carrying the full SPS short-term reference
@@ -1232,6 +1233,47 @@ static VAStatus hevc_store_slice_params(struct hevc_context *codec,
 	return VA_STATUS_SUCCESS;
 }
 
+/*
+ * Range-extension and bit-depth boundary (docs/HEVC_RANGE_EXTENSIONS.md).
+ *
+ * Only Main and Main10 are advertised, so a context is always negotiated for
+ * 4:2:0 output at 8 or 10 bits and its CAPTURE buffers are sized for that.
+ * Reject a picture outside that contract before any control is built from it:
+ * unequal luma/chroma depth faulted the AVD firmware and reset the decoder for
+ * every other context (TSUNEQBD_A_MAIN10_Technicolor_2), and 12-bit, 4:2:2,
+ * 4:4:4 or monochrome pictures have no exportable CAPTURE layout here, so a
+ * backend that accepted them would decode into buffers of the wrong size or
+ * with unwritten chroma. The companion kernel rejects some of these too; this
+ * check keeps the boundary in the driver for every backend, so a client sees
+ * the same rejection whether or not its kernel was patched.
+ */
+static VAStatus hevc_check_picture_format(struct v4l2r_context *ctx,
+					  const VAPictureParameterBufferHEVC *pic)
+{
+	unsigned int luma = 8 + pic->bit_depth_luma_minus8;
+	unsigned int chroma = 8 + pic->bit_depth_chroma_minus8;
+	unsigned int max_depth = ctx->bit_depth ? ctx->bit_depth : 8;
+	const char *reason;
+
+	if (pic->pic_fields.bits.chroma_format_idc != 1 ||
+	    pic->pic_fields.bits.separate_colour_plane_flag)
+		reason = "only 4:2:0 output is negotiated";
+	else if (luma != chroma)
+		reason = "unequal luma/chroma bit depth";
+	else if (luma > max_depth)
+		reason = "bit depth exceeds the negotiated profile";
+	else
+		return VA_STATUS_SUCCESS;
+
+	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_UNSUPPORTED,
+		   "hevc-picture-format", 0,
+		   "hevc: %s: chroma_format_idc %u, %u-bit luma, %u-bit chroma, "
+		   "%u-bit %s context",
+		   reason, pic->pic_fields.bits.chroma_format_idc, luma, chroma,
+		   max_depth, vaProfileStr(ctx->profile));
+	return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
+}
+
 static VAStatus hevc_render_buffer_impl(struct v4l2r_context *ctx,
 				   struct v4l2r_buffer *buf)
 {
@@ -1242,6 +1284,9 @@ static VAStatus hevc_render_buffer_impl(struct v4l2r_context *ctx,
 	case VAPictureParameterBufferType:
 		if (v4l2r_buffer_bytes(buf) < sizeof(codec->va_pic))
 			return VA_STATUS_ERROR_INVALID_BUFFER;
+		status = hevc_check_picture_format(ctx, buf->data);
+		if (status != VA_STATUS_SUCCESS)
+			return status;
 		codec->va_pic = *(const VAPictureParameterBufferHEVC *)buf->data;
 		codec->have_pic = true;
 		hevc_fill_sps_pps(ctx, &codec->va_pic);
@@ -1296,6 +1341,8 @@ static VAStatus hevc_end_picture(struct v4l2r_context *ctx)
 	return status;
 }
 
+/* Range-extension (Main12, 4:2:2, 4:4:4), monochrome and SCC profiles are
+ * deliberately absent: see docs/HEVC_RANGE_EXTENSIONS.md before adding one. */
 static const VAProfile hevc_profiles[] = {
 	VAProfileHEVCMain,
 	VAProfileHEVCMain10,
