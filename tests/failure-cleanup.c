@@ -22,6 +22,7 @@ enum kind { VIDEO = 1, MEDIA, REQUEST, DMABUF, CONVERTER };
 static struct {
     enum kind kind;
     bool live;
+    unsigned int generation;
     unsigned int outputs, captures;
     uint32_t output_queued, output_ready;
     uint64_t capture_queued, capture_ready;
@@ -113,18 +114,23 @@ void __wrap_free(void *ptr)
 }
 static int new_fd(enum kind kind)
 {
-    assert(fd_count < LIMIT);
-    unsigned int n = fd_count++;
+    unsigned int n;
+    for (n = 0; n < fd_count && fds[n].live; n++);
+    if (n == fd_count) { assert(fd_count < LIMIT); fd_count++; }
+    unsigned int generation = fds[n].generation + 1;
     memset(&fds[n], 0, sizeof(fds[n]));
-    fds[n].kind = kind; fds[n].live = true;
+    fds[n].kind = kind; fds[n].live = true; fds[n].generation = generation;
     fds[n].request_output = fds[n].request_video = -1;
-    return FD_BASE + (int)n;
+    return FD_BASE + (int)(generation * LIMIT + n);
 }
 static unsigned int fd_slot(int fd)
 {
-    assert(fd >= FD_BASE && (unsigned int)(fd - FD_BASE) < fd_count);
-    assert(fds[fd - FD_BASE].live);
-    return (unsigned int)(fd - FD_BASE);
+    assert(fd >= FD_BASE);
+    unsigned int value = (unsigned int)(fd - FD_BASE);
+    unsigned int n = value % LIMIT;
+    assert(n < fd_count && fds[n].live);
+    assert(fds[n].generation == value / LIMIT);
+    return n;
 }
 int __wrap_open(const char *path, int flags, ...)
 {
@@ -459,6 +465,82 @@ static VAStatus picture(VAContextID id, VASurfaceID sid)
     VAStatus status = table.vaBeginPicture(&va, id, sid);
     return status == VA_STATUS_SUCCESS ? table.vaEndPicture(&va, id) : status;
 }
+struct resources {
+    unsigned int fds[CONVERTER + 1];
+    unsigned int maps, heaps, handle_arrays;
+    size_t mapped_bytes, heap_bytes, handle_array_bytes;
+    unsigned int configs, contexts, surfaces, buffers, images;
+};
+static bool handle_array(void *ptr)
+{
+    return ptr == drv->configs.slots || ptr == drv->contexts.slots ||
+           ptr == drv->surfaces.slots || ptr == drv->buffers.slots ||
+           ptr == drv->images.slots;
+}
+static unsigned int live_handles(struct v4l2r_handles *handles)
+{
+    unsigned int count = 0;
+    for (unsigned int i = 0; i < handles->size; i++) count += handles->slots[i] != NULL;
+    return count;
+}
+static struct resources resources(void)
+{
+    struct resources r = {0};
+    for (unsigned int i = 0; i < fd_count; i++)
+        if (fds[i].live) r.fds[fds[i].kind]++;
+    for (unsigned int i = 0; i < LIMIT; i++) {
+        if (maps[i].ptr) { r.maps++; r.mapped_bytes += maps[i].size; }
+        if (!heaps[i].ptr) continue;
+        if (handle_array(heaps[i].ptr)) {
+            r.handle_arrays++; r.handle_array_bytes += heaps[i].size;
+        } else {
+            r.heaps++; r.heap_bytes += heaps[i].size;
+        }
+    }
+    r.configs = live_handles(&drv->configs);
+    r.contexts = live_handles(&drv->contexts);
+    r.surfaces = live_handles(&drv->surfaces);
+    r.buffers = live_handles(&drv->buffers);
+    r.images = live_handles(&drv->images);
+    return r;
+}
+static void assert_resource_members(struct resources actual,
+                                    struct resources expected)
+{
+    for (unsigned int i = 0; i <= CONVERTER; i++)
+        assert(actual.fds[i] == expected.fds[i]);
+    assert(actual.maps == expected.maps && actual.heaps == expected.heaps);
+    assert(actual.mapped_bytes == expected.mapped_bytes &&
+           actual.heap_bytes == expected.heap_bytes);
+    assert(actual.configs == expected.configs &&
+           actual.contexts == expected.contexts &&
+           actual.surfaces == expected.surfaces &&
+           actual.buffers == expected.buffers && actual.images == expected.images);
+}
+static void assert_resources(struct resources expected)
+{
+    struct resources actual = resources();
+    assert_resource_members(actual, expected);
+    assert(actual.handle_arrays == expected.handle_arrays &&
+           actual.handle_array_bytes == expected.handle_array_bytes);
+}
+static void assert_lifecycle_resources(struct resources expected)
+{
+    struct resources actual = resources();
+    /* Handle tables retain their bounded peak capacity until Terminate. */
+    assert_resource_members(actual, expected);
+    assert(actual.handle_arrays == expected.handle_arrays &&
+           actual.handle_array_bytes >= expected.handle_array_bytes &&
+           actual.handle_array_bytes <= expected.handle_array_bytes +
+                                        32 * sizeof(void *));
+    assert(drv->configs.size == 32 && drv->contexts.size <= 64 &&
+           drv->surfaces.size == 32 && drv->buffers.size == 32 &&
+           drv->images.size == 32);
+}
+static void close_export(VADRMPRIMESurfaceDescriptor *desc)
+{
+    for (unsigned int i = 0; i < desc->num_objects; i++) assert(!close(desc->objects[i].fd));
+}
 static void teardown(void)
 {
     armed = false;
@@ -467,6 +549,79 @@ static void teardown(void)
         assert(!fds[i].live && !maps[i].ptr && !heaps[i].ptr);
     }
     memset(fds, 0, sizeof(fds)); fd_count = 0;
+}
+static void churn(const char *name)
+{
+    setup();
+    struct resources baseline = resources();
+    assert(baseline.configs == 1 && !baseline.contexts && !baseline.surfaces &&
+           !baseline.buffers && !baseline.images);
+    assert(baseline.handle_arrays == 5);
+    for (unsigned int cycle = 1; cycle <= 1000; cycle++) {
+        VAContextID id = context();
+        VASurfaceID sid = surface();
+        VADRMPRIMESurfaceDescriptor desc;
+        if (!strcmp(name, "early-export")) {
+            assert(table.vaExportSurfaceHandle(&va, sid,
+                VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc) == VA_STATUS_SUCCESS);
+            close_export(&desc);
+        }
+        assert(picture(id, sid) == VA_STATUS_SUCCESS);
+        assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
+        if (!strcmp(name, "normal")) {
+            assert(table.vaExportSurfaceHandle(&va, sid,
+                VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc) == VA_STATUS_SUCCESS);
+            close_export(&desc);
+        } else if (!strcmp(name, "held-image")) {
+            VAImage image;
+            void *mapped, *again;
+            assert(v4l2r_DeriveImage(&va, sid, &image) == VA_STATUS_SUCCESS);
+            assert(v4l2r_MapBuffer(&va, image.buf, &mapped) == VA_STATUS_SUCCESS);
+            assert(image.data_size > 0);
+            memset(mapped, 0x5a, image.data_size);
+            assert(table.vaDestroyContext(&va, id) == VA_STATUS_SUCCESS);
+            id = VA_INVALID_ID;
+            assert(v4l2r_UnmapBuffer(&va, image.buf) == VA_STATUS_SUCCESS);
+            assert(v4l2r_MapBuffer(&va, image.buf, &again) == VA_STATUS_SUCCESS);
+            assert(again == mapped && ((unsigned char *)again)[0] == 0x5a &&
+                   ((unsigned char *)again)[image.data_size - 1] == 0x5a);
+            assert(v4l2r_UnmapBuffer(&va, image.buf) == VA_STATUS_SUCCESS);
+            assert(v4l2r_DestroyImage(&va, image.image_id) == VA_STATUS_SUCCESS);
+        } else {
+            assert(!strcmp(name, "early-export"));
+        }
+        assert(table.vaDestroySurfaces(&va, &sid, 1) == VA_STATUS_SUCCESS);
+        if (id != VA_INVALID_ID)
+            assert(table.vaDestroyContext(&va, id) == VA_STATUS_SUCCESS);
+        assert_resources(baseline);
+        if (cycle == 100 || cycle == 500 || cycle == 1000)
+            printf("CHURN %s checkpoint cycle %u\n", name, cycle);
+    }
+    teardown();
+}
+static void destroy_lifecycle(void)
+{
+    struct v4l2r_handles *tables[] = {
+        &drv->contexts, &drv->images, &drv->buffers, &drv->surfaces,
+    };
+    for (unsigned int table_index = 0;
+         table_index < sizeof(tables) / sizeof(tables[0]); table_index++) {
+        for (;;) {
+            unsigned int iter = 0;
+            uint32_t id;
+            if (!v4l2r_handles_next(tables[table_index], &iter, &id)) break;
+            VAStatus status;
+            if (tables[table_index] == &drv->contexts)
+                status = table.vaDestroyContext(&va, id);
+            else if (tables[table_index] == &drv->images)
+                status = v4l2r_DestroyImage(&va, id);
+            else if (tables[table_index] == &drv->buffers)
+                status = v4l2r_DestroyBuffer(&va, id);
+            else
+                status = table.vaDestroySurfaces(&va, &id, 1);
+            assert(status == VA_STATUS_SUCCESS);
+        }
+    }
 }
 static void inject(unsigned long request, int type, unsigned int nth, int error)
 {
@@ -497,6 +652,7 @@ static unsigned int sweep_run(const char *name, unsigned int point)
     packed = !strcmp(name, "decode-convert");
     pitch_retry = !strcmp(name, "vpp-stride");
     setup();
+    struct resources baseline = resources();
     VASurfaceID sid = surface();
     VAContextID id = VA_INVALID_ID;
     struct v4l2r_context *ctx = NULL;
@@ -665,6 +821,13 @@ static unsigned int sweep_run(const char *name, unsigned int point)
     VAContextID next = context(); VASurfaceID target = surface();
     assert(picture(next, target) == VA_STATUS_SUCCESS);
     assert(table.vaSyncSurface(&va, target) == VA_STATUS_SUCCESS);
+    destroy_lifecycle();
+    assert_lifecycle_resources(baseline);
+    next = context(); target = surface();
+    assert(picture(next, target) == VA_STATUS_SUCCESS);
+    assert(table.vaSyncSurface(&va, target) == VA_STATUS_SUCCESS);
+    destroy_lifecycle();
+    assert_lifecycle_resources(baseline);
     teardown(); return count;
 }
 static void sweep(const char *name)
@@ -679,6 +842,7 @@ int main(int argc, char **argv)
     assert(argc == 2);
     const char *test = argv[1];
     if (!strncmp(test, "sweep-", 6)) { sweep(test + 6); return 0; }
+    if (!strncmp(test, "churn-", 6)) { churn(test + 6); return 0; }
     hold = sliced = !strncmp(test, "partial-", 8);
     setup();
     VAContextID id = context(); VASurfaceID sid = surface();
