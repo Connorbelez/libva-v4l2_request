@@ -213,6 +213,15 @@ def validate_options(count, interval, limits, acceptance, warmup, exit_timeout):
 
 def stop_workload(process, timeout, process_group=False):
     """Bounded cleanup of a workload we spawned; never used for monitor --pid."""
+    # record() and its caller both have exception cleanup. Once this group is
+    # released, its numeric ID could be reused; never inspect or signal it again.
+    if process_group and getattr(process, "_resource_group_released", False):
+        return False
+
+    def release_group():
+        if process_group:
+            process._resource_group_released = True
+
     def alive():
         if not process_group:
             return process.poll() is None
@@ -233,6 +242,7 @@ def stop_workload(process, timeout, process_group=False):
             pass
 
     if not alive():
+        release_group()
         return False
     send(signal.SIGTERM)
     try:
@@ -245,6 +255,7 @@ def stop_workload(process, timeout, process_group=False):
         process.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
         pass  # The result is already a failure; never hang on an unkillable task.
+    release_group()
     return True
 
 
@@ -435,6 +446,14 @@ def regression_tests(baseline):
     limits = {"fds": 0, "maps": 0, "mapped_bytes": 0, "vmrss_kib": 1024,
               "dmabuf_references": 0, "dmabuf_objects": 0, "dmabuf_bytes": 0}
     module = sys.modules[__name__]
+    # The same cleanup runs from nested finally blocks. A vanished group's ID
+    # must not be consulted again even if the OS has since recycled that number.
+    completed = subprocess.Popen([sys.executable, "-c", "pass"], start_new_session=True)
+    assert completed.wait(timeout=3) == 0
+    with mock.patch.object(os, "killpg", side_effect=ProcessLookupError()):
+        assert not stop_workload(completed, 0.05, True)
+    with mock.patch.object(os, "killpg", side_effect=AssertionError("revisited a released group")):
+        assert not stop_workload(completed, 0.05, True)
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         changed = dict(baseline, process_start_time="different-process")
