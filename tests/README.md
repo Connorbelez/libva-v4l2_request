@@ -138,7 +138,14 @@ after dependency failures. `tests/ci_check.py fixtures` (Meson test
 `ci-workflow-audit`) revalidates the actual wiring: every child job must appear in the
 aggregate's `needs`, external actions and container images must be pinned by full commit
 SHA or sha256 digest, only hosted runner labels are permitted, matrix jobs must not be
-fail-fast, and the workflow may only hold `permissions: contents: read`.
+fail-fast, and the workflow may only hold `permissions: contents: read`. A full-SHA pin
+alone does not say which runtime a pinned action's own `action.yml` targets, which is how
+both `checkout` and `cache` quietly drifted onto a deprecated runtime (issue #63): every
+pinned commit is also checked against `ACTION_RUNTIME_ALLOWLIST` in `ci_check.py`, a
+reviewed, offline `commit -> {runtime, reviewed}` record built by reading each commit's
+`action.yml` directly (no network access from this script). A pin missing from that
+allowlist, or one whose recorded runtime has fallen out of `SUPPORTED_RUNTIMES`, fails the
+audit; add a dated entry when introducing or moving a pin.
 
 Codec build options `-Dcodec_h264|hevc|mpeg2|vp8|vp9|av1=auto|enabled|disabled`
 (auto-detect by default) control which codecs compile in. A codec enabled explicitly
