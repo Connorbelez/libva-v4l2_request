@@ -851,6 +851,16 @@ def acquire(
                 f"        actual   sha256 {record['sha256']}\n"
                 "        Delete the file to re-acquire it; the tool never overwrites a pinned asset."
             )
+        if not expected_sha:
+            ref = f"{suite.suite_id}#{vector}"
+            local = load_lock(cache).get(ref)
+            if not local or local["file"] != suite.by_name[vector]["input_file"]:
+                raise CorpusError(
+                    f"cached asset has no verified acquisition identity: {ref}\n"
+                    "        Delete the cached file and fetch it again to verify the upstream checksum."
+                )
+            if record["sha256"] != local["asset_sha256"] or record["bytes"] != local["bytes"]:
+                raise CorpusError(f"hash mismatch against the local acquisition lock for {ref}")
         return {**record, "action": "cached", "path": str(dest), "download_bytes": 0}
     if offline:
         raise CorpusError(
@@ -940,12 +950,50 @@ def describe_asset(path: Path) -> dict:
 def load_lock(cache: Path) -> dict:
     """Read the local acquisition lock produced by `corpus.py lock`, if present."""
     path = cache / "corpus-lock.json"
-    if not path.is_file():
-        return {}
     try:
-        return json.loads(path.read_text(encoding="utf-8")).get("assets", {})
-    except (OSError, json.JSONDecodeError):
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
         return {}
+    except (OSError, ValueError) as error:
+        raise CorpusError(f"cannot read acquisition lock {path}: {error}") from error
+    if not isinstance(document, dict) or not isinstance(document.get("assets"), dict):
+        raise CorpusError(f"invalid acquisition lock {path}: assets must be an object")
+    for ref, record in document["assets"].items():
+        if (not ASSET_REF_RE.fullmatch(ref) or not isinstance(record, dict)
+                or not SHA256_RE.fullmatch(str(record.get("asset_sha256", "")))
+                or type(record.get("bytes")) is not int or record["bytes"] < 0
+                or not isinstance(record.get("file"), str) or not record["file"]
+                or Path(record["file"]).is_absolute() or ".." in Path(record["file"]).parts):
+            raise CorpusError(f"invalid acquisition identity in lock {path}: {ref}")
+    return document["assets"]
+
+
+def record_acquisition(cache: Path, suite: SuiteIndex, vector: str, record: dict) -> int:
+    """Persist only the newly checksum-verified asset; never rehash unrelated cache files."""
+    records = load_lock(cache)
+    ref = f"{suite.suite_id}#{vector}"
+    identity = {
+        "asset_sha256": record["sha256"], "md5": record["md5"], "bytes": record["bytes"],
+        "file": suite.by_name[vector]["input_file"],
+        "pinned": bool((suite.suite.get("assets") or {}).get(vector, {}).get("asset_sha256")),
+    }
+    previous = records.get(ref)
+    if previous and any(previous[key] != identity[key] for key in ("asset_sha256", "bytes", "file")):
+        raise CorpusError(f"acquired asset differs from its recorded acquisition identity: {ref}")
+    records[ref] = identity
+    document = {"note": "Checksum-verified acquisitions; existing identities are retained.", "assets": records}
+    # A failed/interrupted write must leave the previous identities readable.
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=cache, delete=False) as handle:
+        partial = Path(handle.name)
+        try:
+            json.dump(document, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+            partial.replace(cache / "corpus-lock.json")
+        finally:
+            partial.unlink(missing_ok=True)
+    return len(records)
 
 
 def verify_cache(
@@ -1050,6 +1098,12 @@ def verify_cache(
     # a hash as an expectation, including for suite-wide acquisitions.
     suite_by_id = {suite["id"]: suite for suite in manifest["suites"]}
     pinned = pinned_refs(manifest)
+    for suite in manifest["suites"]:
+        for vector in _vectors_to_lock(suite, cache / suite["suite_name"]):
+            ref = f"{suite['id']}#{vector}"
+            directory = cache / suite["suite_name"] / vector
+            if ref not in pinned and ref not in lock and any(p.is_file() for p in directory.rglob("*")):
+                issues.append(f"missing verified acquisition identity for {ref}; delete and re-fetch the asset")
     for ref, record in sorted(lock.items()):
         if ref in pinned:
             continue
@@ -1367,6 +1421,8 @@ def cmd_fetch(args) -> int:
         print_selection_plan(selected, manifest)
         print("dry run: nothing acquired, no cache or network access.")
         return 0
+    # Refuse malformed evidence before accepting any new downloads.
+    load_lock(cache)
     indexes: dict[str, SuiteIndex] = {}
     fetched = 0
     cached = 0
@@ -1376,6 +1432,8 @@ def cmd_fetch(args) -> int:
         index = indexes.setdefault(suite["id"], SuiteIndex(suite, fluster))
         try:
             record = acquire(cache, index, vector, mirror=args.mirror, offline=args.offline)
+            if record["action"] == "fetched":
+                record_acquisition(cache, index, vector, record)
         except CorpusError as error:
             # A single unreachable distributor must not hide the assets that were acquired;
             # failures are reported, capped so a large selection stays readable, and the exit
@@ -1398,9 +1456,8 @@ def cmd_fetch(args) -> int:
         f"downloaded {downloaded_bytes} bytes of upstream files (excluding the pinned Fluster checkout)"
     )
     if fetched:
-        written = write_lock(cache, manifest, fluster, cache / "corpus-lock.json")
         print(
-            f"recorded {len(written['assets'])} asset identit(ies) in {cache / 'corpus-lock.json'} "
+            f"recorded {len(load_lock(cache))} asset identit(ies) in {cache / 'corpus-lock.json'} "
             "(evidence for verify; the manifest is never edited)"
         )
     print("The cache keeps the Fluster layout, so it can be passed to tests/conformance.py as --resources.")

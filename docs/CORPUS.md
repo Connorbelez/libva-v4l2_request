@@ -81,6 +81,13 @@ acquired without a recorded SHA-256 are still covered: `fetch` writes the identi
 to `<cache>/corpus-lock.json`, and `verify` checks any asset in that lock, so a tampered
 unpinned vector is caught before anyone records a hash as an expectation.
 
+Each download updates only its own checksum-verified identity, atomically retaining the
+previous entries. Fetching another vector never recomputes trust from unrelated cached
+files. Cached unpinned assets must match their recorded identity on both `fetch` and
+`verify`; a missing identity or malformed acquisition lock fails closed. Delete and
+re-fetch an unpinned cached file whose identity is missing. The explicit `lock` command
+reports current bytes for review; it is not a substitute for verified acquisition.
+
 ## Licence policy
 
 Nothing in this repository redistributes third-party media, and the manifest records **both** the
