@@ -45,10 +45,64 @@ ACTION_PIN = re.compile(r"^[\w.-]+/[\w.-]+@(?:[0-9a-f]{40}|sha256-[0-9a-f]{12,64
 CONTAINER_PIN = re.compile(r"^[A-Za-z0-9._/-]+:[A-Za-z0-9._-]+@sha256:[0-9a-f]{64}$")
 JOB_ID = re.compile(r"^  ([a-zA-Z0-9][a-zA-Z0-9_-]*):[ \t]*$")
 PERMISSION = re.compile(r"^  ([a-z-]+):\s*([a-z]+)\s*$")
+REVIEW_DATE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 # Strings that must never appear in the offline CI workflow.
 FORBIDDEN = ("pull_request_target", "continue-on-error", "self-hosted",
              "LIBVA_HW_GUARD_LEASE", "secrets.")
+
+# Runtimes GitHub-hosted runners execute without a forced-runtime warning.
+# Update this set (with a fresh allowlist review, below) when Actions moves
+# the goalposts again -- this is what issue #63 was missing.
+SUPPORTED_RUNTIMES = frozenset(["node24"])
+
+# A full-SHA pin says nothing about the runtime its own action.yml declares.
+# This is the reviewed record of that fact: one entry per commit that has
+# ever appeared in a 'uses:' line, each read directly from that commit's
+# action.yml (offline -- no network access from this script) and dated. A
+# pin that is not here, or whose recorded runtime has fallen out of
+# SUPPORTED_RUNTIMES, fails the audit; that is the whole point.
+ACTION_RUNTIME_ALLOWLIST = {
+    # actions/checkout v4.4.0 -- node20, superseded by v5.1.0 below.
+    "actions/checkout@11d5960a326750d5838078e36cf38b85af677262": {
+        "runtime": "node20", "reviewed": "2026-09-16",
+    },
+    # actions/checkout v5.1.0 -- node24, current pin per PR #64.
+    "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09": {
+        "runtime": "node24", "reviewed": "2026-09-16",
+    },
+    # actions/cache v4.3.0 -- node20, superseded by v5.1.0 below.
+    "actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830": {
+        "runtime": "node20", "reviewed": "2026-09-16",
+    },
+    # actions/cache v5.1.0 -- node24, current pin per PR #64.
+    "actions/cache@caa296126883cff596d87d8935842f9db880ef25": {
+        "runtime": "node24", "reviewed": "2026-09-16",
+    },
+    # Fixture-only pin exercised by run_fixtures(); not a real dependency.
+    "actions/checkout@1111111111111111111111111111111111111111": {
+        "runtime": "node24", "reviewed": "2026-09-16",
+    },
+}
+
+
+def validate_allowlist(allowlist):
+    """Fail loudly on a malformed entry: no allowlist entry may lack a
+    runtime or a parseable review date -- an unreviewed pin must read as
+    unreviewed, never silently pass because a field is missing."""
+    problems = []
+    for pin, entry in allowlist.items():
+        if not isinstance(entry, dict):
+            problems.append("allowlist entry for '%s' is not a mapping" % pin)
+            continue
+        runtime = entry.get("runtime")
+        if not runtime or not isinstance(runtime, str):
+            problems.append("allowlist entry for '%s' has no runtime" % pin)
+        reviewed = entry.get("reviewed")
+        if not isinstance(reviewed, str) or not REVIEW_DATE.match(reviewed):
+            problems.append("allowlist entry for '%s' has no valid review "
+                            "date (expected YYYY-MM-DD)" % pin)
+    return problems
 
 
 def parse_jobs(text):
@@ -166,11 +220,26 @@ def audit(text, path="<workflow>"):
         if needle in text:
             problems.append("workflow must not contain '%s'" % needle)
     check_permissions(text, problems)
+    problems.extend(validate_allowlist(ACTION_RUNTIME_ALLOWLIST))
     for match in re.finditer(r"^\s*-?\s*uses:\s*(\S+)\s*$", text, re.M):
-        if not ACTION_PIN.match(match.group(1)):
+        pin = match.group(1)
+        if not ACTION_PIN.match(pin):
             problems.append("action '%s' is not pinned by full commit SHA "
                             "(expected owner/repo@<40-hex or sha256-hex>)"
-                            % match.group(1))
+                            % pin)
+            continue
+        entry = ACTION_RUNTIME_ALLOWLIST.get(pin)
+        if entry is None:
+            problems.append("action '%s' is pinned by commit but not in the "
+                            "reviewed commit-to-runtime allowlist; read its "
+                            "action.yml and add an entry with the runtime "
+                            "and a review date" % pin)
+        elif entry["runtime"] not in SUPPORTED_RUNTIMES:
+            problems.append("action '%s' targets runtime '%s' (reviewed "
+                            "%s), which is not in the supported set %s; "
+                            "repin to a release with a supported runtime" %
+                            (pin, entry["runtime"], entry["reviewed"],
+                             sorted(SUPPORTED_RUNTIMES)))
     for match in re.finditer(r"^\s*container:\s*(\S+)\s*$", text, re.M):
         if not CONTAINER_PIN.match(match.group(1)):
             problems.append("container image '%s' is not pinned by a sha256 "
@@ -365,6 +434,48 @@ def run_fixtures():
 
     expect("write permissions are flagged", write_permissions(),
            must_fail=True, contains="contents: read")
+
+    def unreviewed_pin():
+        text = FIXTURE_WORKFLOW.replace(
+            "actions/checkout@1111111111111111111111111111111111111111",
+            "actions/checkout@2222222222222222222222222222222222222222", 1)
+        return [p for p in audit(text) if "allowlist" in p] or \
+            ["audit accepted a pin absent from the reviewed allowlist"]
+
+    expect("action pinned to a commit outside the reviewed allowlist is "
+           "flagged", unreviewed_pin(), must_fail=True, contains="allowlist")
+
+    def unsupported_runtime_pin():
+        # A real reviewed pin (actions/checkout v4.4.0): recorded as node20,
+        # which issue #63 is about -- it must fail even though it is fully
+        # reviewed and fully SHA-pinned.
+        text = FIXTURE_WORKFLOW.replace(
+            "actions/checkout@1111111111111111111111111111111111111111",
+            "actions/checkout@11d5960a326750d5838078e36cf38b85af677262", 1)
+        return [p for p in audit(text) if "node20" in p] or \
+            ["audit accepted a reviewed pin with an unsupported runtime"]
+
+    expect("action pinned to a reviewed but unsupported runtime is "
+           "flagged", unsupported_runtime_pin(), must_fail=True,
+           contains="node20")
+
+    def allowlist_entry_without_review_date():
+        bad = {"actions/checkout@" + "3" * 40: {"runtime": "node24"}}
+        return validate_allowlist(bad) or \
+            ["allowlist entry without a review date was accepted"]
+
+    expect("allowlist entry without a review date is rejected",
+           allowlist_entry_without_review_date(), must_fail=True,
+           contains="review date")
+
+    def allowlist_entry_without_runtime():
+        bad = {"actions/checkout@" + "4" * 40: {"reviewed": "2026-09-16"}}
+        return validate_allowlist(bad) or \
+            ["allowlist entry without a runtime was accepted"]
+
+    expect("allowlist entry without a runtime is rejected",
+           allowlist_entry_without_runtime(), must_fail=True,
+           contains="no runtime")
 
     if failures:
         print("%d/%d fixtures failed" % (len(failures), total[0]))
