@@ -56,30 +56,36 @@ Direct V4L2 vs software: first mismatch is **frame 26** (also B). 25 wrong indic
 
 ## Layer
 
-1. Kernel/firmware is **sufficient** for RPS_E corruption: GStreamer `v4l2slh265dec` never uses this VA driver and still mismatches 25 pictures.
-2. The VA driver is **not a transparent pass-through** of that kernel failure: it produces a third stream MD5, the r11 userspace baseline, with a different 26-picture set.
+1. Corruption happens **without this VA driver**: GStreamer `v4l2slh265dec` still
+   mismatches 25 pictures. That path still has GStreamer's HEVC parser and
+   DPB/LTR control encoder, so this does **not** prove the kernel/firmware is
+   sufficient by itself.
+2. The VA driver is **not a transparent pass-through** of the GStreamer failure:
+   it produces a third stream MD5 (the r11 userspace baseline) and a different
+   26-picture set.
 3. r8 decode-order remapping is off here because the SPS sets
    `long_term_ref_pics_present_flag=1` (with `num_long_term_ref_pics_sps=0`).
    Historical unrestricted remapping moved RPS_E from 26 to 30 wrong frames, so
    turning the RPS_B workaround on for LTR-capable SPS is not an acceptable H2.
 
 SPS traces (ffmpeg `trace_headers`): RPS_E
-`long_term_ref_pics_present_flag=1`; RPS_B does not take that path in the r8
-workaround (short-term only). Exact slice `num_long_term_pics` counts were not
-re-dumped in the second ffmpeg `-v error` capture; the first `trace_headers`
-run showed `num_long_term_pics=0` on the sampled slice headers.
+`long_term_ref_pics_present_flag=1`. Sampled slice headers in the first capture
+showed `num_long_term_pics=0`. That explains the r8 SPS gate. It is not
+command-level proof that long-term POCs were submitted to firmware.
 
 ## Hypothesis for H2
 
-The firmware is sensitive to DPB slot order **and** long-term POC identity.
 VA-API's DPB list (VA order, LTR flags copied from `VAPictureHEVC`) and
 GStreamer's V4L2 request controls are two different command encodings of the
 same bitstream, so they fail overlapping but not identical B pictures.
+Whether firmware is sensitive to long-term POC identity remains a hypothesis
+until slice `num_long_term_pics` and DPB LTR flags for frames 26–31 are dumped.
 
 A userspace-only reorder heuristic is the wrong next change. Discriminating
 experiment: dump per-request DPB timestamp/POC/LTR-flag/slice-RPS indices for
 output frames 26–31 on the VA path (opt-in env trace). Kernel kprobes remain
-out of scope without `needs:kernel-approval`.
+out of scope without `needs:kernel-approval`. Kernel sufficiency stays unproven
+until those request controls are compared.
 
 ## H2 contract (do not violate)
 
