@@ -69,6 +69,20 @@ EndPicture; this does not establish that a media file can trigger the same API s
 CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
 hardware tests are separate.
 
+Three resource-churn cases run 1,000 normal, early-export and held-derived-image
+lifecycles in one initialized fake driver. At cycles 100, 500 and 1,000, and
+after every intervening cycle, model descriptors, mappings, heap allocations and
+live VA objects must return exactly to the initialized-driver baseline. The
+operation-index failure sweeps now prove the same in-process cleanup before final
+`vaTerminate`, then complete a fresh decode and return to baseline again. Handle
+table capacity is recorded separately as a bounded high-water cache.
+
+`python3 tests/resource-churn.py self-test` validates the process-local `/proc`
+sampler used for later hardware campaigns. It records fsynced JSONL for FD,
+mapping, RSS and available dma-buf fdinfo measurements, requires an explicit RSS
+threshold in acceptance mode, and never treats unavailable dma-buf accounting as
+zero. See [the resource churn contract](../docs/RESOURCE_CHURN.md).
+
 CI also runs `sh tests/shared-contexts.sh` in software. With a driver-directory argument,
 run it through the hardware guard to interleave H.264, HEVC and 8/10-bit VP9 decoders on
 one shared VA display. The clips contain 24, 36, 48 and 60 frames, so earlier contexts are
