@@ -111,6 +111,26 @@ foreach case : ['surface-duplicates', 'surface-parameters', 'surface-null-output
   test('api-' + case, api_lifecycle, args: [case], timeout: 10)
 endforeach
 
+concurrent_stress = executable('concurrent-stress', 'concurrent-stress.c', driver_sources,
+  c_args: ['-UNDEBUG'],
+  include_directories: [root_inc, include_directories('../src')],
+  dependencies: [libva_dep, libdrm_dep, threads_dep],
+  link_args: ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll', '-Wl,--wrap=__poll_chk',
+              '-Wl,--wrap=open', '-Wl,--wrap=close', '-Wl,--wrap=dup',
+              '-Wl,--wrap=fcntl', '-Wl,--wrap=mmap', '-Wl,--wrap=munmap',
+              '-Wl,--wrap=open64', '-Wl,--wrap=__open_2', '-Wl,--wrap=__open64_2',
+              '-Wl,--wrap=fcntl64', '-Wl,--wrap=mmap64', '-Wl,--wrap=clock_gettime'])
+# Threaded schedules: 1/2/4 contexts decoding, reading back and tearing
+# down concurrently against the model decoder. Ten repetitions each.
+foreach case : ['1', '2', '4']
+  test('concurrent-threads-' + case, concurrent_stress,
+       args: ['threads', case, '12', '10', '549203187'], timeout: 120)
+  test('concurrent-teardown-' + case, concurrent_stress,
+       args: ['teardown', case, '12', '10', '812734691'], timeout: 120)
+endforeach
+test('concurrent-failure-4', concurrent_stress,
+     args: ['failure', '4', '12', '10', '3372110043'], timeout: 120)
+
 picture = executable('picture', 'picture.c', driver_sources,
   c_args: ['-UNDEBUG'],
   include_directories: [root_inc, include_directories('../src')],
@@ -129,6 +149,24 @@ if conf.get('HAVE_V4L2_PIX_FMT_P010') == 1 and (conf.get('HAVE_V4L2_CTRL_H264') 
 endif
 
 python3 = find_program('python3')
+# Multi-process schedules: N worker processes of the stress harness
+# behind a start barrier, aggregated and deadline-checked by the
+# orchestrator. Its --self-test validates parsing, the independent
+# digest derivation and (with the binary) real negative fixtures:
+# stalled worker, inherited stdout holder and launch failure.
+test('concurrent-processes', python3,
+     args: [files('concurrent-process.py'), '--self-test',
+            concurrent_stress], timeout: 120)
+foreach n : ['1', '2', '4']
+  test('concurrent-processes-' + n, python3,
+       args: [files('concurrent-process.py'), concurrent_stress,
+              '--processes', n, '--frames', '12', '--reps', '3',
+              '--seed', '0xC0FFEE', '--deadline', '120'], timeout: 300)
+endforeach
+# ThreadSanitizer pass in a fresh sanitizer build; skips (77) with the
+# reason when the toolchain or sandbox cannot run TSan.
+test('concurrent-tsan', find_program('sh'),
+     args: [files('concurrent-tsan.sh')], timeout: 600)
 test('support-matrix', python3, args: files('support-matrix.py'), timeout: 30)
 test('corpus-manifest', python3, args: [files('corpus.py'), 'self-test'], timeout: 60)
 test('corpus-integrity', python3, args: files('corpus-integrity.py'), timeout: 30)
