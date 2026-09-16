@@ -1,0 +1,1976 @@
+{
+  "schema_version": 1,
+  "kind": "failure-cleanup-validation",
+  "date": "2026-09-16",
+  "issue": "https://github.com/iconidentify/libva-v4l2_request/issues/35",
+  "pull_request": "https://github.com/iconidentify/libva-v4l2_request/pull/68",
+  "baseline_commit": "3d620db0417467c55d8600f5c79947cca71fdcf6",
+  "tested_code_commit": "e515385240bff10378f78c03dd7cfafed54786aa",
+  "tested_src_tree": "00b8890d0ed3aa3182dc7bec73d38cf543e6d848",
+  "driver_sha256": "c0b544ef405e88cf229bffc5960cdce890454c867305623110c338f562f8528f",
+  "post_hardware_changes": "Documentation and evidence only; final PR head must retain the tested src tree.",
+  "host": {
+    "architecture": "aarch64",
+    "model": "Apple M1",
+    "compatible": [
+      "apple,j293",
+      "apple,t8103"
+    ],
+    "kernel": "7.1.13-3-1-ARCH",
+    "kernel_and_headers_package": "7.1.13.asahi3-1",
+    "decoder": "avd / apple_avd",
+    "on_disk_module_sha256": "e50540e1d0fc48c7e0bf9b21ff028758bdb35f94aa7070af00de88e61e5c70e9",
+    "module_loaded_identity_limit": "The existing module was not rebuilt or reloaded for this task; sysfs does not establish which binary was previously loaded. The on-disk hash is from the recorded installation earlier on the same day.",
+    "installed_userspace_package": "libva-v4l2_request-avd 1.3.r11-2; unchanged by this task"
+  },
+  "tools": {
+    "gcc": "16.1.1 20260430",
+    "libva_package": "2.24.1-1",
+    "libva_pkgconfig_api": "1.24.0",
+    "libdrm": "2.4.134",
+    "meson": "1.12.0",
+    "ffmpeg": "n9.0.1",
+    "fluster_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34"
+  },
+  "offline": {
+    "sanitizers": [
+      "address",
+      "undefined"
+    ],
+    "isolation": "Unprivileged disposable namespace; no decoder device or network; source/build tree only writable task mount.",
+    "baseline": {
+      "passed": 75,
+      "failed": 0,
+      "software_scripts": "Both passed"
+    },
+    "initial_reproductions": {
+      "commit": "fbaf506ec81cbdca22c61d2b2ab51087e5d035ae",
+      "failed": 7,
+      "positive_controls_passed": 1,
+      "failing_ci": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35127456637",
+      "refinement": "CAPTURE QBUF case subsequently minimized to actual ring-wrap stall; see capture-ring-reproduction.log."
+    },
+    "further_reproductions": [
+      "VPP valid retry retained destination error",
+      "Decoder OUTPUT STREAMON failure leaked an earlier converter on retry",
+      "Client rejection of a later slice allowed new submission with held CAPTURE",
+      "CAPTURE QUERYBUF index hole appeared to own descriptor 0",
+      "Sync error after completed dequeue disappeared on repeated sync (normal and early export)"
+    ],
+    "final": {
+      "passed": 123,
+      "failed": 0,
+      "new_cases": 48,
+      "sweep_cases": 23,
+      "injected_operation_failures": 260,
+      "other_new_cases": 25,
+      "software_frame_checks": "Native-size resolution/crop/truncation checks pass; four shared streams / 168 software frames match independent decoders"
+    },
+    "case_results": {
+      "failure-control": "OK",
+      "failure-capture-queue": "OK",
+      "failure-poll-interrupted": "OK",
+      "failure-request-queue": "OK",
+      "failure-converter-source-error": "OK",
+      "failure-dequeue-error": "OK",
+      "failure-converter-error-flag": "OK",
+      "failure-converter-export-error": "OK",
+      "failure-sweep-create": "OK",
+      "failure-sweep-create-single": "OK",
+      "failure-sweep-decode": "OK",
+      "failure-sweep-export-single": "OK",
+      "failure-sweep-view": "OK",
+      "failure-sweep-export": "OK",
+      "failure-sweep-decode-early": "OK",
+      "failure-sweep-view-dmabuf": "OK",
+      "failure-sweep-grow": "OK",
+      "failure-sweep-convert-setup": "OK",
+      "failure-sweep-preserve": "OK",
+      "failure-sweep-convert-wait": "OK",
+      "failure-sweep-convert-kick": "OK",
+      "failure-sweep-create-grown": "OK",
+      "failure-sweep-vpp": "OK",
+      "failure-sweep-create-vpp": "OK",
+      "failure-dequeue-eintr": "OK",
+      "failure-dequeue-timeout": "OK",
+      "failure-dequeue-eagain": "OK",
+      "failure-sweep-view-pair": "OK",
+      "failure-sweep-export-pair": "OK",
+      "failure-dequeue-stale-ready": "OK",
+      "failure-sweep-decode-convert": "OK",
+      "failure-sweep-preserve-pair": "OK",
+      "failure-sweep-attach-pair": "OK",
+      "failure-dequeue-index": "OK",
+      "failure-converter-stale-ready": "OK",
+      "failure-converter-index": "OK",
+      "failure-converter-source-index": "OK",
+      "failure-converter-eintr": "OK",
+      "failure-converter-eagain": "OK",
+      "failure-converter-source-eagain": "OK",
+      "failure-sweep-vpp-stride": "OK",
+      "failure-partial-client": "OK",
+      "failure-sweep-export-probes": "OK",
+      "failure-partial-controls": "OK",
+      "failure-poll-interrupt-deadline": "OK",
+      "failure-rollback-error": "OK",
+      "failure-partial-output": "OK",
+      "failure-partial-request": "OK"
+    },
+    "operation_sweeps": {
+      "create": {
+        "injected_failures": 27,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 3,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_QUERYCAP",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_ENUM_FRAMESIZES",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_G_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "VIDIOC_QUERY_EXT_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 13,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 14,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 15,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          },
+          {
+            "index": 16,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 17,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 18,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 19,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          },
+          {
+            "index": 20,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 21,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 22,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 23,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          },
+          {
+            "index": 24,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 25,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 26,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 27,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          }
+        ],
+        "result": "OK"
+      },
+      "create-single": {
+        "injected_failures": 27,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 3,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_QUERYCAP",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_ENUM_FRAMESIZES",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_G_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "VIDIOC_QUERY_EXT_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 13,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 14,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 15,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          },
+          {
+            "index": 16,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 17,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 18,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 19,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          },
+          {
+            "index": 20,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 21,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 22,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 23,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          },
+          {
+            "index": 24,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 25,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 26,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 27,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          }
+        ],
+        "result": "OK"
+      },
+      "decode": {
+        "injected_failures": 17,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_S_EXT_CTRLS",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_G_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "MEDIA_REQUEST_IOC_REINIT",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_S_EXT_CTRLS",
+            "va_status": 1
+          },
+          {
+            "index": 13,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 14,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 15,
+            "operation": "MEDIA_REQUEST_IOC_QUEUE",
+            "va_status": 1
+          },
+          {
+            "index": 16,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 17,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "export-single": {
+        "injected_failures": 11,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_QUERYCAP",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "dup",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "view": {
+        "injected_failures": 2,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "mmap",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "export": {
+        "injected_failures": 11,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_QUERYCAP",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "dup",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "decode-early": {
+        "injected_failures": 19,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_S_EXT_CTRLS",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_G_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "fcntl-dup",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "poll",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 13,
+            "operation": "MEDIA_REQUEST_IOC_REINIT",
+            "va_status": 1
+          },
+          {
+            "index": 14,
+            "operation": "VIDIOC_S_EXT_CTRLS",
+            "va_status": 1
+          },
+          {
+            "index": 15,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 16,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 17,
+            "operation": "MEDIA_REQUEST_IOC_QUEUE",
+            "va_status": 1
+          },
+          {
+            "index": 18,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 19,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "view-dmabuf": {
+        "injected_failures": 1,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "mmap",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "grow": {
+        "injected_failures": 4,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 2
+          },
+          {
+            "index": 3,
+            "operation": "mmap",
+            "va_status": 2
+          },
+          {
+            "index": 4,
+            "operation": "MEDIA_IOC_REQUEST_ALLOC",
+            "va_status": 2
+          }
+        ],
+        "result": "OK"
+      },
+      "convert-setup": {
+        "injected_failures": 8,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "preserve": {
+        "injected_failures": 4,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_STREAMOFF",
+            "va_status": 0
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_STREAMOFF",
+            "va_status": 0
+          },
+          {
+            "index": 3,
+            "operation": "calloc",
+            "va_status": 0
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 0
+          }
+        ],
+        "result": "OK"
+      },
+      "convert-wait": {
+        "injected_failures": 2,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "convert-kick": {
+        "injected_failures": 15,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_QUERYCAP",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 13,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 14,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 15,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "create-grown": {
+        "injected_failures": 3,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "realloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 3,
+            "operation": "calloc",
+            "va_status": 2
+          }
+        ],
+        "result": "OK"
+      },
+      "vpp": {
+        "injected_failures": 16,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_S_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_S_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_S_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "VIDIOC_S_SELECTION",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_S_SELECTION",
+            "va_status": 1
+          },
+          {
+            "index": 13,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 14,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 15,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 16,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "create-vpp": {
+        "injected_failures": 2,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "calloc",
+            "va_status": 2
+          }
+        ],
+        "result": "OK"
+      },
+      "view-pair": {
+        "injected_failures": 4,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "mmap",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "mmap",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "export-pair": {
+        "injected_failures": 4,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "dup",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "dup",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "decode-convert": {
+        "injected_failures": 41,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_S_EXT_CTRLS",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_ENUM_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_G_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_G_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "calloc",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 13,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 14,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 15,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 16,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 17,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 18,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 19,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 20,
+            "operation": "MEDIA_REQUEST_IOC_REINIT",
+            "va_status": 1
+          },
+          {
+            "index": 21,
+            "operation": "VIDIOC_S_EXT_CTRLS",
+            "va_status": 1
+          },
+          {
+            "index": 22,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 23,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 24,
+            "operation": "MEDIA_REQUEST_IOC_QUEUE",
+            "va_status": 1
+          },
+          {
+            "index": 25,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 26,
+            "operation": "calloc",
+            "va_status": 1
+          },
+          {
+            "index": 27,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 28,
+            "operation": "VIDIOC_QUERYCAP",
+            "va_status": 1
+          },
+          {
+            "index": 29,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 30,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 31,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 32,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 33,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 34,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 35,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 36,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 37,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 38,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 39,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 40,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 41,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "preserve-pair": {
+        "injected_failures": 5,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_STREAMOFF",
+            "va_status": 0
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_STREAMOFF",
+            "va_status": 0
+          },
+          {
+            "index": 3,
+            "operation": "calloc",
+            "va_status": 0
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 0
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 0
+          }
+        ],
+        "result": "OK"
+      },
+      "attach-pair": {
+        "injected_failures": 6,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "fcntl-dup",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "fcntl-dup",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "poll",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "poll",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "vpp-stride": {
+        "injected_failures": 18,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 2,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_REQBUFS",
+            "va_status": 1
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_STREAMON",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_S_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "VIDIOC_S_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_S_CTRL",
+            "va_status": 1
+          },
+          {
+            "index": 13,
+            "operation": "VIDIOC_S_SELECTION",
+            "va_status": 1
+          },
+          {
+            "index": 14,
+            "operation": "VIDIOC_S_SELECTION",
+            "va_status": 1
+          },
+          {
+            "index": 15,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 16,
+            "operation": "VIDIOC_QBUF",
+            "va_status": 1
+          },
+          {
+            "index": 17,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          },
+          {
+            "index": 18,
+            "operation": "VIDIOC_DQBUF",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      },
+      "export-probes": {
+        "injected_failures": 13,
+        "operations": [
+          {
+            "index": 1,
+            "operation": "calloc",
+            "va_status": 2
+          },
+          {
+            "index": 2,
+            "operation": "open",
+            "va_status": 1
+          },
+          {
+            "index": 3,
+            "operation": "VIDIOC_QUERYCAP",
+            "va_status": 1
+          },
+          {
+            "index": 4,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 5,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 6,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 7,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 0
+          },
+          {
+            "index": 8,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 9,
+            "operation": "VIDIOC_S_FMT",
+            "va_status": 1
+          },
+          {
+            "index": 10,
+            "operation": "VIDIOC_CREATE_BUFS",
+            "va_status": 1
+          },
+          {
+            "index": 11,
+            "operation": "VIDIOC_QUERYBUF",
+            "va_status": 1
+          },
+          {
+            "index": 12,
+            "operation": "VIDIOC_EXPBUF",
+            "va_status": 1
+          },
+          {
+            "index": 13,
+            "operation": "dup",
+            "va_status": 1
+          }
+        ],
+        "result": "OK"
+      }
+    },
+    "assertions": "Required operation/allocation error or explicit optional-probe success; failed frame retained through repeated sync/export/derive/readback; failed context/chain cannot queue next picture; recoverable same-context retry and fresh-context valid decode; all tracked heaps/maps/descriptors gone after Terminate.",
+    "commands": [
+      "meson setup build-offline -Db_sanitize=address,undefined",
+      "meson compile -C build-offline -j3",
+      "meson test -C build-offline --print-errorlogs",
+      "sh tests/frame-check.sh",
+      "sh tests/shared-contexts.sh"
+    ]
+  },
+  "hosted_ci": {
+    "code_commit": "e515385240bff10378f78c03dd7cfafed54786aa",
+    "run": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35130617876",
+    "successful_checks": 11,
+    "earlier_static_failure": "dc549c2 failed the old-header unused-variable warning in the model fixture; fixed in d353415. The aggregate gate failed as required.",
+    "final_documentation_commit_gate": "The exact final PR head must also pass all required checks before merge; retained on PR #68."
+  },
+  "hardware": {
+    "selection": "LIBVA_DRIVERS_PATH selects the candidate build-hardware/src; system installation unchanged.",
+    "journal_since": "2026-09-16 00:00:00 America/Los_Angeles",
+    "journal_boundary_reason": "Existing documented validated post-recovery boundary from the earlier campaign; historical September 15 faults remain in the boot journal. No new fault occurred in this task.",
+    "exclusive_guard": "tests/hwguard.py; finite deadlines; foreign-client, fault, wedge and idle monitoring",
+    "generated": {
+      "exact_hardware_frames": 864,
+      "shared_context_frames": 336,
+      "h264_high10_frames": 144,
+      "vp9_matrix_frames": 384,
+      "modes": [
+        "normal",
+        "export-before-decode"
+      ],
+      "additional_checks": "Native-size resolution/crop comparisons and expected truncation rejection passed.",
+      "commands": [
+        "sh tests/shared-contexts.sh build-hardware/src",
+        "sh tests/h264-high10.sh build-hardware/src",
+        "sh tests/vp9-matrix.sh build-hardware/src",
+        "sh tests/frame-check.sh build-hardware/src"
+      ],
+      "deadline_seconds": 1200,
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "90f81528-ca74-43e0-a3f8-5e0bf9540203",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "e515385240bff10378f78c03dd7cfafed54786aa"
+          },
+          "time": "2026-09-16T10:53:48-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "90f81528-ca74-43e0-a3f8-5e0bf9540203",
+          "time": "2026-09-16T10:53:48-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "90f81528-ca74-43e0-a3f8-5e0bf9540203",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T10:54:04-0700"
+        }
+      ]
+    },
+    "conformance": {
+      "deadline_seconds": 1800,
+      "per_vector_timeout_seconds": 45,
+      "baseline_pass_sets": "docs/r11-pass-sets.json",
+      "baseline_pass_sets_sha256": "66bc47b2511dfdd8d5d270be028124c343fa00ded6523035598a785b95ad5583",
+      "command_template": "LIBVA_V4L2_DIAG=json python3 tests/conformance.py <fluster-suite.json> <resources> --driver build-hardware/src --output <fresh-directory> --timeout 45; High10/profile override and subsets exactly as recorded below and in the baseline.",
+      "suites": {
+        "hevc": {
+          "suite": "JCT-VC-HEVC_V1",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 144,
+          "total": 147,
+          "passing_frames": 8889,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "880ca4d28e80a53f90a357d6681ae9a865309773d510da6faac50312995eeb33",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.hevc.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 144,
+            "checksum_mismatch": 2,
+            "decode_error": 1
+          },
+          "summary_sha256": "7cda66decf3442940ef87fd2169c8fa46615215f0d4761dd8fc83014a5f54fb7",
+          "strict_comparison": {
+            "ok": true,
+            "baseline_suite": "JCT-VC-HEVC_V1",
+            "candidate_suite": "JCT-VC-HEVC_V1",
+            "baseline_total": "144/147",
+            "candidate_total": "144/147",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [
+              {
+                "vector": "RPS_E_qualcomm_5",
+                "baseline": "decode_error",
+                "candidate": "checksum_mismatch"
+              },
+              {
+                "vector": "VPSSPSPPS_A_MainConcept_1",
+                "baseline": "decode_error",
+                "candidate": "checksum_mismatch"
+              }
+            ],
+            "first_differing_frames": [
+              {
+                "vector": "RPS_E_qualcomm_5",
+                "reason": "stream_md5",
+                "expected_md5": "c30d38bbd7ea483dc7ffe81325118e16",
+                "baseline_md5": null,
+                "candidate_md5": "b09ac8e0bd31a96d8354505d7c2ebdd5",
+                "index": 0,
+                "candidate": {
+                  "index": 0,
+                  "width": 416,
+                  "height": 240,
+                  "md5": "50cc4e6dd7d70f7908b9c3da2500320d",
+                  "format": "yuv420p"
+                },
+                "native_sizes": [
+                  "416x240"
+                ]
+              },
+              {
+                "vector": "VPSSPSPPS_A_MainConcept_1",
+                "reason": "stream_md5",
+                "expected_md5": "1ddf74263cb4953cfdfcf99c563d88ea",
+                "baseline_md5": null,
+                "candidate_md5": "ec9f5857591ac4c215d194deaf52167c",
+                "index": 0,
+                "candidate": {
+                  "index": 0,
+                  "width": 352,
+                  "height": 288,
+                  "md5": "c814e40e0f9b130f44f1abd9cbf10ae6",
+                  "format": "yuv420p"
+                },
+                "native_sizes": [
+                  "352x288",
+                  "1280x720"
+                ]
+              }
+            ],
+            "errors": []
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "avc": {
+          "suite": "JVT-AVC_V1",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 73,
+          "total": 135,
+          "passing_frames": 10134,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "6156a501b7dd1d0794ab11d10f9033e4d834a47b8a345417031b38c790423c56",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.avc.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 73,
+            "decode_error": 61,
+            "software_fallback": 1
+          },
+          "summary_sha256": "18964a06c4d52e036205b022de172790704d02adbf8e3bed2ac948ebf853f47c",
+          "strict_comparison": {
+            "ok": false,
+            "baseline_suite": "JVT-AVC_V1",
+            "candidate_suite": "JVT-AVC_V1",
+            "baseline_total": "73/135",
+            "candidate_total": "73/135",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [
+              {
+                "vector": "FM1_FT_E",
+                "baseline": "decode_error",
+                "candidate": "software_fallback"
+              }
+            ],
+            "first_differing_frames": [],
+            "errors": [
+              "software fallback cannot produce a green hardware result: FM1_FT_E"
+            ]
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "frext": {
+          "suite": "JVT-FR-EXT",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 27,
+          "total": 69,
+          "passing_frames": 4077,
+          "high10": "ffmpeg",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "a453df28cb646bd855fd754b4829f0742174144c59cbdb7e6174462ba3d26089",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.frext.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 27,
+            "decode_error": 42
+          },
+          "summary_sha256": "1359deaacd2a67e72ea28ecf35577c957acf9224435ff880b8abd039fc4206ca",
+          "strict_comparison": {
+            "ok": true,
+            "baseline_suite": "JVT-FR-EXT",
+            "candidate_suite": "JVT-FR-EXT",
+            "baseline_total": "27/69",
+            "candidate_total": "27/69",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [],
+            "first_differing_frames": [],
+            "errors": []
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "vp9": {
+          "suite": "VP9-TEST-VECTORS",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 216,
+          "total": 305,
+          "passing_frames": 3334,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "1ef6f3076f442a1878f18aeaa410a8c946f723a7724be50ddfff6e13a6dd4c64",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.vp9.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 216,
+            "decode_error": 89
+          },
+          "summary_sha256": "204cf5649c7a8392d59c9239fc0f73d57e82543b2507f6e13aeb3f7de05cd45b",
+          "strict_comparison": {
+            "ok": true,
+            "baseline_suite": "VP9-TEST-VECTORS",
+            "candidate_suite": "VP9-TEST-VECTORS",
+            "baseline_total": "216/305",
+            "candidate_total": "216/305",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [],
+            "first_differing_frames": [],
+            "errors": []
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "vp9-high10": {
+          "suite": "VP9-TEST-VECTORS-HIGH",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 1,
+          "total": 1,
+          "passing_frames": 10,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": {
+            "rationale": "explicit --vectors selection; not a full-suite total",
+            "selected": [
+              "vp92-2-20-10bit-yuv420.webm"
+            ]
+          },
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "4665e761feec0ecd1d5bafd19c1fb2cde8005f85fe7d19f57542793c6e75b9c9",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.vp9-high10.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 1
+          },
+          "summary_sha256": "2d4af4e7059fd1eee3dbf1157cdd61ea95e3ed197bba04a8fc24df04ce59d2eb"
+        },
+        "overrides": {
+          "suite": "JVT-AVC_V1",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 5,
+          "total": 5,
+          "passing_frames": 1233,
+          "high10": "off",
+          "profile_mismatch": true,
+          "subset": {
+            "rationale": "explicit --vectors selection; not a full-suite total",
+            "selected": [
+              "BA3_SVA_C",
+              "MR2_TANDBERG_E",
+              "MR3_TANDBERG_B",
+              "MR4_TANDBERG_C",
+              "MR5_TANDBERG_C"
+            ]
+          },
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "61a54df4352cc9ff847ff45aa10fb836f008af4975f1246019a471be24ab26df",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.overrides.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 5
+          },
+          "summary_sha256": "368687534d1f296f32d66129a785b28fbb3fca7db5c088bfa20b3c2d0afc4191"
+        }
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "7590332f-17f2-467b-b661-7bd5896286a1",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "e515385240bff10378f78c03dd7cfafed54786aa"
+          },
+          "time": "2026-09-16T10:54:11-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "7590332f-17f2-467b-b661-7bd5896286a1",
+          "time": "2026-09-16T10:54:11-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "7590332f-17f2-467b-b661-7bd5896286a1",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T10:57:47-0700"
+        }
+      ]
+    },
+    "preceding_candidate_run": {
+      "commit": "d35341524b993c9d76ac3e284b14be6fd8d11a7f",
+      "driver_sha256": "47901dff4d3d9ae0d85e47f93e452cb60b019856df14915c90b0db60a909368e",
+      "result": "864 generated frames and all exact conformance pass sets matched; both guards clean. Repeated after the final error-retention change so final evidence matches merged production code. Logs retained separately."
+    }
+  },
+  "review": {
+    "type": "maintainer self-review",
+    "independent_review": false,
+    "checks": "Audited partial startup/queue ownership, idle rollback, converter cancellation before surface release, descriptor sentinels, bounded waits and errors after completion. Stronger status/recovery assertions found the final sync regression."
+  },
+  "limits": [
+    "Model shared resource flows, not every codec-specific control permutation or arbitrary simultaneous failures. close/munmap accounted, not injected kernel release failures.",
+    "Fresh model-context recovery does not prove that reopening a real wedged device recovers it. No real-device fault injection or automatic recovery.",
+    "Synthetic two-plane fixtures establish partial acquisition cleanup, not format qualification.",
+    "No codec support promotion; known failing vectors remain failing.",
+    "AVC strict comparison remains non-green for FM1_FT_E software fallback; zero accepted frames, never counted as a hardware pass. Same report as preceding merged build.",
+    "Non-M1 converter/VPP hardware unavailable; hardware format qualification remains #40. True thread/process schedules #36, sustained measured resource bounds #41, client fallback #49.",
+    "No install, module rebuild/reload, reboot, Chrome/display, suspend/resume or boot qualification in this task."
+  ],
+  "local_artifact_directory": "issue35-20260916 (maintainer workspace; absolute home paths omitted)",
+  "artifact_sha256": {
+    "acquisition-fixes.log": "3a811dfd7c848c90e5c85d29b85b9b9132a2b293d1a2775c1cd086b6bd896f2f",
+    "acquisition-sweeps.log": "a0a3b1b4a91cdf00b28070ebead096b1b1ba68dd933de9ba74ca48c5ca4e41fd",
+    "baseline.log": "e46ace52cda99e2f12ccc2ce7b4b41180e1517b1a4b5d76f1edea68441c132c2",
+    "capture-ring-reproduction.log": "e3d301a89d7139f21b08b5169f9ddbb1b29c97fb394dc4e3264cad87555f990b",
+    "ci-first-static.log": "ce5a3265acfbd03f2253375eace54ee1bf04c7c7ba455f00a5cf09e220c1f544",
+    "extended-fixes.log": "5f6bb298ae6403587960d67f1f9465702c287b62598e3258674f576c5e79d9f3",
+    "extended-reproductions.log": "0e78bcd36331eafb0e9d4ac387b291e9292470ae478edd0bc921fe16e3386c9d",
+    "final-offline.log": "abfd55089c85167acd86e7e003d63bd83eecde79075d9fec4c3172f52523f5b1",
+    "final-status-assertions.log": "1173aabbc30c58e6ec9861adf3827d123f11d6b3f77f19bbe9cf900c64595ee5",
+    "final-status-fixes.log": "c1b5bb3c67c31c4e5ec82d9dec2da0b73b729344c3441c4957a131845e7194b2",
+    "final-testlog.json": "374b337245720f7fdebdbefe007685da158b012370f67802cff59ce75dc3b844",
+    "final-testlog.txt": "aa101d2108be7ff961164875e132199a73c402df7dbdbe547b35a5dfd58f5fbd",
+    "first-fixes.log": "4973f3b86d0205cdeb9cb51160f5a8102c04a89c9c67fb1952278fbcef2fae16",
+    "full-offline.log": "b65d71223386495d21fc5d93429e6fbcc0b084bd9d22aaa70f90cc1bc3089651",
+    "hardware-build.log": "05b4aa465384de52b15df4a2db838f1c22e6713ab6fc98f0a04d200f931f42dd",
+    "hardware-final-build.log": "ff317f415dfddd69907cb0c1ad759c86faf76b9a980575328d8836950c672038",
+    "hardware-final-generated-guard.jsonl": "faae0165d8130cd40617de401ff4bf48b2ba0b720c70700975f187603c44e150",
+    "hardware-final-generated.log": "99ab642e7f95b2acb3ee0011f49a9f06547da080c6aaf9d02aa96c08dbaeeb73",
+    "hardware-final-suites-guard.jsonl": "b09dae6e7cb0e560d6123b4a876070b0bb67aa1a4995c5812c1760a4b5d947eb",
+    "hardware-final-suites.log": "72a7ec606ebf0bc670d253510472a708cf8afdc4bbb5f3a9cd65982a390e6155",
+    "hardware-generated-guard.jsonl": "738a99736e384d3fa46357da3a13f920d9a1784e7d4b1a991ef9e054dcecfd20",
+    "hardware-generated.log": "99ab642e7f95b2acb3ee0011f49a9f06547da080c6aaf9d02aa96c08dbaeeb73",
+    "hardware-suites-guard.jsonl": "db7a99b9eea575c4332e159a9732bc840a1df45a52a419fe01e984146a7ad423",
+    "hardware-suites.log": "185957a70473b5fde0f40c1349ceef86e5ef7318b2c0a3dd61c206785a7d0bce",
+    "initial-reproductions.log": "b26b09e2ad44ca90cf02ebf0d4f36968c7c9362a48c839c2e57c4ab86cabc49c",
+    "partial-client-reproduction.log": "23026c365b9cb148ea76fe9806b5e15046bb02aec76c5c9691af3aebf4ddeb2e",
+    "partial-resources-reproduction.log": "641c8e646fb2956a4e898d11f17f6b9c4a69ed4d4204eaf3dcf58d25aba3b4e1",
+    "rollback-deadline-checks.log": "db640bdaf4c6a8552d7545752757c7c1b96695c4785750707bb3b7d98cc6e144",
+    "transient-checks.log": "fc681704234bb9b97ec532510ea6ad7835e47266d7542c29313ac90f9b67c020"
+  }
+}
