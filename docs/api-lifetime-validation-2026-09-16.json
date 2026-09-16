@@ -1,0 +1,456 @@
+{
+  "schema_version": 1,
+  "kind": "api-lifetime-audit-validation",
+  "date": "2026-09-16",
+  "issue": "https://github.com/iconidentify/libva-v4l2_request/issues/23",
+  "pull_request": "https://github.com/iconidentify/libva-v4l2_request/pull/66",
+  "baseline_commit": "8848956e14b61addf760f8cd2352dd0596409b8c",
+  "tested_code_commit": "6feca1bd39c99d882a7afbecd002e38795a1d7e0",
+  "tested_src_tree": "0999915dc6cb44a599851cd17ecddf2dd17feaf0",
+  "driver_sha256": "e8a5fe152fcbe2dcb24b151795f12f638e5ba787749e48a13bb735a6cf3ded38",
+  "post_hardware_changes": "Only additional offline test assertions and documentation/evidence; production src tree unchanged.",
+  "host": {
+    "architecture": "aarch64",
+    "model": "Apple M1",
+    "compatible": [
+      "apple,j293",
+      "apple,t8103"
+    ],
+    "kernel": "7.1.13-3-1-ARCH",
+    "kernel_and_headers_package": "7.1.13.asahi3-1",
+    "decoder": "avd / apple_avd",
+    "on_disk_module_sha256": "e50540e1d0fc48c7e0bf9b21ff028758bdb35f94aa7070af00de88e61e5c70e9",
+    "module_loaded_identity_limit": "The existing module was not rebuilt or reloaded for this task; sysfs does not establish which binary was previously loaded. The on-disk hash is from the recorded installation earlier on the same day.",
+    "installed_userspace_package": "libva-v4l2_request-avd 1.3.r11-2; unchanged by this task"
+  },
+  "tools": {
+    "gcc": "16.1.1 20260430",
+    "libva_package": "2.24.1-1",
+    "libva_pkgconfig_api": "1.24.0",
+    "libdrm": "2.4.134",
+    "meson": "1.12.0",
+    "ffmpeg": "n9.0.1",
+    "fluster_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34"
+  },
+  "offline": {
+    "sanitizers": [
+      "address",
+      "undefined"
+    ],
+    "isolation": "Unprivileged disposable namespace; no decoder device or network; source/build tree only writable task mount.",
+    "baseline": {
+      "passed": 53,
+      "failed": 0
+    },
+    "initial_reproductions": {
+      "commit": "477b4834c3e6d56f758acd66b9d87c57b6b31dea",
+      "failed": 18,
+      "positive_controls_passed": 1,
+      "failing_ci": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35123586654"
+    },
+    "further_reproductions": {
+      "failed_before_fix": 3,
+      "cases": [
+        "surface-active-access",
+        "image-surface-lifetime",
+        "vpp-source-lifetime"
+      ]
+    },
+    "final": {
+      "passed": 75,
+      "failed": 0,
+      "new_lifecycle_cases": 22,
+      "software_frame_checks": "native-size resolution/crop/truncation checks pass; four shared streams / 168 frames match independent software decoders"
+    },
+    "commands": [
+      "meson setup build-baseline -Db_sanitize=address,undefined",
+      "meson compile -C build-baseline -j3",
+      "meson test -C build-baseline --print-errorlogs",
+      "sh tests/frame-check.sh",
+      "sh tests/shared-contexts.sh"
+    ]
+  },
+  "hosted_ci": {
+    "code_commit": "6feca1bd39c99d882a7afbecd002e38795a1d7e0",
+    "run": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35124576087",
+    "successful_checks": 11,
+    "final_documentation_test_commit_gate": "The exact final PR head must also pass all required checks before merge; its check links are retained on PR #66."
+  },
+  "hardware": {
+    "selection": "LIBVA_DRIVERS_PATH selects the candidate build-hardware/src; system installation unchanged.",
+    "journal_since": "2026-09-16 00:00:00 America/Los_Angeles",
+    "journal_boundary_reason": "Existing documented validated post-recovery boundary from the earlier campaign; historical September 15 faults remain in the boot journal. No new fault occurred in this task.",
+    "exclusive_guard": "tests/hwguard.py; finite deadlines; foreign-client, fault, wedge and idle monitoring",
+    "generated": {
+      "exact_hardware_frames": 864,
+      "shared_context_frames": 336,
+      "h264_high10_frames": 144,
+      "vp9_matrix_frames": 384,
+      "modes": [
+        "normal",
+        "export-before-decode"
+      ],
+      "additional_checks": "Native-size resolution/crop comparisons and expected truncation rejection passed.",
+      "commands": [
+        "sh tests/shared-contexts.sh build-hardware/src",
+        "sh tests/h264-high10.sh build-hardware/src",
+        "sh tests/vp9-matrix.sh build-hardware/src",
+        "sh tests/frame-check.sh build-hardware/src"
+      ],
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "d96de49f-9284-4ec8-b96f-500560868da2",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "6feca1bd39c99d882a7afbecd002e38795a1d7e0"
+          },
+          "time": "2026-09-16T09:52:57-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "d96de49f-9284-4ec8-b96f-500560868da2",
+          "time": "2026-09-16T09:52:57-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "d96de49f-9284-4ec8-b96f-500560868da2",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T09:53:13-0700"
+        }
+      ],
+      "deadline": "Finite guard deadline; generated campaign completed in 16 seconds."
+    },
+    "conformance": {
+      "deadline_seconds": 1800,
+      "per_vector_timeout_seconds": 45,
+      "baseline_pass_sets": "docs/r11-pass-sets.json",
+      "baseline_pass_sets_sha256": "66bc47b2511dfdd8d5d270be028124c343fa00ded6523035598a785b95ad5583",
+      "command_template": "LIBVA_V4L2_DIAG=json python3 tests/conformance.py <fluster-suite.json> <resources> --driver build-hardware/src --output <fresh-directory> --timeout 45; High10/profile override and subsets exactly as recorded below and in the baseline.",
+      "suites": {
+        "hevc": {
+          "suite": "JCT-VC-HEVC_V1",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 144,
+          "total": 147,
+          "passing_frames": 8889,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "880ca4d28e80a53f90a357d6681ae9a865309773d510da6faac50312995eeb33",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.hevc.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 144,
+            "checksum_mismatch": 2,
+            "decode_error": 1
+          },
+          "summary_sha256": "78e6d7b21a528cafc0074085425f471c502a2f3816f4d13fe93b110662651dda",
+          "strict_comparison": {
+            "ok": true,
+            "baseline_suite": "JCT-VC-HEVC_V1",
+            "candidate_suite": "JCT-VC-HEVC_V1",
+            "baseline_total": "144/147",
+            "candidate_total": "144/147",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [
+              {
+                "vector": "RPS_E_qualcomm_5",
+                "baseline": "decode_error",
+                "candidate": "checksum_mismatch"
+              },
+              {
+                "vector": "VPSSPSPPS_A_MainConcept_1",
+                "baseline": "decode_error",
+                "candidate": "checksum_mismatch"
+              }
+            ],
+            "first_differing_frames": [
+              {
+                "vector": "RPS_E_qualcomm_5",
+                "reason": "stream_md5",
+                "expected_md5": "c30d38bbd7ea483dc7ffe81325118e16",
+                "baseline_md5": null,
+                "candidate_md5": "b09ac8e0bd31a96d8354505d7c2ebdd5",
+                "index": 0,
+                "candidate": {
+                  "index": 0,
+                  "width": 416,
+                  "height": 240,
+                  "md5": "50cc4e6dd7d70f7908b9c3da2500320d",
+                  "format": "yuv420p"
+                },
+                "native_sizes": [
+                  "416x240"
+                ]
+              },
+              {
+                "vector": "VPSSPSPPS_A_MainConcept_1",
+                "reason": "stream_md5",
+                "expected_md5": "1ddf74263cb4953cfdfcf99c563d88ea",
+                "baseline_md5": null,
+                "candidate_md5": "ec9f5857591ac4c215d194deaf52167c",
+                "index": 0,
+                "candidate": {
+                  "index": 0,
+                  "width": 352,
+                  "height": 288,
+                  "md5": "c814e40e0f9b130f44f1abd9cbf10ae6",
+                  "format": "yuv420p"
+                },
+                "native_sizes": [
+                  "352x288",
+                  "1280x720"
+                ]
+              }
+            ],
+            "errors": []
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "avc": {
+          "suite": "JVT-AVC_V1",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 73,
+          "total": 135,
+          "passing_frames": 10134,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "6156a501b7dd1d0794ab11d10f9033e4d834a47b8a345417031b38c790423c56",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.avc.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 73,
+            "decode_error": 61,
+            "software_fallback": 1
+          },
+          "summary_sha256": "81fa0ecd754088485ff97e1adebe1abbef84d7d11e75a9762974ec68d099b22e",
+          "strict_comparison": {
+            "ok": false,
+            "baseline_suite": "JVT-AVC_V1",
+            "candidate_suite": "JVT-AVC_V1",
+            "baseline_total": "73/135",
+            "candidate_total": "73/135",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [
+              {
+                "vector": "FM1_FT_E",
+                "baseline": "decode_error",
+                "candidate": "software_fallback"
+              }
+            ],
+            "first_differing_frames": [],
+            "errors": [
+              "software fallback cannot produce a green hardware result: FM1_FT_E"
+            ]
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "frext": {
+          "suite": "JVT-FR-EXT",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 27,
+          "total": 69,
+          "passing_frames": 4077,
+          "high10": "ffmpeg",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "a453df28cb646bd855fd754b4829f0742174144c59cbdb7e6174462ba3d26089",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.frext.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 27,
+            "decode_error": 42
+          },
+          "summary_sha256": "912bbf31bc45738eed94f9db4c52a4b3b81649a4cd1481bd60e0f1925daa03e3",
+          "strict_comparison": {
+            "ok": true,
+            "baseline_suite": "JVT-FR-EXT",
+            "candidate_suite": "JVT-FR-EXT",
+            "baseline_total": "27/69",
+            "candidate_total": "27/69",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [],
+            "first_differing_frames": [],
+            "errors": []
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "vp9": {
+          "suite": "VP9-TEST-VECTORS",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 216,
+          "total": 305,
+          "passing_frames": 3334,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": null,
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "1ef6f3076f442a1878f18aeaa410a8c946f723a7724be50ddfff6e13a6dd4c64",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.vp9.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 216,
+            "decode_error": 89
+          },
+          "summary_sha256": "92eb5fad3882171947cd83835ae94521f96b1889ff2135475ab2ecfe1a2f6111",
+          "strict_comparison": {
+            "ok": true,
+            "baseline_suite": "VP9-TEST-VECTORS",
+            "candidate_suite": "VP9-TEST-VECTORS",
+            "baseline_total": "216/305",
+            "candidate_total": "216/305",
+            "lost_passes": [],
+            "new_passes": [],
+            "missing_vectors": [],
+            "extra_vectors": [],
+            "category_changes": [],
+            "first_differing_frames": [],
+            "errors": []
+          },
+          "strict_report_identical_to_preceding_merged_build": true
+        },
+        "vp9-high10": {
+          "suite": "VP9-TEST-VECTORS-HIGH",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 1,
+          "total": 1,
+          "passing_frames": 10,
+          "high10": "off",
+          "profile_mismatch": false,
+          "subset": {
+            "rationale": "explicit --vectors selection; not a full-suite total",
+            "selected": [
+              "vp92-2-20-10bit-yuv420.webm"
+            ]
+          },
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "4665e761feec0ecd1d5bafd19c1fb2cde8005f85fe7d19f57542793c6e75b9c9",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.vp9-high10.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 1
+          },
+          "summary_sha256": "76c4c65891fe65273b1ab665a08c7ce63c0eba259d8002c25d7488fd32d6449b"
+        },
+        "overrides": {
+          "suite": "JVT-AVC_V1",
+          "mode": "hardware",
+          "complete": true,
+          "passed": 5,
+          "total": 5,
+          "passing_frames": 1233,
+          "high10": "off",
+          "profile_mismatch": true,
+          "subset": {
+            "rationale": "explicit --vectors selection; not a full-suite total",
+            "selected": [
+              "BA3_SVA_C",
+              "MR2_TANDBERG_E",
+              "MR3_TANDBERG_B",
+              "MR4_TANDBERG_C",
+              "MR5_TANDBERG_C"
+            ]
+          },
+          "lost_passes": [],
+          "new_passes": [],
+          "passing_vectors_sha256_newline_sorted": "61a54df4352cc9ff847ff45aa10fb836f008af4975f1246019a471be24ab26df",
+          "passing_vectors_reference": "docs/r11-pass-sets.json suites.overrides.passing_vectors",
+          "category_counts": {
+            "hardware_pass": 5
+          },
+          "summary_sha256": "8b5b1b1697f46c8df0c1e9f1fc1edc820e9aff518e63d3230dd36a767cd8f7fb"
+        }
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "fd040d67-fcb7-424b-8f7c-81851bf6cd7d",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "6feca1bd39c99d882a7afbecd002e38795a1d7e0"
+          },
+          "time": "2026-09-16T09:53:43-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "fd040d67-fcb7-424b-8f7c-81851bf6cd7d",
+          "time": "2026-09-16T09:53:43-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "fd040d67-fcb7-424b-8f7c-81851bf6cd7d",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T09:57:18-0700"
+        }
+      ]
+    }
+  },
+  "review": {
+    "type": "maintainer self-review",
+    "independent_review": false,
+    "checks": "Reviewed ownership publication/teardown, handle reuse, all-or-nothing validation, error retention and existing lock ordering. Added recovery and abandoned-flush assertions after the first green test run."
+  },
+  "limits": [
+    "No codec support promotion; known failing vectors remain failing.",
+    "AVC strict comparison remains non-green for FM1_FT_E software fallback; zero frames accepted, never counted as a hardware pass.",
+    "Full converter/VPP and non-M1 backend hardware not available/qualified; VPP lifetime test uses no device.",
+    "Exhaustive allocation/ioctl failure injection belongs to #35; true concurrent thread/process schedules to #36; backend format qualification to #40.",
+    "No package installation, kernel change/reload, reboot, display/Chrome or boot-stability qualification for this task.",
+    "Caller pointers must name valid memory; deliberately invalid API calls are not evidence of a crafted-media exploit."
+  ],
+  "local_artifact_directory": "issue23-20260916 (retained in maintainer workspace; absolute home paths omitted)",
+  "artifact_sha256": {
+    "baseline.log": "bc7ce6602663273869d77e7ca477eedafffa3f7e0086c72b16d4d7193c78c48e",
+    "reproductions.log": "a1d0963927e2f2ae8c846033e4a346a8a4f5bd541539fb7bc7e222cabc8ee0a2",
+    "interop-reproductions.log": "aa6442fc1009e2d2f68931e3f116242017fc8480d66052915ef000dcdc8530b2",
+    "vpp-reproduction.log": "d4eba3eeb0f62b68c660672e54dd24373b586504cf18b3ee30eb20f4e380c3ee",
+    "final-offline.log": "75f8b6ac22d97cfbb64cc18d4fcad50cf17f1f56842c5a8da96e8b2ed9a101fa",
+    "recovery-checks.log": "c0dc8f9898b490a598c54b0b9294816646256c2f0a8d2ad92740b34091b3c1c2",
+    "final-current-tests.log": "d44424abe9ecb7a84b6f777fee43836e84d4af9921e9c80da901e37f552d45b4",
+    "hardware-generated.log": "99ab642e7f95b2acb3ee0011f49a9f06547da080c6aaf9d02aa96c08dbaeeb73",
+    "hardware-generated-guard.jsonl": "17195a6ae10d3ea2f9aef7ca729c2944407d7e2f0280342b3c637fc407da117f",
+    "hardware-suites.log": "7fcbbe058c7b21e62bbcac274107942e16be04cbcbe9a87f3ec58c93a69376b3",
+    "hardware-suites-guard.jsonl": "72c50f8ee4a4be59221454b5c1089d2a041666b9cbdecac4fb44b051e41067e7"
+  }
+}
