@@ -153,8 +153,9 @@ records the picture case emits with `LIBVA_V4L2_DIAG=json` were checked with
 ## Proposed implementation child
 
 Exactly one combination has a backend decoded format and a plausible driver
-path, so exactly one child is proposed; it is not created as a promise of
-support and it stays blocked until its dependencies land:
+path, so exactly one child is proposed, opened as
+[#74](https://github.com/iconidentify/libva-v4l2_request/issues/74); it is
+not a promise of support and it stays blocked until its dependencies land:
 
 **Qualify HEVC 8-bit 4:2:2 (`VAProfileHEVCMain422_10` at 8 bits) through
 VA-API on AVD.** Scope: advertise the profile only when the decoder enumerates
