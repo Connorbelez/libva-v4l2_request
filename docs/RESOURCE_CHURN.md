@@ -132,7 +132,7 @@ dma-bufs or kernel request descriptors were released.
 ## Synchronized real-device campaign
 
 `resource-workload.c` keeps one initialized VA display alive across all cycles.
-Four generated, redistributable clips cover H.264, HEVC, VP9 8-bit and VP9 10-bit
+Four synthetic, redistributable clips cover H.264, HEVC, VP9 8-bit and VP9 10-bit
 at 640x360, 24 frames each. Each lifecycle opens a decoder, decodes/drains the
 clip, seeks to its beginning, flushes and decodes/drains it again. Every output
 frame and aggregate digest must match a separate software decoder. Software
@@ -188,7 +188,9 @@ python3 tests/hwguard.py --identity avd --deadline 3900 \
 
 Output paths must be fresh. `inputs.json` retains generated input checksums,
 generation commands, independent per-frame references, helper identities and
-tool versions. Keep it and the actual clips with the JSONL, workload and stderr
+tool versions. The VP9 10-bit clip is a checksum-pinned CC0 fixture under
+`tests/fixtures/resource/`; this preserves coverage on older libvpx builds that
+cannot encode 10-bit VP9. Keep the manifest and actual clips with JSONL, workload and stderr
 logs. Encoders/containers may produce different bytes across versions or runs;
 the recorded files, not a promise of byte-identical regeneration, identify the
 tested media. Recorder metadata identifies the selected driver binary. Guard
@@ -201,4 +203,4 @@ The offline campaign regression executes the real software workload, verifies
 checkpoints/pixels, rejects a wrong reference and changed input, refuses unguarded
 hardware, and interrupts a live client to verify bounded child cleanup. Meson
 registers it when FFmpeg development dependencies are available; it requires
-the libx264/libx265/libvpx encoders used by existing software frame checks.
+the libx264/libx265 and 8-bit libvpx encoders used by existing software frame checks.

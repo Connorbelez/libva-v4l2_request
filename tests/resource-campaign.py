@@ -21,7 +21,10 @@ NAMES = ['h264.mkv', 'hevc.mkv', 'vp9-8.webm', 'vp9-10.webm']
 
 
 def run(cmd):
-    return subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True, timeout=180)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=180)
+    if result.returncode:
+        raise RuntimeError('{} failed ({}):\n{}'.format(Path(cmd[0]).name, result.returncode, result.stdout))
+    return result.stdout
 
 
 def prepare(root):
@@ -42,7 +45,15 @@ def prepare(root):
         cmd = ['ffmpeg', '-nostdin', '-v', 'error', '-y', '-f', 'lavfi', '-i',
                'testsrc2=size=640x360:rate={},format={}'.format(24 + i, fmt),
                '-frames:v', '24', '-c:v', *codec, '-g', '12', '-pix_fmt', '+' + fmt, str(root / name)]
-        run(cmd)
+        # Ubuntu 20.04's libvpx build has no 10-bit encoder. Keep the full
+        # decode/checkpoint coverage using our pinned synthetic fixture.
+        if i == 3:
+            fixture = HERE / 'fixtures/resource/vp9-10.webm'
+            if digest(fixture) != 'cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463':
+                raise ValueError('pinned VP9 10-bit fixture checksum changed')
+            (root / name).write_bytes(fixture.read_bytes())
+        else:
+            run(cmd)
         reference = run([str(root / 'reference'), 'software', str(root / name), fmt])
         (root / (name + '.reference')).write_text(reference)
         frames = [line for line in reference.splitlines() if line.startswith('frame ')]
@@ -51,7 +62,8 @@ def prepare(root):
             raise ValueError('invalid independent reference')
         manifest['inputs'].append({'name': name, 'format': fmt, 'sha256': digest(root / name),
                                    'frames': frames, 'md5': md5[0]})
-        manifest['commands'].append(cmd[:-1] + [name])
+        manifest['commands'].append(['copy', 'tests/fixtures/resource/vp9-10.webm', name]
+                                    if i == 3 else cmd[:-1] + [name])
     manifest['ffmpeg'] = run(['ffmpeg', '-version']).splitlines()[0]
     manifest['compiler'] = run(['cc', '--version']).splitlines()[0]
     manifest['workload_sha256'] = digest(root / 'workload')
