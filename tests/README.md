@@ -43,9 +43,18 @@ unavailable references at random-access points, and failed-picture submission. H
 rejection, High 10 quantizer modes and fake-device capability checks. Three H.264 submission
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
-on the next picture. Submission is intercepted in-process; no device is opened. There are
-35 sanitizer Meson cases plus the `support-matrix`, `conformance-result`,
-`hwguard`, `rps-e-research` and HEVC concurrency research checks.
+on the next picture. Submission is intercepted in-process; no device is opened.
+Five `diag-*` cases cover the diagnostics in `docs/DIAGNOSTICS.md`: every failure category
+(unsupported profile, client call order, oversized bitstream, CAPTURE allocation failure,
+request timeout, rejected controls, decoder-flagged frame and invalid device poll) is forced
+through the fake device in both text and JSON mode with identical VA status, and the VP9 and
+H.264 reference cases check the `reference` category. They also check that reused VA context
+IDs keep distinct `ctx` serials, path/URL redaction and size limits, per-category rate
+limiting, and report a bounded synthetic logging overhead. `diag-schema` validates emitted
+JSON against `tests/fixtures/diagnostics/schema.json`, rejects malformed fixture records,
+and fails if the category lists in the code, fixture and documentation differ. There are
+40 sanitizer Meson cases plus the `support-matrix`, `conformance-result`,
+`diag-schema`, `hwguard`, `rps-e-research` and HEVC concurrency research checks.
 The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.
@@ -141,11 +150,11 @@ when the codec is compiled in):
 
 | Configuration | Codecs | Expected tests |
 | --- | --- | --- |
-| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 46 (full suite) |
-| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 39 (no hevc-parser, vp9-\*, image-bounds) |
-| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 34 (regression minus image-bounds, picture, python checks) |
-| all codecs disabled (any headers) | none | 35 on 6.8 headers (core plus image-bounds) |
-| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 42 (core plus codec tests of every compiled-in codec except vp9-\*) |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 53 (full suite) |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 46 (no hevc-parser, vp9-\*, image-bounds) |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 41 (regression minus image-bounds, picture, python checks) |
+| all codecs disabled (any headers) | none | 42 on 6.8 headers (core plus image-bounds) |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 49 (core plus codec tests of every compiled-in codec except vp9-\*) |
 
 `deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
 auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all
@@ -290,3 +299,12 @@ With r10's reference checks, both timeout-producing resize streams are rejected 
 without new kernel messages. Their decoding support remains open. The installer repository's
 [codec status](https://github.com/iconidentify/omarchy-m1-video/blob/main/docs/CODEC_STATUS.md)
 records release-package results and exact vector lists.
+
+
+`conformance-runner` exercises the actual runner with an intercepted frame-check
+process: downloaded `yuv420p` hashes are valid hardware results when the strict
+VAAPI helper succeeds, explicit fallback stays a failure, and an invalid summary
+makes the runner fail. The printed pixel format describes the hashed output,
+not the decoder. The hardware guard retains process-group ownership from its fd
+snapshot so reaped short-vector children are not mistaken for foreign clients;
+live foreign and unknown holders still abort.

@@ -27,16 +27,7 @@
 
 /* Needs the va.h types pulled in by v4l2_request.h. */
 #include <va/va_backend_vpp.h>
-
-void v4l2r_log(const char *fmt, ...)
-{
-	va_list args;
-
-	fprintf(stderr, "libva-v4l2request: ");
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
-}
+#include <va/va_str.h>
 
 /*
  * Verbose per-buffer lifecycle tracing, off unless LIBVA_V4L2_TRACE is set.
@@ -620,8 +611,10 @@ static void enumerate_converters(struct v4l2r_driver *drv)
 		snprintf(drv->converter.video_path,
 			 sizeof(drv->converter.video_path), "%s", video_path);
 		drv->has_converter = true;
-		v4l2r_log("detected format converter %s [%s]\n",
-			  video_path, drv->converter.card);
+		v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO,
+			   "converter-detect", 0,
+			   "detected format converter %s [%s]",
+			   video_path, drv->converter.card);
 		return;
 	}
 }
@@ -788,15 +781,32 @@ VAStatus v4l2r_CreateConfig(VADriverContextP va_ctx, VAProfile profile,
 		/* Video processing (rotation/mirroring/scaling blits) runs
 		 * on the format converter. */
 		if (entrypoint != VAEntrypointVideoProc ||
-		    !v4l2r_converter_available(drv))
+		    !v4l2r_converter_available(drv)) {
+			v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG,
+				   V4L2R_DIAG_UNSUPPORTED, "create-config", 0,
+				   "entrypoint %s is not available for %s",
+				   vaEntrypointStr(entrypoint),
+				   vaProfileStr(profile));
 			return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+		}
 	} else {
 		codec = v4l2r_codec_for_profile(profile);
-		if (!codec || !driver_supports_profile(drv, profile))
+		if (!codec || !driver_supports_profile(drv, profile)) {
+			v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG,
+				   V4L2R_DIAG_UNSUPPORTED, "create-config", 0,
+				   "profile %s is not supported by any decoder",
+				   vaProfileStr(profile));
 			return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
+		}
 
-		if (entrypoint != VAEntrypointVLD)
+		if (entrypoint != VAEntrypointVLD) {
+			v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG,
+				   V4L2R_DIAG_UNSUPPORTED, "create-config", 0,
+				   "entrypoint %s is not available for %s",
+				   vaEntrypointStr(entrypoint),
+				   vaProfileStr(profile));
 			return VA_STATUS_ERROR_UNSUPPORTED_ENTRYPOINT;
+		}
 	}
 
 	pthread_mutex_lock(&drv->mutex);
@@ -821,6 +831,11 @@ VAStatus v4l2r_CreateConfig(VADriverContextP va_ctx, VAProfile profile,
 				pthread_mutex_lock(&drv->mutex);
 				v4l2r_handles_free(&drv->configs, id);
 				pthread_mutex_unlock(&drv->mutex);
+				v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG,
+					   V4L2R_DIAG_UNSUPPORTED, "create-config", 0,
+					   "RT format 0x%x is not available for %s",
+					   attrib_list[i].value,
+					   vaProfileStr(profile));
 				return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
 			}
 			continue;
@@ -970,6 +985,7 @@ VAStatus v4l2r_Terminate(VADriverContextP va_ctx)
 	pthread_mutex_destroy(&drv->api_mutex);
 
 	free(drv);
+	v4l2r_diag_flush();
 	va_ctx->pDriverData = NULL;
 
 	return VA_STATUS_SUCCESS;
@@ -1067,7 +1083,9 @@ VAStatus V4L2R_DRIVER_INIT(VADriverContextP va_ctx)
 	else if (high10 && !strcmp(high10, "ffmpeg"))
 		drv->h264_high10 = V4L2R_H264_HIGH10_FFMPEG;
 	else if (high10 && strcmp(high10, "off"))
-		v4l2r_log("unknown LIBVA_V4L2_H264_HIGH10 value; High 10 disabled\n");
+		v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_CLIENT,
+			   "driver-init", 0,
+			   "unknown LIBVA_V4L2_H264_HIGH10 value; High 10 disabled");
 
 	if (v4l2r_handles_init(&drv->configs, V4L2R_ID_OFFSET_CONFIG) < 0 ||
 	    v4l2r_handles_init(&drv->contexts, V4L2R_ID_OFFSET_CONTEXT) < 0 ||
@@ -1090,13 +1108,16 @@ VAStatus V4L2R_DRIVER_INIT(VADriverContextP va_ctx)
 
 	enumerate_decoders(drv);
 	if (!drv->nb_decoders) {
-		v4l2r_log("no V4L2 Request API decoder found\n");
+		v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_UNSUPPORTED,
+			   "driver-init", 0, "no V4L2 Request API decoder found");
 		v4l2r_Terminate(va_ctx);
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 
-	v4l2r_log("detected %u Request API decoder%s\n", drv->nb_decoders,
-		  drv->nb_decoders == 1 ? "" : "s");
+	v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO, "driver-init", 0,
+		   "detected %u Request API decoder%s", drv->nb_decoders,
+		   drv->nb_decoders == 1 ? "" : "s");
+	v4l2r_diag_driver(drv);
 
 	return VA_STATUS_SUCCESS;
 }

@@ -1037,7 +1037,9 @@ static VAStatus hevc_process_slice(struct v4l2r_context *ctx,
 	hevc_parse_slice_header(codec, slice_data, va_slice->slice_data_size,
 				&info);
 	if (!info.valid) {
-		v4l2r_log("hevc: invalid or unsupported slice header\n");
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_BITSTREAM,
+			   "hevc-slice-header", 0,
+			   "hevc: invalid or unsupported slice header");
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	}
 
@@ -1115,8 +1117,10 @@ static VAStatus hevc_init(struct v4l2r_context *ctx)
 	 * once codec-to-device assignment is prioritised).
 	 */
 	if (!v4l2r_query_control(ctx, &ext_sps_st_rps)) {
-		v4l2r_log("hevc: decoder requires SPS RPS tables (EXT_SPS_ST_RPS) "
-			  "that VA-API cannot supply; declining HEVC\n");
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_UNSUPPORTED,
+			   "hevc-init", 0,
+			   "hevc: decoder requires SPS RPS tables (EXT_SPS_ST_RPS) "
+			   "that VA-API cannot supply; declining HEVC");
 		return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
 	}
 

@@ -22,7 +22,6 @@ from conformance_result import (
     SuiteResult,
     VectorResult,
     infer_category,
-    log_indicates_fallback,
     parse_frame_log,
     redact_argv,
     redact_text,
@@ -135,17 +134,22 @@ def main():
                 if actual is None:
                     digest = re.search(r"^MD5=([0-9a-f]{32})$", frames_text, re.MULTILINE)
                     actual = digest.group(1) if digest else None
-                success = status == 0 and actual == vector["result"]
+                # The helper rejects non-VAAPI source frames in hardware
+                # mode. Its printed format describes downloaded/hash pixels,
+                # not the decoder that produced them.
+                # FFmpeg's "Failed setup for format vaapi" means rejection,
+                # not fallback: this helper refuses software frames. Use its
+                # explicit source-frame verdict instead of a generic log hint.
+                fallback = mode == "hardware" and (
+                    "frame-check: software frame rejected in hardware mode" in log_text
+                )
+                success = status == 0 and actual == vector["result"] and not fallback
                 failures += not success
                 sizes = []
                 for frame in summaries:
                     size = frame.size()
                     if size not in sizes:
                         sizes.append(size)
-                hashed_software = bool(summaries) and all(
-                    frame.format and frame.format != "vaapi" for frame in summaries
-                )
-                fallback = log_indicates_fallback(log_text) or hashed_software
                 category = infer_category(
                     mode, success, actual, vector.get("result"), fallback=fallback
                 )
@@ -225,6 +229,7 @@ def main():
                 write_summary(output / "summary.json", result)
             except Exception as exc:
                 print(f"summary not written: {exc}", file=sys.stderr)
+                exit_status = 2
     print(f"{len(vectors)-failures}/{len(vectors)} passed; records: {output}")
     return exit_status
 

@@ -646,9 +646,11 @@ VAStatus v4l2r_surface_convert_backing(struct v4l2r_driver *drv,
 	if (surface->backing->nb_planes != 1 ||
 	    surface->backing->pitch != pix_mp->plane_fmt[0].bytesperline ||
 	    surface->backing->plane_size[0] < pix_mp->plane_fmt[0].sizeimage) {
-		v4l2r_log("conversion backing layout mismatch (pitch %u vs %u)\n",
-			  surface->backing->pitch,
-			  pix_mp->plane_fmt[0].bytesperline);
+		v4l2r_diag(surface->ctx, V4L2R_DIAG_LEVEL_ERROR,
+			   V4L2R_DIAG_UNSUPPORTED, "converter-backing", 0,
+			   "conversion backing layout mismatch (pitch %u vs %u)",
+			   surface->backing->pitch,
+			   pix_mp->plane_fmt[0].bytesperline);
 		v4l2r_surface_free_backing(surface);
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
@@ -674,9 +676,13 @@ int v4l2r_export_capture_dmabufs(struct v4l2r_context *ctx,
 			continue;
 
 		if (ioctl(ctx->video_fd, VIDIOC_EXPBUF, &exportbuffer) < 0) {
-			v4l2r_log("failed to export CAPTURE buffer %d plane %u: %s\n",
-				  capture_index, i, strerror(errno));
-			return -errno;
+			int ret = -errno;
+
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   v4l2r_diag_errno_category(ret), "capture-export",
+				   ret, "failed to export CAPTURE buffer %d plane %u: %s",
+				   capture_index, i, strerror(-ret));
+			return ret;
 		}
 
 		capture->dmabuf_fd[i] = exportbuffer.fd;

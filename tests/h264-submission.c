@@ -134,6 +134,11 @@ static void slice_count(void)
 
 static void references(void)
 {
+    char *log = NULL;
+    size_t log_size = 0;
+    FILE *sink = open_memstream(&log, &log_size);
+    v4l2r_diag_configure(&(struct v4l2r_diag_options) {
+        .mode = V4L2R_DIAG_MODE_JSON, .sink = sink });
     codec.decode_mode = V4L2_STATELESS_H264_DECODE_MODE_SLICE_BASED;
     for (unsigned int which = 0; which < 4; which++) {
         begin();
@@ -178,6 +183,17 @@ static void references(void)
     p.slice_data_size = header(SLICE_I); /* Metadata contradicts the NAL. */
     assert(render(&p) == VA_STATUS_ERROR_INVALID_BUFFER);
     assert(!submitted && !appended);
+    /* The absent reference and the contradictory header are told apart. */
+    v4l2r_diag_configure(NULL);
+    fclose(sink);
+    unsigned int references = 0;
+    const char *last = log;
+    for (const char *p = log; (p = strstr(p, "\"category\":\"reference\",\"op\":\"h264-references\"")); p++, references++)
+        last = p;
+    const char *header = strstr(log, "\"category\":\"bitstream\",\"op\":\"h264-slice-header\"");
+    assert(references == 5 && header && last < header);
+    assert(!strstr(header, "\"category\":\"reference\""));
+    free(log);
 }
 
 int main(int argc, char **argv)

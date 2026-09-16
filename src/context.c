@@ -218,14 +218,22 @@ static int output_buffer_setup(struct v4l2r_context *ctx,
 	}
 
 	if (ioctl(ctx->video_fd, VIDIOC_CREATE_BUFS, &buffers) < 0) {
-		v4l2r_log("failed to create OUTPUT buffer: %s\n",
-			  strerror(errno));
-		return -errno;
+		int ret = -errno;
+
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_ALLOCATION,
+			   "output-alloc", ret, "failed to create OUTPUT buffer: %s",
+			   strerror(-ret));
+		return ret;
 	}
 
 	/* The queued_output/queued_request bitmasks track buffers by index. */
-	if (buffers.index >= 32)
+	if (buffers.index >= 32) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_ALLOCATION,
+			   "output-alloc", -ENOSPC,
+			   "OUTPUT buffer index %u exceeds the tracked range",
+			   buffers.index);
 		return -ENOSPC;
+	}
 
 	buffer.type = ctx->output_format.type;
 	buffer.index = buffers.index;
@@ -235,9 +243,12 @@ static int output_buffer_setup(struct v4l2r_context *ctx,
 	}
 
 	if (ioctl(ctx->video_fd, VIDIOC_QUERYBUF, &buffer) < 0) {
-		v4l2r_log("failed to query OUTPUT buffer %u: %s\n",
-			  buffers.index, strerror(errno));
-		return -errno;
+		int ret = -errno;
+
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+			   "output-query", ret, "failed to query OUTPUT buffer %u: %s",
+			   buffers.index, strerror(-ret));
+		return ret;
 	}
 
 	output->index = buffer.index;
@@ -252,17 +263,25 @@ static int output_buffer_setup(struct v4l2r_context *ctx,
 	addr = mmap(NULL, output->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		    ctx->video_fd, offset);
 	if (addr == MAP_FAILED) {
-		v4l2r_log("failed to map OUTPUT buffer %u: %s\n",
-			  output->index, strerror(errno));
-		return -errno;
+		int ret = -errno;
+
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_ALLOCATION,
+			   "output-map", ret, "failed to map OUTPUT buffer %u: %s",
+			   output->index, strerror(-ret));
+		return ret;
 	}
 	output->addr = addr;
 	output->bytesused = 0;
 
 	if (ioctl(ctx->media_fd, MEDIA_IOC_REQUEST_ALLOC, &output->request_fd) < 0) {
-		v4l2r_log("failed to allocate request: %s\n", strerror(errno));
+		int ret = -errno;
+
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+			   ret == -ENOMEM ? V4L2R_DIAG_ALLOCATION : V4L2R_DIAG_KERNEL,
+			   "request-alloc", ret, "failed to allocate request: %s",
+			   strerror(-ret));
 		output->request_fd = -1;
-		return -errno;
+		return ret;
 	}
 
 	v4l2r_trace("allocated OUTPUT buffer #%u (%u bytes)\n",
@@ -311,7 +330,8 @@ int v4l2r_output_buffer_grow(struct v4l2r_context *ctx,
 	*output = grown;
 	pthread_mutex_unlock(&ctx->mutex);
 
-	v4l2r_log("grew OUTPUT buffer to %u bytes\n", grown.size);
+	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO, "output-grow", 0,
+		   "grew OUTPUT buffer to %u bytes", grown.size);
 
 	return 0;
 }
@@ -395,25 +415,39 @@ static int capture_buffer_new(struct v4l2r_context *ctx)
 	size_t bufsize = capture_format_bytes(&ctx->capture_format);
 
 	if (ctx->nb_captures >= V4L2R_MAX_CAPTURE_BUFFERS) {
-		v4l2r_log("CAPTURE buffer limit reached (%u buffers, ~%llu MiB); "
-			  "refusing to allocate more\n", ctx->nb_captures,
-			  (unsigned long long)((uint64_t)ctx->nb_captures *
-					       bufsize >> 20));
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_ALLOCATION,
+			   "capture-alloc", -ENOSPC,
+			   "CAPTURE buffer limit reached (%u buffers, ~%llu MiB); "
+			   "refusing to allocate more", ctx->nb_captures,
+			   (unsigned long long)((uint64_t)ctx->nb_captures *
+						bufsize >> 20));
 		return -ENOSPC;
 	}
 
 	if (ioctl(ctx->video_fd, VIDIOC_CREATE_BUFS, &buffers) < 0) {
-		v4l2r_log("failed to allocate CAPTURE buffer #%u (%zu bytes; "
-			  "already %u buffers ~%llu MiB allocated): %s\n",
-			  ctx->nb_captures, bufsize, ctx->nb_captures,
-			  (unsigned long long)((uint64_t)ctx->nb_captures *
-					       bufsize >> 20),
-			  strerror(errno));
-		return -errno;
+		int ret = -errno;
+
+		/* CREATE_BUFS mostly fails for lack of (CMA) memory; keep other
+		 * rejections apart so a bad format is not mistaken for OOM. */
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+			   ret == -EINVAL ? V4L2R_DIAG_KERNEL : V4L2R_DIAG_ALLOCATION,
+			   "capture-alloc", ret,
+			   "failed to allocate CAPTURE buffer #%u (%zu bytes; "
+			   "already %u buffers ~%llu MiB allocated): %s",
+			   ctx->nb_captures, bufsize, ctx->nb_captures,
+			   (unsigned long long)((uint64_t)ctx->nb_captures *
+						bufsize >> 20),
+			   strerror(-ret));
+		return ret;
 	}
 
-	if (buffers.index >= V4L2R_MAX_CAPTURE_BUFFERS)
+	if (buffers.index >= V4L2R_MAX_CAPTURE_BUFFERS) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_ALLOCATION,
+			   "capture-alloc", -ENOSPC,
+			   "CAPTURE buffer index %u exceeds the tracked range",
+			   buffers.index);
 		return -ENOSPC;
+	}
 
 	buffer.type = ctx->capture_format.type;
 	buffer.index = buffers.index;
@@ -423,9 +457,12 @@ static int capture_buffer_new(struct v4l2r_context *ctx)
 	}
 
 	if (ioctl(ctx->video_fd, VIDIOC_QUERYBUF, &buffer) < 0) {
-		v4l2r_log("failed to query CAPTURE buffer %u: %s\n",
-			  buffers.index, strerror(errno));
-		return -errno;
+		int ret = -errno;
+
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+			   "capture-query", ret, "failed to query CAPTURE buffer %u: %s",
+			   buffers.index, strerror(-ret));
+		return ret;
 	}
 
 	capture = &ctx->captures[buffer.index];
@@ -475,21 +512,22 @@ static int capture_buffer_new(struct v4l2r_context *ctx)
  * read fence a GPU attaches while sampling it. Buffers that were never exported
  * carry fd == -1 and are skipped.
  */
-static int capture_wait_readers(struct v4l2r_capture_buffer *capture)
+static int capture_wait_readers(struct v4l2r_context *ctx,
+				struct v4l2r_capture_buffer *capture, int index)
 {
 	for (unsigned int i = 0; i < capture->nb_planes; i++) {
-		struct pollfd pfd = {
-			.fd = capture->dmabuf_fd[i],
-			.events = POLLOUT,
-		};
-
 		if (capture->dmabuf_fd[i] < 0)
 			continue;
 
-		int ret = poll(&pfd, 1, V4L2R_POLL_TIMEOUT_MS);
-		if (ret <= 0 || !(pfd.revents & POLLOUT) ||
-		    (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)))
-			return -EIO;
+		int ret = v4l2r_poll_one(capture->dmabuf_fd[i], POLLOUT,
+					 V4L2R_POLL_TIMEOUT_MS);
+		if (ret < 0) {
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   v4l2r_diag_errno_category(ret), "reader-wait",
+				   ret, "failed waiting for readers of CAPTURE "
+				   "buffer %d plane %u", index, i);
+			return ret;
+		}
 	}
 	return 0;
 }
@@ -516,8 +554,10 @@ static bool backing_matches_capture(const struct v4l2r_context *ctx,
 
 	/* Say which check failed: the callers only print the layout above. */
 	if (backing->nb_planes != nb_planes) {
-		v4l2r_log("backing has %u plane(s), the CAPTURE format %u\n",
-			  backing->nb_planes, nb_planes);
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_CLIENT,
+			   "backing-match", 0,
+			   "backing has %u plane(s), the CAPTURE format %u",
+			   backing->nb_planes, nb_planes);
 		return false;
 	}
 
@@ -527,8 +567,10 @@ static bool backing_matches_capture(const struct v4l2r_context *ctx,
 			fmt->fmt.pix.sizeimage;
 
 		if (backing->plane_size[i] < sizeimage) {
-			v4l2r_log("backing plane %u is %u bytes, the CAPTURE format needs %u\n",
-				  i, (unsigned int)backing->plane_size[i], sizeimage);
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_CLIENT,
+				   "backing-match", 0,
+				   "backing plane %u is %u bytes, the CAPTURE format needs %u",
+				   i, (unsigned int)backing->plane_size[i], sizeimage);
 			return false;
 		}
 	}
@@ -551,21 +593,25 @@ static int capture_attach_backing(struct v4l2r_context *ctx, int index,
 
 	if (!surface->backing &&
 	    v4l2r_surface_alloc_backing(ctx->drv, surface) != VA_STATUS_SUCCESS) {
-		v4l2r_log("failed to allocate dma-buf backing for surface 0x%08x\n",
-			  surface->id);
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_ALLOCATION,
+			   "backing-alloc", -ENOMEM,
+			   "failed to allocate dma-buf backing for surface 0x%08x",
+			   surface->id);
 		return -ENOMEM;
 	}
 	backing = surface->backing;
 
 	if (!backing_matches_capture(ctx, backing)) {
-		v4l2r_log("surface 0x%08x backing (%.4s %ux%u pitch %u) does not "
-			  "match the CAPTURE format (%.4s %ux%u pitch %u)\n",
-			  surface->id, (const char *)&backing->pixelformat,
-			  backing->width, backing->height, backing->pitch,
-			  (const char *)&(uint32_t){v4l2r_format_pixelformat(&ctx->capture_format)},
-			  v4l2r_format_width(&ctx->capture_format),
-			  v4l2r_format_height(&ctx->capture_format),
-			  v4l2r_format_bytesperline(&ctx->capture_format));
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_CLIENT,
+			   "backing-match", -EINVAL,
+			   "surface 0x%08x backing (%.4s %ux%u pitch %u) does not "
+			   "match the CAPTURE format (%.4s %ux%u pitch %u)",
+			   surface->id, (const char *)&backing->pixelformat,
+			   backing->width, backing->height, backing->pitch,
+			   (const char *)&(uint32_t){v4l2r_format_pixelformat(&ctx->capture_format)},
+			   v4l2r_format_width(&ctx->capture_format),
+			   v4l2r_format_height(&ctx->capture_format),
+			   v4l2r_format_bytesperline(&ctx->capture_format));
 		return -EINVAL;
 	}
 
@@ -577,6 +623,11 @@ static int capture_attach_backing(struct v4l2r_context *ctx, int index,
 
 		if (fd < 0) {
 			int ret = -errno;
+
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   V4L2R_DIAG_ALLOCATION, "backing-attach", ret,
+				   "failed to duplicate backing dma-buf: %s",
+				   strerror(-ret));
 			for (unsigned int j = 0; j < i; j++) {
 				close(capture->dmabuf_fd[j]);
 				capture->dmabuf_fd[j] = -1;
@@ -628,9 +679,11 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 	if (!ctx->capture_memory) {
 		if (!ctx->conv && surface->backing) {
 			ctx->capture_memory = V4L2_MEMORY_DMABUF;
-			v4l2r_log("surface 0x%08x was exported before its first "
-				  "decode; decoding into client-exported dma-bufs\n",
-				  surface->id);
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO,
+				   "capture-memory", 0,
+				   "surface 0x%08x was exported before its first "
+				   "decode; decoding into client-exported dma-bufs",
+				   surface->id);
 		} else {
 			ctx->capture_memory = V4L2_MEMORY_MMAP;
 		}
@@ -638,7 +691,9 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 	if (!ctx->conv && surface->backing &&
 	    (ctx->capture_memory != V4L2_MEMORY_DMABUF ||
 	     !backing_matches_capture(ctx, surface->backing))) {
-		v4l2r_log("cannot decode into the already-exported surface layout\n");
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_CLIENT,
+			   "capture-bind", -EINVAL,
+			   "cannot decode into the already-exported surface layout");
 		return -EINVAL;
 	}
 
@@ -702,7 +757,7 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 	 * wait for readers to finish before handing the buffer back to decode.
 	 * No-op for a buffer never exported (fd < 0) or already idle.
 	 */
-	if (capture_wait_readers(&ctx->captures[index]) < 0)
+	if (capture_wait_readers(ctx, &ctx->captures[index], index) < 0)
 		return -EIO;
 	uint64_t t3 = v4l2r_now_ns();
 
@@ -748,24 +803,41 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 	bool starting = !ctx->streaming;
 	int ret;
 
-	if (surface->ctx && surface->ctx != ctx)
+	if (surface->ctx && surface->ctx != ctx) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
+			   "capture-bind", 0,
+			   "surface 0x%08x belongs to another context", surface->id);
 		return VA_STATUS_ERROR_SURFACE_BUSY;
+	}
 
 	if (starting) {
 		ret = select_capture_format(ctx, surface);
 		if (ret < 0) {
-			v4l2r_log("failed to select a CAPTURE format: %s\n",
-				  strerror(-ret));
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   V4L2R_DIAG_UNSUPPORTED, "capture-format", ret,
+				   "failed to select a CAPTURE format: %s",
+				   strerror(-ret));
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
 
-		if (ioctl(ctx->video_fd, VIDIOC_G_FMT, &ctx->capture_format) < 0)
+		if (ioctl(ctx->video_fd, VIDIOC_G_FMT, &ctx->capture_format) < 0) {
+			ret = -errno;
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+				   "capture-format", ret,
+				   "failed to read the CAPTURE format: %s",
+				   strerror(-ret));
 			return VA_STATUS_ERROR_OPERATION_FAILED;
+		}
 
 		ret = query_buffer_capabilities(ctx, ctx->capture_format.type,
 						&ctx->capture_capabilities);
-		if (ret < 0)
+		if (ret < 0) {
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+				   "capture-caps", ret,
+				   "failed to query CAPTURE capabilities: %s",
+				   strerror(-ret));
 			return VA_STATUS_ERROR_OPERATION_FAILED;
+		}
 
 		/*
 		 * When the decoder can only produce a format nothing can
@@ -783,9 +855,12 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 			if (info && !info->va_fourcc) {
 				v4l2r_convert_setup(ctx);
 				if (!ctx->conv) {
-					v4l2r_log("no usable format converter for %.4s, "
-						  "refusing hardware decoding\n",
-						  (const char *)&info->pixelformat);
+					v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+						   V4L2R_DIAG_UNSUPPORTED,
+						   "capture-format", 0,
+						   "no usable format converter for %.4s, "
+						   "refusing hardware decoding",
+						   (const char *)&info->pixelformat);
 					return VA_STATUS_ERROR_OPERATION_FAILED;
 				}
 			}
@@ -793,8 +868,11 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 
 		type = ctx->output_format.type;
 		if (ioctl(ctx->video_fd, VIDIOC_STREAMON, &type) < 0) {
-			v4l2r_log("failed to start OUTPUT streaming: %s\n",
-				  strerror(errno));
+			ret = -errno;
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   V4L2R_DIAG_KERNEL, "output-streamon", ret,
+				   "failed to start OUTPUT streaming: %s",
+				   strerror(-ret));
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
 	}
@@ -819,17 +897,21 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 	if (starting) {
 		type = ctx->capture_format.type;
 		if (ioctl(ctx->video_fd, VIDIOC_STREAMON, &type) < 0) {
-			v4l2r_log("failed to start CAPTURE streaming: %s\n",
-				  strerror(errno));
+			ret = -errno;
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   V4L2R_DIAG_KERNEL, "capture-streamon", ret,
+				   "failed to start CAPTURE streaming: %s",
+				   strerror(-ret));
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
 
 		ctx->streaming = true;
 
-		v4l2r_log("using CAPTURE format %.4s (%ux%u)\n",
-			  (const char *)&(uint32_t){v4l2r_format_pixelformat(&ctx->capture_format)},
-			  v4l2r_format_width(&ctx->capture_format),
-			  v4l2r_format_height(&ctx->capture_format));
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO,
+			   "capture-format", 0, "using CAPTURE format %.4s (%ux%u)",
+			   (const char *)&(uint32_t){v4l2r_format_pixelformat(&ctx->capture_format)},
+			   v4l2r_format_width(&ctx->capture_format),
+			   v4l2r_format_height(&ctx->capture_format));
 	}
 
 	return VA_STATUS_SUCCESS;
@@ -856,27 +938,47 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 	(void)flag;
 
 	config = V4L2R_CONFIG_GET(drv, config_id);
-	if (!config)
+	if (!config) {
+		v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
+			   "create-context", 0, "invalid config 0x%08x", config_id);
 		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
 	if (!context_id || num_render_targets < 0 ||
 	    (num_render_targets && !render_targets) ||
-	    (config->codec && (picture_width <= 0 || picture_height <= 0)))
+	    (config->codec && (picture_width <= 0 || picture_height <= 0))) {
+		v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
+			   "create-context", 0,
+			   "invalid context parameters (%dx%d, %d render targets)",
+			   picture_width, picture_height, num_render_targets);
 		return VA_STATUS_ERROR_INVALID_PARAMETER;
+	}
 	/* Render targets are a hint, not a transfer of ownership from another
 	 * context. Validate the list before allocating device resources. The
 	 * first successful BeginPicture reserves an unbound surface. */
-	for (int i = 0; i < num_render_targets; i++)
-		if (!V4L2R_SURFACE_GET(drv, render_targets[i]))
+	for (int i = 0; i < num_render_targets; i++) {
+		if (!V4L2R_SURFACE_GET(drv, render_targets[i])) {
+			v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG,
+				   V4L2R_DIAG_CLIENT, "create-context", 0,
+				   "invalid render target 0x%08x",
+				   render_targets[i]);
 			return VA_STATUS_ERROR_INVALID_SURFACE;
+		}
+	}
 
 	pthread_mutex_lock(&drv->mutex);
 	id = v4l2r_handles_alloc(&drv->contexts, sizeof(*ctx));
 	ctx = V4L2R_CONTEXT(drv, id);
 	pthread_mutex_unlock(&drv->mutex);
-	if (!ctx)
+	if (!ctx) {
+		v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_ALLOCATION,
+			   "create-context", -ENOMEM,
+			   "failed to allocate a context");
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
+	}
 
 	ctx->drv = drv;
+	ctx->id = id;
+	ctx->diag_serial = v4l2r_diag_context_serial();
 	ctx->config_id = config_id;
 	ctx->profile = config->profile;
 	ctx->codec = config->codec;
@@ -903,6 +1005,9 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 	if (ctx->codec->priv_size) {
 		ctx->codec_priv = calloc(1, ctx->codec->priv_size);
 		if (!ctx->codec_priv) {
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   V4L2R_DIAG_ALLOCATION, "create-context",
+				   -ENOMEM, "failed to allocate codec state");
 			status = VA_STATUS_ERROR_ALLOCATION_FAILED;
 			goto fail;
 		}
@@ -1014,15 +1119,28 @@ next:
 	}
 
 	if (ctx->video_fd < 0 || !decoder) {
-		v4l2r_log("no drivable decoder for %.4s at %dx%d\n",
-			  (const char *)&ctx->codec->pixelformat,
-			  picture_width, picture_height);
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_UNSUPPORTED,
+			   "create-context", 0,
+			   "no drivable decoder for %.4s at %dx%d",
+			   (const char *)&ctx->codec->pixelformat,
+			   picture_width, picture_height);
 		goto fail;
 	}
 
-	v4l2r_log("decoding %s via %s [%s] (media %s)\n",
-		  ctx->codec->name, decoder->video_path, decoder->card,
-		  decoder->media_path);
+	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO, "create-context", 0,
+		   "decoding %s via %s [%s] (media %s)",
+		   ctx->codec->name, decoder->video_path, decoder->card,
+		   decoder->media_path);
+	bool hold_capture = false;
+#ifdef V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF
+	hold_capture = ctx->output_capabilities & V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF;
+#endif
+	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_INFO,
+		   "context-capabilities", 0,
+		   "decoder %s: %ux%u, hold-capture %s, avd %s",
+		   decoder->card, picture_width, picture_height,
+		   hold_capture ? "yes" : "no",
+		   ctx->is_avd ? "yes" : "no");
 
 	for (unsigned int i = 0; i < V4L2R_OUTPUT_BUFFERS; i++) {
 		ret = output_buffer_setup(ctx, &ctx->output[i], 0);
@@ -1170,14 +1288,31 @@ VAStatus v4l2r_BeginPicture(VADriverContextP va_ctx, VAContextID context_id,
 	ctx = V4L2R_CONTEXT_GET(drv, context_id);
 	surface = V4L2R_SURFACE_GET(drv, render_target);
 
-	if (!ctx)
+	if (!ctx) {
+		v4l2r_diag(NULL, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
+			   "begin-picture", 0, "invalid context 0x%08x",
+			   context_id);
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
-	if (ctx->in_picture)
+	}
+	if (ctx->in_picture) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_CLIENT,
+			   "begin-picture", 0,
+			   "BeginPicture while a picture is already open");
 		return VA_STATUS_ERROR_OPERATION_FAILED;
-	if (!surface)
+	}
+	if (!surface) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
+			   "begin-picture", 0, "invalid render target 0x%08x",
+			   render_target);
 		return VA_STATUS_ERROR_INVALID_SURFACE;
-	if (surface->ctx && surface->ctx != ctx)
+	}
+	if (surface->ctx && surface->ctx != ctx) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
+			   "begin-picture", 0,
+			   "render target 0x%08x belongs to another context",
+			   render_target);
 		return VA_STATUS_ERROR_SURFACE_BUSY;
+	}
 
 	ctx->picture_status = VA_STATUS_SUCCESS;
 	if (ctx->vpp) {
@@ -1210,8 +1345,11 @@ VAStatus v4l2r_RenderPicture(VADriverContextP va_ctx, VAContextID context_id,
 	ctx = V4L2R_CONTEXT_GET(drv, context_id);
 	if (!ctx)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
-	if (!ctx->in_picture)
+	if (!ctx->in_picture) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_CLIENT,
+			   "render-picture", 0, "RenderPicture without BeginPicture");
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 	if (ctx->picture_status != VA_STATUS_SUCCESS)
 		return ctx->picture_status;
 	if (num_buffers < 0 || (num_buffers && !buffers)) {
@@ -1224,6 +1362,9 @@ VAStatus v4l2r_RenderPicture(VADriverContextP va_ctx, VAContextID context_id,
 
 		buffer = V4L2R_BUFFER_GET(drv, buffers[i]);
 		if (!buffer) {
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
+				   "render-picture", 0, "invalid buffer 0x%08x",
+				   buffers[i]);
 			ctx->picture_status = VA_STATUS_ERROR_INVALID_BUFFER;
 			return ctx->picture_status;
 		}
@@ -1248,8 +1389,11 @@ VAStatus v4l2r_EndPicture(VADriverContextP va_ctx, VAContextID context_id)
 	ctx = V4L2R_CONTEXT_GET(drv, context_id);
 	if (!ctx)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
-	if (!ctx->in_picture)
+	if (!ctx->in_picture) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_CLIENT,
+			   "end-picture", 0, "EndPicture without BeginPicture");
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	status = ctx->picture_status;
 	if (status == VA_STATUS_SUCCESS)

@@ -30,6 +30,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <time.h>
 
 #include <va/va.h>
@@ -81,8 +82,72 @@ struct v4l2r_driver;
 struct v4l2r_context;
 struct v4l2r_codec;
 
-void v4l2r_log(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 void v4l2r_trace(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+/* --- diagnostics (diag.c), categories documented in docs/DIAGNOSTICS.md --- */
+
+#define V4L2R_DIAG_SCHEMA	"libva-v4l2request.diag/1"
+/* Longest message after redaction, in bytes. */
+#define V4L2R_DIAG_MSG_MAX	256
+
+enum v4l2r_diag_level {
+	V4L2R_DIAG_LEVEL_ERROR,
+	V4L2R_DIAG_LEVEL_WARNING,
+	V4L2R_DIAG_LEVEL_INFO,
+	/* Only written in LIBVA_V4L2_DIAG=json mode. */
+	V4L2R_DIAG_LEVEL_DEBUG,
+};
+
+/* Stable failure categories. Append only; the names are part of the schema. */
+enum v4l2r_diag_category {
+	V4L2R_DIAG_INFO,	/* lifecycle and capability decisions */
+	V4L2R_DIAG_UNSUPPORTED,	/* profile, entrypoint or format not drivable */
+	V4L2R_DIAG_CLIENT,	/* VA call order or arguments rejected */
+	V4L2R_DIAG_BITSTREAM,	/* malformed or oversized coded data */
+	V4L2R_DIAG_REFERENCE,	/* missing, foreign or failed reference frame */
+	V4L2R_DIAG_ALLOCATION,	/* memory or buffer allocation failed */
+	V4L2R_DIAG_TIMEOUT,	/* hardware or reader wait expired */
+	V4L2R_DIAG_KERNEL,	/* V4L2/media ioctl rejected */
+	V4L2R_DIAG_DECODER,	/* decoder completed a frame with an error */
+	V4L2R_DIAG_DEVICE,	/* device node error or hangup */
+	V4L2R_DIAG_NB_CATEGORIES,
+};
+
+enum v4l2r_diag_mode {
+	V4L2R_DIAG_MODE_DEFAULT,	/* from LIBVA_V4L2_DIAG */
+	V4L2R_DIAG_MODE_TEXT,
+	V4L2R_DIAG_MODE_JSON,
+};
+
+/* Write one diagnostic record. ctx may be NULL; err is a (negative) errno or
+ * 0. op is a short stable identifier of the failed operation. */
+void v4l2r_diag(const struct v4l2r_context *ctx, enum v4l2r_diag_level level,
+		enum v4l2r_diag_category category, const char *op, int err,
+		const char *fmt, ...) __attribute__((format(printf, 6, 7)));
+/* Debug-level record of the driver's detected capabilities (JSON mode). */
+void v4l2r_diag_driver(const struct v4l2r_driver *drv);
+/* Report counts of rate-limited records that are still pending. */
+void v4l2r_diag_flush(void);
+/* Category of a failed wait or ioctl from its errno. */
+enum v4l2r_diag_category v4l2r_diag_errno_category(int err);
+const char *v4l2r_diag_category_name(enum v4l2r_diag_category category);
+/* Allocate a process-unique, never reused context serial. */
+uint32_t v4l2r_diag_context_serial(void);
+/* Redact and bound a message (exposed for tests). */
+size_t v4l2r_diag_redact(char *dst, size_t size, const char *src,
+			 bool ascii_only);
+
+/* Test hook: reset state and override the output mode, sink and clock. */
+struct v4l2r_diag_options {
+	enum v4l2r_diag_mode mode;
+	FILE *sink;
+	uint64_t (*clock_ns)(void);
+};
+void v4l2r_diag_configure(const struct v4l2r_diag_options *options);
+
+/* Wait for events on one fd: 0, -ETIMEDOUT, -EPIPE on an error or hangup,
+ * -ENODEV on an invalid fd, -EIO without the requested event, or -errno. */
+int v4l2r_poll_one(int fd, short events, int timeout_ms);
 
 /*
  * One V4L2 stateless decoder found during device enumeration: the media
@@ -272,6 +337,10 @@ static inline size_t v4l2r_buffer_bytes(const struct v4l2r_buffer *buf)
 
 struct v4l2r_context {
 	struct v4l2r_driver *drv;
+	VAContextID id;
+	/* Process-unique diagnostic identifier; VAContextIDs are reused by
+	 * later contexts and repeat across VA displays. 0 = unassigned. */
+	uint32_t diag_serial;
 	VAConfigID config_id;
 	VAProfile profile;
 	const struct v4l2r_codec *codec;
