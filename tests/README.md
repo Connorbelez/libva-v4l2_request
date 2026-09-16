@@ -35,6 +35,13 @@ EndPicture; this does not establish that a media file can trigger the same API s
 CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
 hardware tests are separate.
 
+CI also runs `sh tests/shared-contexts.sh` in software. With a driver-directory argument,
+run it through the hardware guard to interleave H.264, HEVC and 8/10-bit VP9 decoders on
+one shared VA display. The clips contain 24, 36, 48 and 60 frames, so earlier contexts are
+destroyed while later ones continue. Each stream must match its independently decoded
+software checksum. Normal and early-export runs compare 336 hardware output frames.
+This interleaves work in one thread; it does not measure concurrent API calls or throughput.
+
 ## Hardware pixel comparisons
 
 Use a normal, unsanitized build, close all video clients, and check that the decoder is idle
