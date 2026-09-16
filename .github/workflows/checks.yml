@@ -67,7 +67,7 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: >
-          apt-get update && apt-get install -y --no-install-recommends git meson
+          apt-get update && apt-get install -y --no-install-recommends git ca-certificates meson
           ninja-build libva-dev libdrm-dev ffmpeg libavformat-dev
           libavcodec-dev libavutil-dev libswscale-dev pkg-config build-essential
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -116,7 +116,7 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: >
-          apt-get update && apt-get install -y --no-install-recommends git meson
+          apt-get update && apt-get install -y --no-install-recommends git ca-certificates meson
           ninja-build libva-dev libdrm-dev ffmpeg libavformat-dev
           libavcodec-dev libavutil-dev libswscale-dev pkg-config build-essential
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -164,7 +164,7 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: >
-          apt-get update && apt-get install -y --no-install-recommends git meson
+          apt-get update && apt-get install -y --no-install-recommends git ca-certificates meson
           ninja-build libva-dev libdrm-dev pkg-config build-essential
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: An enabled codec without its UAPI must fail configuration with the control named
