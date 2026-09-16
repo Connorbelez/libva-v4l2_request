@@ -1,6 +1,7 @@
 {
   "issue": "https://github.com/iconidentify/libva-v4l2_request/issues/41",
-  "pr": "https://github.com/iconidentify/libva-v4l2_request/pull/71",
+  "pr": "https://github.com/iconidentify/libva-v4l2_request/pull/76",
+  "implementation_pr": "https://github.com/iconidentify/libva-v4l2_request/pull/71",
   "date": "2026-09-16",
   "issue_complete": false,
   "hardware_campaign_complete": false,
@@ -11,6 +12,7 @@
     "Merge"
   ],
   "code_head": "83eb6d0faa1222a4b33d1181d61b13645d945c91",
+  "merged_harness_head": "0758361796905981d8855988f71f4c2ca5a66ff4",
   "production_src_tree": "00b8890d0ed3aa3182dc7bec73d38cf543e6d848",
   "production_source_changed": false,
   "review": "Maintainer implementation and self-review; not an independent review.",
@@ -1927,167 +1929,332 @@
     "Prior known codec failures remain failures; exact pass sets are compared without removing their raw full-suite denominators.",
     "The exact selected O3 binary codec comparison is not run yet."
   ],
-  "aborted_soak": {
-    "metadata": {
-      "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
-      "inputs_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
-      "limits": {
-        "dmabuf_bytes": 0,
-        "dmabuf_objects": 0,
-        "dmabuf_references": 0,
-        "fds": 0,
-        "heap_allocated_bytes": 65536,
-        "mapped_bytes": 4194304,
-        "maps": 0,
-        "vmrss_kib": 4096
-      },
-      "mode": "early",
-      "requested_cycles": 1000000,
-      "requested_seconds": 3600,
-      "source_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8",
-      "type": "metadata",
-      "warmup_cycles": 20
-    },
-    "summary": {
-      "cycles": 2822,
-      "error": "143",
-      "limits": {
-        "dmabuf_bytes": 0,
-        "dmabuf_objects": 0,
-        "dmabuf_references": 0,
-        "fds": 0,
-        "heap_allocated_bytes": 65536,
-        "mapped_bytes": 4194304,
-        "maps": 0,
-        "vmrss_kib": 4096
-      },
-      "mode": "early",
-      "passed": false,
-      "type": "summary"
-    },
-    "sample_span_seconds": 616.048414118,
-    "first": {
-      "allocator": {
-        "allocated": 335872,
-        "arena": 3227648,
-        "free": 2891776,
-        "mmap": 0,
-        "releasable": 1889168
-      },
-      "cycle": 0,
-      "decoded_frames": 960,
-      "dmabuf": {
-        "references": 0,
-        "status": "none-observed",
-        "unique_bytes": 0,
-        "unique_objects": 0
-      },
-      "dmabuf_bytes": 0,
-      "dmabuf_objects": 0,
-      "dmabuf_references": 0,
-      "fd_count": 4,
-      "map_count": 499,
-      "mapped_bytes": 169066496,
-      "monotonic_ns": 87150764960579,
-      "pid": 660101,
-      "process_start_time": "8714652",
-      "process_state": "S",
-      "rssanon_kib": 10448,
-      "rssfile_kib": 30464,
-      "rssshmem_kib": 0,
-      "timestamp_ns": 1789589433430538535,
-      "type": "sample",
-      "vmhwm_kib": 50496,
-      "vmrss_kib": 40912
-    },
-    "last": {
-      "allocator": {
-        "allocated": 345920,
-        "arena": 3227648,
-        "free": 2881728,
-        "mmap": 0,
-        "releasable": 1889168
-      },
-      "cycle": 2822,
-      "decoded_frames": 136416,
-      "dmabuf": {
-        "references": 0,
-        "status": "none-observed",
-        "unique_bytes": 0,
-        "unique_objects": 0
-      },
-      "dmabuf_bytes": 0,
-      "dmabuf_objects": 0,
-      "dmabuf_references": 0,
-      "fd_count": 4,
-      "map_count": 499,
-      "mapped_bytes": 169066496,
-      "monotonic_ns": 87766813374697,
-      "pid": 660101,
-      "process_start_time": "8714652",
-      "process_state": "S",
-      "rssanon_kib": 10448,
-      "rssfile_kib": 30464,
-      "rssshmem_kib": 0,
-      "timestamp_ns": 1789590049478952444,
-      "type": "sample",
-      "vmhwm_kib": 51424,
-      "vmrss_kib": 40912
-    },
-    "guard": [
-      {
-        "event": "preflight",
-        "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
-        "identity": "avd",
-        "idle": true,
-        "module_loaded": true,
-        "userspace": {
-          "libva_drivers_path": "<redacted>",
-          "libva_driver_name": "v4l2_request",
-          "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
-          "source_commit": "9fe7136ad7920d81f5db2b10bd5c0a0e3c575fdf"
+  "aborted_soaks": {
+    "final-soak": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
         },
-        "time": "2026-09-16T13:10:29-0700"
+        "mode": "early",
+        "requested_cycles": 1000000,
+        "requested_seconds": 3600,
+        "source_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8",
+        "type": "metadata",
+        "warmup_cycles": 20
       },
-      {
-        "event": "start",
-        "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
-        "time": "2026-09-16T13:10:29-0700"
+      "summary": {
+        "cycles": 2822,
+        "error": "143",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "passed": false,
+        "type": "summary"
       },
-      {
-        "event": "abort",
-        "reason": "foreign-client",
-        "holders": [
-          {
-            "pid": 595914,
-            "pgrp": 997,
-            "owner_root": null,
-            "cmd": "<redacted>"
-          }
-        ],
-        "time": "2026-09-16T13:20:49-0700"
+      "sample_span_seconds": 616.048414118,
+      "first": {
+        "allocator": {
+          "allocated": 335872,
+          "arena": 3227648,
+          "free": 2891776,
+          "mmap": 0,
+          "releasable": 1889168
+        },
+        "cycle": 0,
+        "decoded_frames": 960,
+        "dmabuf": {
+          "references": 0,
+          "status": "none-observed",
+          "unique_bytes": 0,
+          "unique_objects": 0
+        },
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fd_count": 4,
+        "map_count": 499,
+        "mapped_bytes": 169066496,
+        "monotonic_ns": 87150764960579,
+        "pid": 660101,
+        "process_start_time": "8714652",
+        "process_state": "S",
+        "rssanon_kib": 10448,
+        "rssfile_kib": 30464,
+        "rssshmem_kib": 0,
+        "timestamp_ns": 1789589433430538535,
+        "type": "sample",
+        "vmhwm_kib": 50496,
+        "vmrss_kib": 40912
       },
-      {
-        "event": "final",
-        "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
-        "status": "abort",
-        "returncode": 143,
-        "timed_out": false,
-        "wedged": false,
-        "abort_reason": "foreign-client",
-        "idle": false,
-        "holders": [
-          {
-            "pid": 595914,
-            "pgrp": 997,
-            "owner_root": null,
-            "cmd": "<redacted>"
-          }
-        ],
-        "time": "2026-09-16T13:20:49-0700"
-      }
-    ],
-    "later_idle_preflight": [
+      "last": {
+        "allocator": {
+          "allocated": 345920,
+          "arena": 3227648,
+          "free": 2881728,
+          "mmap": 0,
+          "releasable": 1889168
+        },
+        "cycle": 2822,
+        "decoded_frames": 136416,
+        "dmabuf": {
+          "references": 0,
+          "status": "none-observed",
+          "unique_bytes": 0,
+          "unique_objects": 0
+        },
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fd_count": 4,
+        "map_count": 499,
+        "mapped_bytes": 169066496,
+        "monotonic_ns": 87766813374697,
+        "pid": 660101,
+        "process_start_time": "8714652",
+        "process_state": "S",
+        "rssanon_kib": 10448,
+        "rssfile_kib": 30464,
+        "rssshmem_kib": 0,
+        "timestamp_ns": 1789590049478952444,
+        "type": "sample",
+        "vmhwm_kib": 51424,
+        "vmrss_kib": 40912
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "9fe7136ad7920d81f5db2b10bd5c0a0e3c575fdf"
+          },
+          "time": "2026-09-16T13:10:29-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
+          "time": "2026-09-16T13:10:29-0700"
+        },
+        {
+          "event": "abort",
+          "reason": "foreign-client",
+          "holders": [
+            {
+              "pid": 595914,
+              "pgrp": 997,
+              "owner_root": null,
+              "cmd": "<redacted>"
+            }
+          ],
+          "time": "2026-09-16T13:20:49-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
+          "status": "abort",
+          "returncode": 143,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": "foreign-client",
+          "idle": false,
+          "holders": [
+            {
+              "pid": 595914,
+              "pgrp": 997,
+              "owner_root": null,
+              "cmd": "<redacted>"
+            }
+          ],
+          "time": "2026-09-16T13:20:49-0700"
+        }
+      ]
+    },
+    "soak-retry-2107": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "requested_cycles": 1000000,
+        "requested_seconds": 3600,
+        "source_commit": "0758361796905981d8855988f71f4c2ca5a66ff4",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "cycles": 6063,
+        "error": "143",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "passed": false,
+        "type": "summary"
+      },
+      "sample_span_seconds": 1426.146430501,
+      "first": {
+        "allocator": {
+          "allocated": 335456,
+          "arena": 2424832,
+          "free": 2089376,
+          "mmap": 0,
+          "releasable": 543056
+        },
+        "cycle": 0,
+        "decoded_frames": 960,
+        "dmabuf": {
+          "references": 0,
+          "status": "none-observed",
+          "unique_bytes": 0,
+          "unique_objects": 0
+        },
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fd_count": 4,
+        "map_count": 500,
+        "mapped_bytes": 168263680,
+        "monotonic_ns": 90561085848579,
+        "pid": 679549,
+        "process_start_time": "9055672",
+        "process_state": "S",
+        "rssanon_kib": 9648,
+        "rssfile_kib": 30480,
+        "rssshmem_kib": 0,
+        "timestamp_ns": 1789592843751426369,
+        "type": "sample",
+        "vmhwm_kib": 51504,
+        "vmrss_kib": 40128
+      },
+      "last": {
+        "allocator": {
+          "allocated": 344480,
+          "arena": 2424832,
+          "free": 2080352,
+          "mmap": 0,
+          "releasable": 543056
+        },
+        "cycle": 6063,
+        "decoded_frames": 291984,
+        "dmabuf": {
+          "references": 0,
+          "status": "none-observed",
+          "unique_bytes": 0,
+          "unique_objects": 0
+        },
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fd_count": 4,
+        "map_count": 500,
+        "mapped_bytes": 168263680,
+        "monotonic_ns": 91987232279080,
+        "pid": 679549,
+        "process_start_time": "9055672",
+        "process_state": "S",
+        "rssanon_kib": 9648,
+        "rssfile_kib": 30480,
+        "rssshmem_kib": 0,
+        "timestamp_ns": 1789594269897856952,
+        "type": "sample",
+        "vmhwm_kib": 52288,
+        "vmrss_kib": 40128
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "893739e5-9df3-4fde-9198-012975047cff",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "0758361796905981d8855988f71f4c2ca5a66ff4"
+          },
+          "time": "2026-09-16T14:07:19-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "893739e5-9df3-4fde-9198-012975047cff",
+          "time": "2026-09-16T14:07:19-0700"
+        },
+        {
+          "event": "abort",
+          "reason": "foreign-client",
+          "holders": [
+            {
+              "pid": 705822,
+              "pgrp": 997,
+              "owner_root": null,
+              "cmd": "<redacted>"
+            }
+          ],
+          "time": "2026-09-16T14:31:09-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "893739e5-9df3-4fde-9198-012975047cff",
+          "status": "abort",
+          "returncode": 143,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": "foreign-client",
+          "idle": false,
+          "holders": [
+            {
+              "pid": 705822,
+              "pgrp": 997,
+              "owner_root": null,
+              "cmd": "<redacted>"
+            }
+          ],
+          "time": "2026-09-16T14:31:09-0700"
+        }
+      ]
+    }
+  },
+  "post_abort_idle_preflights": {
+    "post-foreign-idle": [
       {
         "event": "preflight",
         "run_id": "850643e0-a99a-49a8-81b8-ef89b1d4f8b3",
@@ -2119,11 +2286,44 @@
         "holders": [],
         "time": "2026-09-16T13:25:40-0700"
       }
+    ],
+    "post-retry-abort-idle": [
+      {
+        "event": "preflight",
+        "run_id": "6928f92f-c357-4000-86f0-0d61eeb83d4e",
+        "identity": "avd",
+        "idle": true,
+        "module_loaded": true,
+        "userspace": {
+          "libva_drivers_path": "",
+          "libva_driver_name": "v4l2_request",
+          "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+          "source_commit": "7f154f8c64665cd243e9ceca1a4facd88cb5c431"
+        },
+        "time": "2026-09-16T14:34:47-0700"
+      },
+      {
+        "event": "start",
+        "run_id": "6928f92f-c357-4000-86f0-0d61eeb83d4e",
+        "time": "2026-09-16T14:34:47-0700"
+      },
+      {
+        "event": "final",
+        "run_id": "6928f92f-c357-4000-86f0-0d61eeb83d4e",
+        "status": "ok",
+        "returncode": 0,
+        "timed_out": false,
+        "wedged": false,
+        "abort_reason": null,
+        "idle": true,
+        "holders": [],
+        "time": "2026-09-16T14:34:47-0700"
+      }
     ]
   },
   "archive": {
     "path": "resource-churn-2026-09-16/raw-evidence.tar.xz",
-    "sha256": "46bc9663ba953c6c1b9c59847b5a5bd44d5f7f3882881601e0301a0cc5164fa7",
+    "sha256": "91db8ceb7b27335ee742c213d452bf65e6ca36f6b88406fdc19919343fc41e0a",
     "members": {
       "allocator-diagnostic-guard.jsonl": {
         "raw_sha256": "a060abc310be0b4f23dd53bfc26ab8a48b58814fbc2c6b72fa5f887e7bd9288e",
@@ -2256,9 +2456,9 @@
         "size": 120057
       },
       "final-codec-suites.py": {
-        "raw_sha256": "c1bc90be52bd1c31d6f8887a29922663b6ed1429a9571e20634aa3cb2bf8dad7",
-        "public_sha256": "cb4d809e925e1aaa75e80b2a70070b3a07949987699ea88a8000693145d1bde0",
-        "size": 2503
+        "raw_sha256": "a5f061a2e11efd664532816e2325ce2a31e366a32e79f82e277a51d6bc652562",
+        "public_sha256": "55d2e37f16cf5ff3a72e85153a16d099e3fab5e62f65a0e74964c9ff79280892",
+        "size": 2551
       },
       "final-early-1000-guard.jsonl": {
         "raw_sha256": "c5b88db33859496d6cfdad216df102325dfa16186b1f6bd1e33c7897be7d0c4c",
@@ -2441,9 +2641,9 @@
         "size": 66282
       },
       "make-evidence.py": {
-        "raw_sha256": "c7a88f23fbce7b1a1bd897018325a1f54dff7eb45803a309811586343ac77d03",
-        "public_sha256": "3e6c12083f74bdc0471d9c44284d39227733eb46d7227030af62de4c56555187",
-        "size": 14417
+        "raw_sha256": "f83041b4c98840e0f682131537e6845e6a4a9d6a264f4949f959b3ffe6e8c78f",
+        "public_sha256": "7de715fb15a5b6f0da0a5a0928c4a54dfe51b2243e9c526301458b0e0dabddf1",
+        "size": 15044
       },
       "media/h264.mkv": {
         "raw_sha256": "120e975fde9c78d4057ceed45d545f1830868d221d84a3ec654550b2c2e4f477",
@@ -2570,10 +2770,45 @@
         "public_sha256": "a87c0030de16c825da48b2e9a8997c1cc4b63176ebf2d4eb0ca3056aa8f28d3f",
         "size": 798
       },
+      "post-retry-abort-idle.jsonl": {
+        "raw_sha256": "a983b55c89e1afac321ce44c06f0a2cb5ba245c1f1761582a5b8e096cf2a9e78",
+        "public_sha256": "a983b55c89e1afac321ce44c06f0a2cb5ba245c1f1761582a5b8e096cf2a9e78",
+        "size": 798
+      },
       "post-soak.sh": {
-        "raw_sha256": "d3db70f351779fca01a6049edd7f8c9f042bd6d75b41cc5d9cf186658bc4d8a6",
-        "public_sha256": "b3cf77a414e0b76b77cf919e6644ba871b35b9e16598e31bea8bd0a7bea838e6",
-        "size": 1525
+        "raw_sha256": "60d3437b9193f94562d4edcb8ada45a186867caeb80e9b1b264b206218a3805e",
+        "public_sha256": "2b8bbdccd9ec61e9c4b3e2e01d9b5e1f172645f69b3498d1ca1f8d660143102e",
+        "size": 1889
+      },
+      "restart-soak-2107.sh": {
+        "raw_sha256": "76b0cce6c82547d26f702bec9ba1188de3c79a349768ac865d3e1e9de34a0131",
+        "public_sha256": "8d63ab19ed3ea7863ec98891b47cebe8168a7fcd73254edac7e1775d86722450",
+        "size": 685
+      },
+      "soak-retry-2107-guard.jsonl": {
+        "raw_sha256": "9a03035b0618ce4801c83085ac4d5e1d7edcda477b3cf452dd92de30ea22a8ab",
+        "public_sha256": "9a03035b0618ce4801c83085ac4d5e1d7edcda477b3cf452dd92de30ea22a8ab",
+        "size": 1062
+      },
+      "soak-retry-2107.jsonl": {
+        "raw_sha256": "ba3198f3327e654d417f3f231e9c83107a33aed43eee8042c411070fb4b5fe03",
+        "public_sha256": "ba3198f3327e654d417f3f231e9c83107a33aed43eee8042c411070fb4b5fe03",
+        "size": 3787893
+      },
+      "soak-retry-2107.log": {
+        "raw_sha256": "3410d8d3e87ab92a2674fcf544549db9c9e4bd78e960acb1ede9d50fd3a3964d",
+        "public_sha256": "3410d8d3e87ab92a2674fcf544549db9c9e4bd78e960acb1ede9d50fd3a3964d",
+        "size": 140
+      },
+      "soak-retry-2107.stderr.log": {
+        "raw_sha256": "db2261029cef56f3da429731e8adb328850dcae353616e90e072b608a293fc19",
+        "public_sha256": "db2261029cef56f3da429731e8adb328850dcae353616e90e072b608a293fc19",
+        "size": 18311671
+      },
+      "soak-retry-2107.workload.log": {
+        "raw_sha256": "7f1508f6307eb91ff92ac6178ee2c62d410f338b28c3314168d6fb781c3fa6c4",
+        "public_sha256": "7f1508f6307eb91ff92ac6178ee2c62d410f338b28c3314168d6fb781c3fa6c4",
+        "size": 18826657
       }
     },
     "sanitization": "Only <workspace> workspace prefix replaced with <workspace> in public text; original and transformed hashes retained."

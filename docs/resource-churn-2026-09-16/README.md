@@ -1,9 +1,21 @@
 # M1 resource campaign evidence — 2026-09-16
 
-**Status: incomplete qualification.** The normal and early-export 1,000-cycle
+**Status: incomplete qualification after two interrupted attempts.** The normal and early-export 1,000-cycle
 campaigns passed. The required one-hour soak was aborted after approximately
 10.3 minutes because another application opened the decoder. It remains a failed,
 incomplete run; issue #41 stays open. No new kernel fault was reported.
+
+The retry started at 21:07 UTC after the user paused videos, but another decoder
+client interrupted it at 21:31:09 UTC after 1,426 measured seconds and 6,063
+cycles. Its resource measurements remained flat; the guard reported no new
+kernel fault. The foreign process exited before it could be identified, and a
+later read-only preflight was healthy and idle. Both attempts remain failed
+and cannot be combined into an uninterrupted hour. A fresh exclusive window is
+pending; the user has been asked to close video applications completely.
+
+The retry used the same selected release driver (SHA-256
+`696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769`)
+and the merged harness at `0758361796905981d8855988f71f4c2ca5a66ff4`.
 
 The [machine-readable report](../resource-churn-validation-2026-09-16.json)
 contains source/build/device identities, input and independent software frame
