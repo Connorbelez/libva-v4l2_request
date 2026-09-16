@@ -163,17 +163,65 @@ void v4l2r_convert_destroy(struct v4l2r_context *ctx)
 	if (!conv)
 		return;
 
-	/* Abandon in-flight jobs: their frames are never read again. */
+	/* Surfaces can outlive their context. Abandoned jobs are not output. */
 	for (unsigned int i = 0; i < V4L2R_CONVERT_SLOTS; i++) {
-		if ((conv->busy & (1u << i)) && conv->jobs[i].surface)
+		if ((conv->busy & (1u << i)) && conv->jobs[i].surface) {
+			if (conv->jobs[i].surface->decode_status == VA_STATUS_SUCCESS)
+				conv->jobs[i].surface->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
 			conv->jobs[i].surface->convert_pending = false;
+		}
 	}
 
 	/* Closing the fd tears down the m2m context including any queued
 	 * jobs; importer-side dma-buf references are dropped with it. */
-	close(conv->fd);
+	if (conv->fd >= 0)
+		close(conv->fd);
 	free(conv);
 	ctx->conv = NULL;
+}
+
+/* Cancel importer ownership before callers may destroy/reuse the surfaces.
+ * Keep the failed chain explicit; this is not a kernel recovery attempt. */
+static void convert_fail(struct v4l2r_context *ctx, struct v4l2r_surface *surface)
+{
+	struct v4l2r_convert *conv = ctx->conv;
+	conv->failed = true;
+	if (conv->fd >= 0) {
+		close(conv->fd);
+		conv->fd = -1;
+	}
+	if (surface && surface->decode_status == VA_STATUS_SUCCESS)
+		surface->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
+	for (unsigned int i = 0; i < V4L2R_CONVERT_SLOTS; i++) {
+		struct v4l2r_surface *s = conv->jobs[i].surface;
+		if ((conv->busy & (1u << i)) && s) {
+			if (s->decode_status == VA_STATUS_SUCCESS)
+				s->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
+			s->convert_pending = false;
+		}
+		conv->jobs[i].surface = NULL;
+		conv->jobs[i].capture_index = -1;
+	}
+	conv->busy = 0;
+}
+
+static int dequeue_until(int fd, struct v4l2_buffer *buffer, uint64_t deadline, bool wait)
+{
+	for (;;) {
+		if (ioctl(fd, VIDIOC_DQBUF, buffer) == 0)
+			return 0;
+		int ret = -errno;
+		if (ret != -EINTR && (ret != -EAGAIN || !wait))
+			return ret;
+		if (v4l2r_now_ns() >= deadline)
+			return -ETIMEDOUT;
+		if (ret == -EAGAIN) {
+			ret = v4l2r_poll_until(fd,
+				V4L2_TYPE_IS_OUTPUT(buffer->type) ? POLLOUT : POLLIN, deadline);
+			if (ret < 0)
+				return ret;
+		}
+	}
 }
 
 /*
@@ -184,11 +232,11 @@ void v4l2r_convert_destroy(struct v4l2r_context *ctx)
 static int convert_reap(struct v4l2r_context *ctx, bool wait)
 {
 	struct v4l2r_convert *conv = ctx->conv;
-	struct pollfd pollfd = {
-		.fd = conv->fd,
-		.events = POLLIN,
-	};
 	int reaped = 0;
+	uint64_t deadline = v4l2r_now_ns() + (uint64_t)V4L2R_CONVERT_TIMEOUT_MS * 1000000;
+
+	if (conv->failed)
+		return -EIO;
 
 	while (conv->busy) {
 		struct v4l2_plane planes[VIDEO_MAX_PLANES] = {0};
@@ -199,30 +247,21 @@ static int convert_reap(struct v4l2r_context *ctx, bool wait)
 			.m.planes = planes,
 		};
 
-		if (ioctl(conv->fd, VIDIOC_DQBUF, &buffer) < 0) {
-			if (errno != EAGAIN)
-				return -errno;
-
-			if (!wait || reaped)
-				break;
-
-			int ret = poll(&pollfd, 1, V4L2R_CONVERT_TIMEOUT_MS);
-			if (ret <= 0)
-				return ret < 0 ? -errno : -ETIMEDOUT;
-			continue;
+		int ret = dequeue_until(conv->fd, &buffer, deadline, wait && !reaped);
+		if (ret == -EAGAIN)
+			break;
+		if (ret < 0) {
+			convert_fail(ctx, NULL);
+			return ret;
 		}
 
-		if (buffer.index < V4L2R_CONVERT_SLOTS &&
-		    (conv->busy & (1u << buffer.index))) {
-			unsigned int slot = buffer.index;
-
-			if (conv->jobs[slot].surface)
-				conv->jobs[slot].surface->convert_pending = false;
-			conv->jobs[slot].surface = NULL;
-			conv->jobs[slot].capture_index = -1;
-			conv->busy &= ~(1u << slot);
-			reaped++;
+		if (buffer.index >= V4L2R_CONVERT_SLOTS ||
+		    !(conv->busy & (1u << buffer.index)) ||
+		    (buffer.flags & V4L2_BUF_FLAG_ERROR)) {
+			convert_fail(ctx, NULL);
+			return -EIO;
 		}
+		unsigned int slot = buffer.index;
 
 		/* The paired source buffer completes with the job. */
 		memset(planes, 0, sizeof(planes));
@@ -232,17 +271,26 @@ static int convert_reap(struct v4l2r_context *ctx, bool wait)
 			.length = 1,
 			.m.planes = planes,
 		};
-		if (ioctl(conv->fd, VIDIOC_DQBUF, &buffer) < 0) {
+		ret = dequeue_until(conv->fd, &buffer, deadline, true);
+		if (ret < 0 || buffer.index != slot || (buffer.flags & V4L2_BUF_FLAG_ERROR)) {
 			/* The slot's source stays queued, so reusing the slot
 			 * would fail anyway; disable the chain explicitly. */
-			int ret = -errno;
+			if (ret >= 0)
+				ret = -EIO;
 
 			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
 				   "converter-dequeue", ret,
 				   "failed to dequeue converter source: %s",
 				   strerror(-ret));
-			conv->failed = true;
+			convert_fail(ctx, NULL);
+			return ret;
 		}
+		if (conv->jobs[slot].surface)
+			conv->jobs[slot].surface->convert_pending = false;
+		conv->jobs[slot].surface = NULL;
+		conv->jobs[slot].capture_index = -1;
+		conv->busy &= ~(1u << slot);
+		reaped++;
 	}
 
 	return reaped;
@@ -257,7 +305,7 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 	struct v4l2_buffer buffer;
 	unsigned int slot;
 
-	if (!conv || conv->failed)
+	if (!conv)
 		return;
 	if (capture_index < 0 || capture_index >= (int)ctx->nb_captures)
 		return;
@@ -267,7 +315,10 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 	if (!surface)
 		return;
 
-	convert_reap(ctx, false);
+	if (conv->failed || convert_reap(ctx, false) < 0) {
+		convert_fail(ctx, surface);
+		return;
+	}
 
 	/* All slots busy: wait one out. */
 	while (conv->busy & (1u << conv->next_slot)) {
@@ -277,6 +328,7 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
 				   v4l2r_diag_errno_category(ret),
 				   "converter-wait", ret, "format converter stalled");
+			convert_fail(ctx, surface);
 			return;
 		}
 	}
@@ -289,12 +341,14 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
 				   V4L2R_DIAG_ALLOCATION, "converter-backing", 0,
 				   "no conversion backing for surface, output will be wrong");
-		conv->failed = true;
+		convert_fail(ctx, surface);
 		return;
 	}
 
-	if (v4l2r_export_capture_dmabufs(ctx, capture, capture_index) < 0)
+	if (v4l2r_export_capture_dmabufs(ctx, capture, capture_index) < 0) {
+		convert_fail(ctx, surface);
 		return;
+	}
 
 	/* For DMABUF the plane length must carry the dma-buf size: the
 	 * kernel validates bytesused against it before resolving the fd
@@ -317,7 +371,7 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
 			   "converter-queue", ret,
 			   "failed to queue converter source: %s", strerror(-ret));
-		conv->failed = true;
+		convert_fail(ctx, surface);
 		return;
 	}
 
@@ -338,7 +392,7 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 			   "converter-queue", ret,
 			   "failed to queue converter destination: %s",
 			   strerror(-ret));
-		conv->failed = true;
+		convert_fail(ctx, surface);
 		return;
 	}
 
@@ -356,6 +410,8 @@ VAStatus v4l2r_convert_drain_index(struct v4l2r_context *ctx, int capture_index)
 
 	if (!conv)
 		return VA_STATUS_SUCCESS;
+	if (conv->failed)
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	pthread_mutex_lock(&ctx->mutex);
 	while (in_flight) {
@@ -382,6 +438,8 @@ VAStatus v4l2r_convert_wait(struct v4l2r_surface *surface)
 	struct v4l2r_context *ctx = surface->ctx;
 	VAStatus status = VA_STATUS_SUCCESS;
 
+	if (surface->decode_status != VA_STATUS_SUCCESS)
+		return surface->decode_status;
 	if (!ctx || !ctx->conv)
 		return VA_STATUS_SUCCESS;
 
@@ -401,7 +459,8 @@ VAStatus v4l2r_convert_wait(struct v4l2r_surface *surface)
 
 		/* Nothing in flight can clear the flag anymore. */
 		if (!ctx->conv->busy && surface->convert_pending) {
-			surface->convert_pending = false;
+			convert_fail(ctx, surface);
+			status = VA_STATUS_ERROR_OPERATION_FAILED;
 			break;
 		}
 	}
@@ -781,10 +840,7 @@ static VAStatus vpp_run(struct v4l2r_vpp *vpp,
 {
 	struct v4l2_plane planes[VIDEO_MAX_PLANES];
 	struct v4l2_buffer buffer;
-	struct pollfd pollfd = {
-		.fd = vpp->fd,
-		.events = POLLIN,
-	};
+	uint64_t deadline = v4l2r_now_ns() + (uint64_t)V4L2R_CONVERT_TIMEOUT_MS * 1000000;
 
 	/* For DMABUF the plane length must carry the dma-buf size: the
 	 * kernel validates bytesused against it before resolving the fd
@@ -822,12 +878,8 @@ static VAStatus vpp_run(struct v4l2r_vpp *vpp,
 		.length = 1,
 		.m.planes = planes,
 	};
-	while (ioctl(vpp->fd, VIDIOC_DQBUF, &buffer) < 0) {
-		if (errno != EAGAIN ||
-		    poll(&pollfd, 1, V4L2R_CONVERT_TIMEOUT_MS) <= 0)
-			return VA_STATUS_ERROR_OPERATION_FAILED;
-	}
-	if (buffer.flags & V4L2_BUF_FLAG_ERROR)
+	if (dequeue_until(vpp->fd, &buffer, deadline, true) < 0 ||
+	    buffer.index != 0 || (buffer.flags & V4L2_BUF_FLAG_ERROR))
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	memset(planes, 0, sizeof(planes));
@@ -837,7 +889,8 @@ static VAStatus vpp_run(struct v4l2r_vpp *vpp,
 		.length = 1,
 		.m.planes = planes,
 	};
-	if (ioctl(vpp->fd, VIDIOC_DQBUF, &buffer) < 0)
+	if (dequeue_until(vpp->fd, &buffer, deadline, true) < 0 ||
+	    buffer.index != 0 || (buffer.flags & V4L2_BUF_FLAG_ERROR))
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	return VA_STATUS_SUCCESS;
@@ -918,6 +971,11 @@ VAStatus v4l2r_vpp_end_picture(struct v4l2r_context *ctx)
 	}
 
 	status = vpp_run(vpp, &src_view, &dst_view);
+	if (status == VA_STATUS_SUCCESS) {
+		/* A valid retry replaces the failed destination's contents. */
+		dst->decode_status = VA_STATUS_SUCCESS;
+		dst->status = VASurfaceReady;
+	}
 
 done:
 	if (status != VA_STATUS_SUCCESS) {

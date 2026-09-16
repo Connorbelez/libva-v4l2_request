@@ -712,6 +712,9 @@ VAStatus v4l2r_QueryConfigProfiles(VADriverContextP va_ctx, VAProfile *profiles,
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
 	int count = 0;
 
+	if (!profiles || !num_profiles)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+
 	pthread_mutex_lock(&drv->mutex);
 
 	/* Guarded like v4l2r_codec_for_profile: the table is empty without
@@ -753,6 +756,9 @@ VAStatus v4l2r_QueryConfigEntrypoints(VADriverContextP va_ctx, VAProfile profile
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
 	const struct v4l2r_codec *codec = v4l2r_codec_for_profile(profile);
 
+	if (!entrypoints || !num_entrypoints)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+
 	if (profile == VAProfileNone) {
 		*num_entrypoints = 0;
 		if (v4l2r_converter_available(drv))
@@ -776,6 +782,9 @@ VAStatus v4l2r_CreateConfig(VADriverContextP va_ctx, VAProfile profile,
 	const struct v4l2r_codec *codec = NULL;
 	struct v4l2r_config *config;
 	VAConfigID id;
+
+	if (!config_id || num_attribs < 0 || (num_attribs && !attrib_list))
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	if (profile == VAProfileNone) {
 		/* Video processing (rotation/mirroring/scaling blits) runs
@@ -902,6 +911,9 @@ VAStatus v4l2r_GetConfigAttributes(VADriverContextP va_ctx, VAProfile profile,
 {
 	(void)va_ctx;
 	(void)entrypoint;
+
+	if (num_attribs < 0 || (num_attribs && !attrib_list))
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	for (int i = 0; i < num_attribs; i++) {
 		switch (attrib_list[i].type) {
