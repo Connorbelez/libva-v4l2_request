@@ -90,6 +90,16 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
+CI also runs `sh tests/install-smoke.sh` (issue #34): it builds and installs the driver
+twice into disposable `DESTDIR` roots — once at the default, libva pkg-config-derived
+driverdir, once with a custom `-Ddriverdir` — and checks that exactly one file (the driver
+module, no test binaries) is installed, that it carries no absolute build/worktree path and
+no DWARF debug info (the project's `-Dstrip=true` default), that its vendor/version marker
+string and libva ABI entrypoint symbol (`__vaDriverInit_<major>_<minor>`) are present and
+match the libva it was configured against, and that `ninja uninstall` removes every
+installed file and the now-empty directories it created, leaving the disposable root gone.
+It never touches the host's actual driver directory.
+
 ## Regression corpus
 
 Inputs behind the codec evidence are pinned, licensed and classified in
@@ -142,7 +152,14 @@ after dependency failures. `tests/ci_check.py fixtures` (Meson test
 `ci-workflow-audit`) revalidates the actual wiring: every child job must appear in the
 aggregate's `needs`, external actions and container images must be pinned by full commit
 SHA or sha256 digest, only hosted runner labels are permitted, matrix jobs must not be
-fail-fast, and the workflow may only hold `permissions: contents: read`.
+fail-fast, and the workflow may only hold `permissions: contents: read`. A full-SHA pin
+alone does not say which runtime a pinned action's own `action.yml` targets, which is how
+both `checkout` and `cache` quietly drifted onto a deprecated runtime (issue #63): every
+pinned commit is also checked against `ACTION_RUNTIME_ALLOWLIST` in `ci_check.py`, a
+reviewed, offline `commit -> {runtime, reviewed}` record built by reading each commit's
+`action.yml` directly (no network access from this script). A pin missing from that
+allowlist, or one whose recorded runtime has fallen out of `SUPPORTED_RUNTIMES`, fails the
+audit; add a dated entry when introducing or moving a pin.
 
 Codec build options `-Dcodec_h264|hevc|mpeg2|vp8|vp9|av1=auto|enabled|disabled`
 (auto-detect by default) control which codecs compile in. A codec enabled explicitly
