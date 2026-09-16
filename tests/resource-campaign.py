@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import select
 import signal
+import shlex
 import subprocess
 import time
 
@@ -29,11 +30,14 @@ def run(cmd):
 
 def prepare(root):
     root.mkdir(parents=True, exist_ok=True)
+    compiler = shlex.split(os.environ.get('CC', 'cc'))
+    if not compiler:
+        raise ValueError('CC must name a compiler')
     cflags = run(['pkg-config', '--cflags', '--libs', 'libavformat', 'libavcodec',
                   'libavutil', 'libswscale', 'libva']).split()
     for source, output in [('resource-workload.c', 'workload'), ('frame-check.c', 'reference')]:
-        run(['cc', '-Wall', '-Wextra', '-Werror', '-O2', '-o', str(root / output), str(HERE / source), *cflags, '-ldl'])
-    run(['cc', '-shared', '-fPIC', '-o', str(root / 'early.so'), str(HERE / 'early-export.c'),
+        run(compiler + ['-Wall', '-Wextra', '-Werror', '-O2', '-o', str(root / output), str(HERE / source), *cflags, '-ldl'])
+    run(compiler + ['-shared', '-fPIC', '-o', str(root / 'early.so'), str(HERE / 'early-export.c'),
          *run(['pkg-config', '--cflags', '--libs', 'libva']).split(), '-ldl'])
     manifest = {'inputs': [], 'commands': [], 'reference_source_sha256': digest(HERE / 'frame-check.c'),
                 'workload_source_sha256': digest(HERE / 'resource-workload.c')}
@@ -65,7 +69,7 @@ def prepare(root):
         manifest['commands'].append(['copy', 'tests/fixtures/resource/vp9-10.webm', name]
                                     if i == 3 else cmd[:-1] + [name])
     manifest['ffmpeg'] = run(['ffmpeg', '-version']).splitlines()[0]
-    manifest['compiler'] = run(['cc', '--version']).splitlines()[0]
+    manifest['compiler'] = run(compiler + ['--version']).splitlines()[0]
     manifest['workload_sha256'] = digest(root / 'workload')
     manifest['early_export_sha256'] = digest(root / 'early.so')
     (root / 'inputs.json').write_text(json.dumps(manifest, indent=2) + '\n')
