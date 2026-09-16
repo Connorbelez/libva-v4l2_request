@@ -62,6 +62,20 @@ if conf.get('HAVE_V4L2_CTRL_H264') == 1
   endforeach
 endif
 
+api_lifecycle = executable('api-lifecycle', 'api-lifecycle.c', driver_sources,
+  c_args: ['-UNDEBUG'],
+  include_directories: [root_inc, include_directories('../src')],
+  dependencies: [libva_dep, libdrm_dep, threads_dep])
+foreach case : ['surface-duplicates', 'surface-parameters', 'surface-null-output',
+                'surface-query-null', 'surface-export-null', 'surface-attributes-null',
+                'config-parameters', 'config-null-output', 'config-query-null',
+                'buffer-null-output', 'buffer-null-map', 'buffer-context',
+                'buffer-owner', 'buffer-recycled-context', 'image-buffer-lifetime',
+                'image-derived-null', 'image-query-null', 'context-abort-reuse',
+                'context-isolation']
+  test('api-' + case, api_lifecycle, args: [case], timeout: 10)
+endforeach
+
 picture = executable('picture', 'picture.c', driver_sources,
   c_args: ['-UNDEBUG'],
   include_directories: [root_inc, include_directories('../src')],
