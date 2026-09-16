@@ -66,6 +66,17 @@ if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
     include_directories: [root_inc, include_directories('../src')],
     dependencies: [libva_dep, libdrm_dep, threads_dep])
   test('hevc-parser', parser, timeout: 30)
+  # Profile, RT-format and picture-format boundaries from
+  # docs/HEVC_RANGE_EXTENSIONS.md; the wrapped ioctl proves no control reaches
+  # a device for a refused picture.
+  hevc_capability = executable('hevc-capability', 'hevc-capability.c', driver_sources,
+    c_args: ['-UNDEBUG'],
+    include_directories: [root_inc, include_directories('../src')],
+    dependencies: [libva_dep, libdrm_dep, threads_dep],
+    link_args: ['-Wl,--wrap=ioctl'])
+  foreach case : ['profiles', 'picture']
+    test('hevc-capability-' + case, hevc_capability, args: [case], timeout: 30)
+  endforeach
 endif
 
 if conf.get('HAVE_V4L2_CTRL_VP9') == 1
