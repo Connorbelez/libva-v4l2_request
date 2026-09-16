@@ -1,8 +1,10 @@
 #!/bin/sh
 # ThreadSanitizer pass over the concurrent API stress schedules, in a
-# fresh sanitizer build (the regular suite builds ASan/UBSan). Skips with
-# exit 77 when the toolchain or the runtime cannot support TSan here;
-# the skip reason is printed so the evidence stays honest.
+# fresh sanitizer build (the regular suite builds ASan/UBSan). Skips
+# with exit 77 and the printed reason only when the selected toolchain
+# cannot build TSan or the runtime cannot start in this sandbox; any
+# other failure — including a real ThreadSanitizer diagnostic — fails
+# the check. The executed/skip outcome is printed as evidence.
 set -eu
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$script_dir/.." && pwd)
@@ -11,13 +13,14 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 command -v meson >/dev/null 2>&1 || {
     echo 'concurrent-tsan: SKIP (meson not available)'; exit 77; }
-command -v cc >/dev/null 2>&1 || {
-    echo 'concurrent-tsan: SKIP (no C compiler)'; exit 77; }
+# Use the same compiler Meson will use, not a hardcoded one.
+compiler="${CC:-cc}"
+command -v "$compiler" >/dev/null 2>&1 || {
+    echo "concurrent-tsan: SKIP (compiler '$compiler' not available)"; exit 77; }
 
 # Probe: can this toolchain build and RUN a multi-threaded TSan binary
 # on this host? Sandboxes that block the ptrace TSan needs for its
-# stop-the-world (default Docker seccomp) fail here, so the check skips
-# instead of failing with a runtime error.
+# stop-the-world (default Docker seccomp) fail here.
 cat >"$work/probe.c" <<'EOF'
 #include <pthread.h>
 #include <stdatomic.h>
@@ -41,15 +44,28 @@ int main(void) {
     return shared < 0;
 }
 EOF
-if ! cc -fsanitize=thread -pthread -o "$work/probe" "$work/probe.c" \
-        2>"$work/probe.err"; then
-    echo "concurrent-tsan: SKIP (toolchain cannot build TSan: $(head -1 "$work/probe.err"))"; exit 77
+probe_status=0
+"$compiler" -fsanitize=thread -pthread -o "$work/probe" "$work/probe.c" \
+    2>"$work/probe.err" || probe_status=$?
+if [ "$probe_status" -ne 0 ]; then
+    echo "concurrent-tsan: SKIP (toolchain cannot build TSan: $(head -1 "$work/probe.err"))"
+    exit 77
 fi
-if ! "$work/probe" >/dev/null 2>"$work/probe.run"; then
-    echo "concurrent-tsan: SKIP (TSan runtime failed to start: $(head -1 "$work/probe.run"))"; exit 77
+probe_status=0
+"$work/probe" >/dev/null 2>"$work/probe.run" || probe_status=$?
+if [ "$probe_status" -ne 0 ]; then
+    # A known runtime-unavailable startup failure is a skip; a
+    # ThreadSanitizer diagnostic on the race-free probe is not.
+    if grep -qE "FATAL: ThreadSanitizer|ThreadSanitizer: unexpected|FATAL: TSan" "$work/probe.run"; then
+        echo "concurrent-tsan: SKIP (TSan runtime cannot start here: $(head -1 "$work/probe.run"))"
+        exit 77
+    fi
+    echo "concurrent-tsan: FAIL (probe exited $probe_status, not a known runtime-unavailable signature):"
+    cat "$work/probe.run"
+    exit 1
 fi
 
-meson setup "$work/build" "$root" -Db_sanitize=thread >/dev/null
+CC="$compiler" meson setup "$work/build" "$root" -Db_sanitize=thread >/dev/null
 meson compile -C "$work/build" tests/concurrent-stress >/dev/null
 # Schedules: the threaded, mid-decode teardown and client-failure mixes.
 # Any ThreadSanitizer report makes the binary exit nonzero and fails this
@@ -65,4 +81,4 @@ for schedule in "threads 1 12 3 1" "threads 2 12 3 2" "threads 4 12 3 4" \
     # shellcheck disable=SC2086
     "$work/build/tests/concurrent-stress" $schedule >/dev/null
 done
-echo 'concurrent-tsan: PASS (no ThreadSanitizer reports in the driver or the harness)'
+echo "concurrent-tsan: EXECUTED and PASSED (compiler=$compiler, 6 schedules x 3 reps, no ThreadSanitizer reports in the driver or the harness)"

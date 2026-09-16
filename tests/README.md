@@ -104,14 +104,20 @@ oracle: slice bytes are hashed when a request is queued and the completion write
 pattern derived from that hash into the target CAPTURE plane, so lost frames,
 cross-stream pixels and stale buffer reuse all fail an exact byte comparison. The
 decoder only reuses a surface after the reader verified its previous frame, matching
-a real decoder surface pool. Per-stream MD5s, seeds, ioctl/poll/completion counts are
-printed for the evidence record; the mid-decode teardown victim verifies an
-interleaving-dependent count (at least half its frames) — every other count and hash
-is exact. `concurrent-process.py` drives the same single-stream worker in 1/2/4
-separate processes behind a start barrier (per-process isolation; one real decoder
-is the separate guarded hardware gate), and `concurrent-tsan.sh` re-runs the
-schedules under ThreadSanitizer in a fresh sanitizer build, skipping with exit 77
-and the printed reason where the toolchain or sandbox cannot run TSan. Schedules,
+a real decoder surface pool. Per-stream MD5s, seeds, ioctl/poll/completion counts and
+the maximum of simultaneously in-flight public entrypoints are printed for the
+evidence record; the mid-decode teardown victim is destroyed while it provably holds
+a staged picture open (between BeginPicture and its buffer creation) and verifies
+exactly half its frames byte-exact — every other count and hash is exact, and a
+first-call rendezvous makes the initial API-call overlap deterministic.
+`concurrent-process.py` drives the same single-stream worker in 1/2/4
+separate processes behind a start barrier (per-process isolation; every worker's
+digest is derived independently from the declared seed/frame recipe and compared
+exactly, negative fixtures cover stalled workers, inherited stdout holders and
+launch failures; one real decoder is the separate guarded hardware gate), and
+`concurrent-tsan.sh` re-runs the schedules under ThreadSanitizer in a fresh
+sanitizer build with the same compiler Meson uses, skipping with exit 77 and the
+printed reason only for known runtime-unavailable startup failures. Schedules,
 seeds and recorded hashes: [../docs/CONCURRENCY_STRESS.md](../docs/CONCURRENCY_STRESS.md).
 
 CI also runs `sh tests/install-smoke.sh` (issue #34): it builds and installs the driver

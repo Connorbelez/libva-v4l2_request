@@ -49,10 +49,11 @@ decode completion, not client readback).
 What this harness cannot prove: anything about a real AVD decoder, the kernel's
 own serialization, real dma-buf fences, or throughput. Those need the guarded
 hardware campaign. Offline schedules are seeded and deterministic in their
-results; OS thread interleaving varies between runs (that is the point), and the
-only intentionally interleaving-dependent output is the mid-decode teardown
-victim's verified frame count, which is asserted to be at least half of its
-frames with every verified frame byte-exact.
+results, including the mid-decode teardown victim's verified frame count
+(exactly half its frames, byte-exact): OS thread interleaving still varies
+between runs (that is the point), but no pass/fail outcome or recorded hash
+depends on it — the forced boundaries (first-call rendezvous, midpoint
+teardown, actor handshake) make the proven events happen every repetition.
 
 ## Schedules and seeds
 
@@ -73,22 +74,58 @@ dimensions (64x48, 64x64, 128x96, 96x64), a seeded surface rotation and seeded
 readback modes (client image with pitch-strided verification, or exported
 dma-buf read directly through the model plane storage). Per-stream results are
 printed as `stream <id> frames=<n> MD5=<hex>` where the MD5 covers the verified
-frame sequence; the teardown victim prints its interleaving-dependent count.
+frame sequence.
+
+Determinism and overlap proof (addressed in review of the first draft):
+
+* The teardown victim is destroyed **while it provably holds a staged picture
+  open**: after `vaBeginPicture` of frame FRAMES/2 it signals the destroyer and
+  waits for the *completed* destroy before creating its slice buffer, so the
+  destroy lands between `vaBeginPicture` and the buffer creation every
+  repetition, the victim's verified count is exactly FRAMES/2, and every
+  published frame completes byte-exact. `teardown_requested` (set before
+  `vaDestroyContext`) and `teardown_completed` (set after it returns) are
+  separate: survivors are only read after the completed teardown.
+* Maximum simultaneously in-flight public entrypoints is recorded per
+  repetition (`overlap=` in each `rep` line) and asserted to reach the stream
+  count. A first-call rendezvous makes the initial overlap deterministic:
+  every decoder is inside its first `vaBeginPicture` at once before any of
+  them proceeds.
+* The failure actor's cross-context busy check is a one-shot that
+  structurally overlaps valid work: the destroyer cannot tear stream 0 down
+  until that check has completed, so the targeted context is alive and its
+  reader unfinished regardless of when the actor thread was scheduled. Every
+  fault in the actor loop fires while at least one stream's reader is still
+  working, by the loop's own condition.
 
 `concurrent-process.py` runs the same single-stream worker (`concurrent-stress
-worker ID FRAMES SEED`) in 1/2/4 separate processes behind a start barrier
-(one stdin byte), aggregates the per-worker results and enforces deadlines.
-Offline this proves per-process integrity and clean teardown with no shared
-state; contention for one real decoder is the hardware gate.
+worker ID FRAMES SEED`, where the worker id selects the stream recipe: model
+codec, dimensions and content) in 1/2/4 separate processes behind a start
+barrier (one stdin byte). It derives every worker's expected digest
+independently from the declared seed/frame recipe (splitmix64/FNV-1a/MD5, the
+same arithmetic as the harness) and compares exactly — a syntactically valid
+but wrong digest fails. The runner validates its arguments (bounded process,
+frame and repetition counts, finite positive deadline), the deadline covers
+process creation and the barrier release as well as the run, and cleanup
+kills each worker's whole process group with bounded waits so a descendant
+holding stdout cannot hang the schedule. Its `--self-test` runs real negative
+fixtures with actual child processes (stalled worker, inherited stdout
+holder, launch failure) and, against a real schedule, confirms the derived
+digests match the workers' output. Offline this proves per-process integrity
+and clean teardown with no shared state; contention for one real decoder is
+the hardware gate.
 
 `concurrent-tsan.sh` builds the stress harness with `-Db_sanitize=thread` in a
 fresh build directory and runs the threaded, teardown and failure schedules.
-Any ThreadSanitizer report fails the check; reports name their frames so
-driver-scope findings (both accesses inside `src/`) can be turned into
-regressions, while harness- or uninstrumented-library-scope reports are
-classified during review rather than silently accepted. Where the toolchain or
-the sandbox cannot run TSan (for example containers that block the ptrace the
-TSan runtime needs), the check skips with exit 77 and prints the reason.
+It uses the same compiler Meson would (`CC`, default `cc`) for its runtime
+probe, and classifies probe failures: known runtime-unavailable startup
+signatures skip with exit 77 and the printed reason, while any other nonzero
+probe outcome — including a real ThreadSanitizer diagnostic — fails the
+check; the executed/skip outcome is printed as evidence. Any report in the
+schedules fails the check; reports name their frames so driver-scope findings
+(both accesses inside `src/`) can be turned into regressions, while harness-
+or uninstrumented-library-scope reports are classified during review rather
+than silently accepted.
 
 ## Offline results
 
@@ -99,15 +136,20 @@ evidence log):
 
 * Baseline on the base commit before any change: **127/127** Meson cases,
   `tests/frame-check.sh` and `tests/shared-contexts.sh` software checks pass.
-* With the new schedules: **139/139** Meson cases — the baseline set plus
-  `concurrent-threads-1/2/4`, `concurrent-teardown-1/2/4`,
-  `concurrent-failure-4`, `concurrent-processes`,
+* With the new schedules (after the review remediation): **139/139** Meson
+  cases — the baseline set plus `concurrent-threads-1/2/4`,
+  `concurrent-teardown-1/2/4`, `concurrent-failure-4`,
+  `concurrent-processes` (self-test with real negative fixtures),
   `concurrent-processes-1/2/4` and `concurrent-tsan` (which ran, not skipped).
   The `threads` and `failure` schedules verify **12/12 frames per stream in
-  every repetition** with stable per-stream MD5s; the `teardown` victims
-  verified between 6 and 12 frames (at least half, byte-exact in every case).
-  Flakiness check: 10 consecutive full runs each of `failure 4 12 10` and
-  `teardown 4 12 10` (100 repetitions per schedule) with zero failures.
+  every repetition**; the `teardown` victims verify **exactly 6/12**
+  (the forced midpoint), byte-exact in every case. The recorded maximum of
+  simultaneously in-flight public entrypoints reached 8 (4 decoders + 4
+  readers) on the 4-stream schedules. Flakiness check: 10 consecutive full
+  runs each of `failure 4 12 10` and `teardown 4 12 10` (100 repetitions per
+  schedule) with zero failures; the reviewer's two deterministic mutation
+  windows (destroy between BeginPicture and buffer creation; a late-arriving
+  actor) are now forced or made safe by construction.
 * Per-configuration registered counts (re-measured, including the new cases):
   139 on 6.8 UAPI with all codecs, 132 on 22.04/5.15, 123 on 20.04/5.4,
   128 with all codecs disabled, 135 with HEVC forced and VP9 disabled.
@@ -129,10 +171,12 @@ offline-equivalent steps for a device owner:
 2. Take the hardware guard lease with a finite deadline and a journal
    since-stamp; close all other video clients first.
 3. Run the process schedule against the real driver with
-   `LIBVA_DRIVERS_PATH=<build>/src` — `concurrent-process.py` with a worker
-   binary that decodes through VA-API (the offline worker links the driver
-   directly and cannot be used on hardware); record per-worker hashes,
-   deadlines, guard logs and kernel journal deltas.
+   `LIBVA_DRIVERS_PATH=<build>/src`. **Note: this still needs a VA-API
+   process worker to be implemented first** — the offline worker links the
+   driver directly in-process and cannot be switched to hardware by setting
+   `LIBVA_DRIVERS_PATH`; a worker that decodes through a real VA display
+   (frame-check-style) is a separate follow-up item before this campaign.
+   Record per-worker hashes, deadlines, guard logs and kernel journal deltas.
 4. Ten repetitions of each declared schedule, comparing the exact passing sets
    and per-stream hashes against the software references; any kernel fault,
    stuck task or abandoned decoder holder fails the criterion and stops the

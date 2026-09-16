@@ -151,9 +151,12 @@ endif
 python3 = find_program('python3')
 # Multi-process schedules: N worker processes of the stress harness
 # behind a start barrier, aggregated and deadline-checked by the
-# orchestrator. Its --self-test validates that logic offline.
+# orchestrator. Its --self-test validates parsing, the independent
+# digest derivation and (with the binary) real negative fixtures:
+# stalled worker, inherited stdout holder and launch failure.
 test('concurrent-processes', python3,
-     args: [files('concurrent-process.py'), '--self-test'], timeout: 30)
+     args: [files('concurrent-process.py'), '--self-test',
+            concurrent_stress], timeout: 120)
 foreach n : ['1', '2', '4']
   test('concurrent-processes-' + n, python3,
        args: [files('concurrent-process.py'), concurrent_stress,
