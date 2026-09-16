@@ -35,9 +35,15 @@ VAStatus v4l2r_CreateSurfaces2(VADriverContextP va_ctx, unsigned int format,
 	uint32_t fourcc = 0;
 	unsigned int i;
 
+	if (!width || !height || width > 65536 || height > 65536 ||
+	    (num_surfaces && !surfaces) || (num_attribs && !attrib_list))
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+
 	for (i = 0; i < num_attribs; i++) {
 		if (attrib_list[i].type == VASurfaceAttribPixelFormat &&
 		    (attrib_list[i].flags & VA_SURFACE_ATTRIB_SETTABLE)) {
+			if (attrib_list[i].value.type != VAGenericValueTypeInteger)
+				return VA_STATUS_ERROR_INVALID_PARAMETER;
 			fourcc = attrib_list[i].value.value.i;
 			if (fourcc != VA_FOURCC_NV12 && fourcc != VA_FOURCC_P010)
 				return VA_STATUS_ERROR_UNSUPPORTED_RT_FORMAT;
@@ -80,6 +86,9 @@ VAStatus v4l2r_CreateSurfaces(VADriverContextP va_ctx, int width, int height,
 			      int format, int num_surfaces,
 			      VASurfaceID *surfaces)
 {
+	if (width <= 0 || height <= 0 || num_surfaces < 0)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+
 	return v4l2r_CreateSurfaces2(va_ctx, format, width, height, surfaces,
 				     num_surfaces, NULL, 0);
 }
@@ -93,9 +102,31 @@ VAStatus v4l2r_DestroySurfaces(VADriverContextP va_ctx, VASurfaceID *surface_lis
 	/* EndPicture still holds the target pointer even before its first
 	 * CAPTURE allocation. Reject the whole list before freeing anything. */
 	for (int i = 0; i < num_surfaces; i++) {
-		struct v4l2r_surface *surface = V4L2R_SURFACE_GET(drv, surface_list[i]);
+		/* Duplicate IDs would pass lookup twice and cause a partial free. */
+		for (int j = 0; j < i; j++) {
+			if (surface_list[i] == surface_list[j])
+				return VA_STATUS_ERROR_INVALID_SURFACE;
+		}
+		pthread_mutex_lock(&drv->mutex);
+		struct v4l2r_surface *surface = V4L2R_SURFACE(drv, surface_list[i]);
+		bool image_busy = surface && surface->image_refs;
+		/* VPP retains its input between RenderPicture and EndPicture.
+		 * That source need not belong to the VPP context itself. */
+		bool vpp_busy = false;
+		unsigned int iter = 0;
+		struct v4l2r_context *ctx;
+		while (surface && (ctx = v4l2r_handles_next(&drv->contexts, &iter, NULL))) {
+			if (ctx->in_picture && ctx->vpp && ctx->vpp->have_params &&
+			    ctx->vpp->src_surface == surface) {
+				vpp_busy = true;
+				break;
+			}
+		}
+		pthread_mutex_unlock(&drv->mutex);
 		if (!surface)
 			return VA_STATUS_ERROR_INVALID_SURFACE;
+		if (image_busy || vpp_busy)
+			return VA_STATUS_ERROR_SURFACE_BUSY;
 		if (surface->ctx && surface->ctx->in_picture &&
 		    surface->ctx->pic.target == surface)
 			return VA_STATUS_ERROR_SURFACE_BUSY;
@@ -147,11 +178,19 @@ VAStatus v4l2r_QuerySurfaceStatus(VADriverContextP va_ctx,
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
 	struct v4l2r_surface *surface;
 
+	if (!status)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+
 	surface = V4L2R_SURFACE_GET(drv, render_target);
 	if (!surface)
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 
 	/* A frame held back for reordering reports rendering until submitted. */
+	if (surface->ctx && surface->ctx->in_picture &&
+	    surface->ctx->pic.target == surface) {
+		*status = VASurfaceRendering;
+		return VA_STATUS_SUCCESS;
+	}
 	VAStatus flush_status = v4l2r_flush_surface(surface);
 	if (flush_status != VA_STATUS_SUCCESS)
 		return flush_status;
@@ -177,6 +216,9 @@ VAStatus v4l2r_QuerySurfaceAttributes(VADriverContextP va_ctx, VAConfigID config
 	struct v4l2r_config *cfg;
 	unsigned int i = 0;
 
+	if (!num_attribs)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+
 	cfg = V4L2R_CONFIG_GET(drv, config);
 	if (!cfg)
 		return VA_STATUS_ERROR_INVALID_CONFIG;
@@ -186,8 +228,10 @@ VAStatus v4l2r_QuerySurfaceAttributes(VADriverContextP va_ctx, VAConfigID config
 		return VA_STATUS_SUCCESS;
 	}
 
-	if (*num_attribs < 8)
+	if (*num_attribs < 8) {
+		*num_attribs = 8;
 		return VA_STATUS_ERROR_MAX_NUM_EXCEEDED;
+	}
 
 	attrib_list[i].type = VASurfaceAttribPixelFormat;
 	attrib_list[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
@@ -255,6 +299,12 @@ VAStatus v4l2r_QuerySurfaceAttributes(VADriverContextP va_ctx, VAConfigID config
 VAStatus v4l2r_surface_ready(struct v4l2r_surface *surface)
 {
 	VAStatus status;
+
+	/* BeginPicture reserves the target before there is a queued request to
+	 * wait on. Reading/exporting it now would expose old or partial pixels. */
+	if (surface->ctx && surface->ctx->in_picture &&
+	    surface->ctx->pic.target == surface)
+		return VA_STATUS_ERROR_SURFACE_BUSY;
 
 	status = v4l2r_flush_surface(surface);
 	if (status != VA_STATUS_SUCCESS)
@@ -928,6 +978,9 @@ VAStatus v4l2r_ExportSurfaceHandle(VADriverContextP va_ctx, VASurfaceID surface_
 	struct v4l2r_surface *surface;
 	struct v4l2r_frame_view view;
 	VAStatus status;
+
+	if (!descriptor)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	if (mem_type != VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2)
 		return VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;

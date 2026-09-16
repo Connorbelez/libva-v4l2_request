@@ -663,6 +663,8 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 
 	/* Refresh the completion counter with anything already finished. */
 	v4l2r_reap_capture(ctx);
+	if (ctx->failed)
+		return -EIO;
 
 	/*
 	 * The first buffer fixes the queue's memory type. Normally the
@@ -790,6 +792,8 @@ void v4l2r_context_release_capture(struct v4l2r_context *ctx, int index)
 
 VAStatus v4l2r_flush_surface(struct v4l2r_surface *surface)
 {
+	if (surface && surface->ctx && surface->ctx->failed)
+		return surface->decode_status;
 	if (surface && surface->ctx && surface->ctx->codec &&
 	    surface->ctx->codec->flush)
 		return surface->ctx->codec->flush(surface->ctx, surface);
@@ -802,6 +806,9 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 	enum v4l2_buf_type type;
 	bool starting = !ctx->streaming;
 	int ret;
+
+	if (ctx->failed)
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	if (surface->ctx && surface->ctx != ctx) {
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
@@ -873,16 +880,25 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 				   V4L2R_DIAG_KERNEL, "output-streamon", ret,
 				   "failed to start OUTPUT streaming: %s",
 				   strerror(-ret));
+			/* A converter may already own buffers. Re-running setup
+			 * would replace that live instance and lose its resources. */
+			v4l2r_context_fail(ctx);
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
+		ctx->output_streaming = true;
 	}
 
 	/* Bind (and, if reused, drain the references of) the surface's CAPTURE
 	 * buffer for this frame's decode. */
 	ret = capture_buffer_bind(ctx, surface);
-	if (ret < 0)
+	if (ret < 0) {
+		/* A failed first bind follows OUTPUT STREAMON. Repeating format
+		 * setup on that partially configured instance is not valid. */
+		if (starting)
+			v4l2r_context_fail(ctx);
 		return ret == -ENOMEM || ret == -ENOSPC ?
 			VA_STATUS_ERROR_ALLOCATION_FAILED : VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	/* The decode context provides the real storage now; drop any
 	 * standalone backing from pre-decode export probing. With a
@@ -902,6 +918,7 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 				   V4L2R_DIAG_KERNEL, "capture-streamon", ret,
 				   "failed to start CAPTURE streaming: %s",
 				   strerror(-ret));
+			v4l2r_context_fail(ctx);
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
 
@@ -990,6 +1007,11 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 	pthread_mutex_init(&ctx->mutex, NULL);
 	for (unsigned int i = 0; i < V4L2R_OUTPUT_BUFFERS; i++)
 		ctx->output[i].request_fd = -1;
+	/* A failed QUERYBUF can leave a hole before the next kernel index.
+	 * Untouched slots must never appear to own descriptor zero. */
+	for (unsigned int i = 0; i < V4L2R_MAX_CAPTURE_BUFFERS; i++)
+		for (unsigned int p = 0; p < VIDEO_MAX_PLANES; p++)
+			ctx->captures[i].dmabuf_fd[p] = -1;
 
 	/* Video processing contexts drive the format converter instead of a
 	 * decoder: no codec, no decoder device, no queues. */
@@ -1199,19 +1221,29 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	enum v4l2_buf_type type;
 	unsigned int iter = 0;
 	struct v4l2r_surface *surface;
+	struct v4l2r_surface *abandoned;
 
 	ctx = V4L2R_CONTEXT_GET(drv, context_id);
 	if (!ctx)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 
+	/* A missing EndPicture cannot leave a successful frame behind or
+	 * submit an incomplete held-back picture during teardown. */
+	abandoned = ctx->in_picture ? ctx->pic.target : NULL;
+	if (abandoned) {
+		abandoned->decode_status = ctx->picture_status != VA_STATUS_SUCCESS ?
+			ctx->picture_status : VA_STATUS_ERROR_OPERATION_FAILED;
+		abandoned->status = VASurfaceReady;
+	}
+
 	/* Finish the last frames before STREAMOFF cancels the queue. The VA
 	 * surfaces may still be downloaded after this context goes away. Keep
 	 * failures on the surface instead of turning an aborted decode into a
 	 * successful read of stale pixels. */
-	if (ctx->streaming) {
+	if (ctx->streaming && !ctx->failed) {
 		for (unsigned int i = 0; i < ctx->nb_captures; i++) {
 			surface = ctx->captures[i].surface;
-			if (surface) {
+			if (surface && surface != abandoned) {
 				VAStatus status = v4l2r_flush_surface(surface);
 				if (status != VA_STATUS_SUCCESS)
 					surface->decode_status = status;
@@ -1230,11 +1262,13 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 		}
 	}
 
-	if (ctx->video_fd >= 0 && ctx->streaming) {
+	if (ctx->video_fd >= 0 && (ctx->streaming || ctx->output_streaming)) {
 		type = ctx->output_format.type;
 		ioctl(ctx->video_fd, VIDIOC_STREAMOFF, &type);
-		type = ctx->capture_format.type;
-		ioctl(ctx->video_fd, VIDIOC_STREAMOFF, &type);
+		if (ctx->streaming) {
+			type = ctx->capture_format.type;
+			ioctl(ctx->video_fd, VIDIOC_STREAMOFF, &type);
+		}
 	}
 
 	v4l2r_convert_destroy(ctx);
@@ -1269,6 +1303,14 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	pthread_mutex_destroy(&ctx->mutex);
 
 	pthread_mutex_lock(&drv->mutex);
+	/* Client-owned buffers remain mappable/destroyable, but can never be
+	 * submitted through a later context which reuses this numeric ID. */
+	struct v4l2r_buffer *buffer;
+	iter = 0;
+	while ((buffer = v4l2r_handles_next(&drv->buffers, &iter, NULL))) {
+		if (buffer->context_id == context_id)
+			buffer->context_id = VA_INVALID_ID;
+	}
 	v4l2r_handles_free(&drv->contexts, context_id);
 	pthread_mutex_unlock(&drv->mutex);
 
@@ -1300,6 +1342,8 @@ VAStatus v4l2r_BeginPicture(VADriverContextP va_ctx, VAContextID context_id,
 			   "BeginPicture while a picture is already open");
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
+	if (ctx->failed)
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	if (!surface) {
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
 			   "begin-picture", 0, "invalid render target 0x%08x",
@@ -1361,9 +1405,9 @@ VAStatus v4l2r_RenderPicture(VADriverContextP va_ctx, VAContextID context_id,
 		struct v4l2r_buffer *buffer;
 
 		buffer = V4L2R_BUFFER_GET(drv, buffers[i]);
-		if (!buffer) {
+		if (!buffer || buffer->context_id != context_id) {
 			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
-				   "render-picture", 0, "invalid buffer 0x%08x",
+				   "render-picture", 0, "invalid or foreign buffer 0x%08x",
 				   buffers[i]);
 			ctx->picture_status = VA_STATUS_ERROR_INVALID_BUFFER;
 			return ctx->picture_status;
@@ -1399,8 +1443,16 @@ VAStatus v4l2r_EndPicture(VADriverContextP va_ctx, VAContextID context_id)
 	if (status == VA_STATUS_SUCCESS)
 		status = ctx->vpp ? v4l2r_vpp_end_picture(ctx) :
 			 ctx->codec->end_picture(ctx);
-	if (status != VA_STATUS_SUCCESS && ctx->pic.target)
+	if (status != VA_STATUS_SUCCESS && ctx->pic.target) {
 		ctx->pic.target->decode_status = status;
+		/* Render may reject the next slice without calling the queue
+		 * engine. Earlier slices can still own a held CAPTURE buffer. */
+		int index = ctx->pic.target->capture_index;
+		pthread_mutex_lock(&ctx->mutex);
+		if (index >= 0 && (ctx->queued_capture & (UINT64_C(1) << index)))
+			v4l2r_context_fail(ctx);
+		pthread_mutex_unlock(&ctx->mutex);
+	}
 
 	ctx->in_picture = false;
 	ctx->pic = (struct v4l2r_picture){0};
