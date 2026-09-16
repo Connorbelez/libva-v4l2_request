@@ -2,12 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Exclusive hardware lease and deadline runner for decoder tests.
 
-Behavioral reference (not copied): avd-lab/avdlab/guard.py inspects sysfs and
-/proc, never opens the decoder to check health, never waits on a child without
-a deadline, and fsyncs results. That tree has no declared license, so this
-module is an independent implementation under this repository's GPL-3.0-or-later.
-
-This module never loads or unloads kernel modules.
+Never opens the decoder to check health, never waits on a child without a
+deadline, and never loads or unloads kernel modules.
 """
 from __future__ import annotations
 
@@ -66,10 +62,55 @@ def repo_root() -> Path:
 
 
 def default_lock_dir() -> Path:
-    runtime = os.environ.get("XDG_RUNTIME_DIR")
-    if runtime:
-        return Path(runtime) / "libva-v4l2-hwguard"
+    # Host-wide, independent of XDG_RUNTIME_DIR so two agents cannot both lease.
     return Path("/tmp") / "libva-v4l2-hwguard"
+
+
+def journalctl_cmd(since: str | None = None) -> list[str]:
+    cmd = ["journalctl", "-k", "--no-pager", "-o", "cat"]
+    if since:
+        cmd.extend(["--since", since])
+    else:
+        cmd.append("-b")
+    return cmd
+
+
+def process_group(pid: int) -> int | None:
+    try:
+        return os.getpgid(pid)
+    except OSError:
+        return None
+
+
+def is_owned_holder(holder_pid: int, child_pid: int) -> bool:
+    if holder_pid in (child_pid, os.getpid()):
+        return True
+    group = process_group(holder_pid)
+    if group is not None and group == child_pid:
+        return True
+    try:
+        stat = Path(f"/proc/{holder_pid}/stat").read_text()
+        ppid = int(stat.rsplit(")", 1)[-1].split()[1])
+    except (OSError, IndexError, ValueError):
+        return False
+    if ppid in (child_pid, os.getpid()):
+        return True
+    parent_group = process_group(ppid)
+    return parent_group is not None and parent_group == child_pid
+
+
+def infer_driver_path(cmd: list[str]) -> str | None:
+    for index, part in enumerate(cmd):
+        if part.endswith(".sh") and index + 1 < len(cmd) and not cmd[index + 1].startswith("-"):
+            return cmd[index + 1]
+    return None
+
+
+def foreign_holders(state: DecoderState, child_pid: int) -> list[dict[str, Any]]:
+    return [
+        holder for holder in state.holders
+        if not is_owned_holder(int(holder.get("pid") or 0), child_pid)
+    ]
 
 
 @dataclass
@@ -100,10 +141,8 @@ class EventLog:
     def write(self, **record: Any) -> None:
         record.setdefault("time", time.strftime("%Y-%m-%dT%H:%M:%S%z"))
         if not self.verbose:
-            if "cmd" in record:
-                record["cmd"] = redact_argv(record["cmd"]) if isinstance(record["cmd"], list) else "<redacted>"
-            if "argv" in record:
-                record["argv"] = redact_argv(record["argv"])
+            record.pop("cmd", None)
+            record.pop("argv", None)
             for key in ("path", "url", "media"):
                 if key in record and isinstance(record[key], str):
                     record[key] = redact_text(record[key])
@@ -112,7 +151,7 @@ class EventLog:
                 for holder in record["holders"]:
                     item = dict(holder)
                     if "cmd" in item:
-                        item["cmd"] = "<redacted>" if not self.verbose else redact_text(str(item["cmd"]))
+                        item["cmd"] = "<redacted>"
                     cleaned.append(item)
                 record["holders"] = cleaned
         os.write(self._fd, (json.dumps(record) + "\n").encode())
@@ -150,7 +189,8 @@ class LinuxBackend:
                 except OSError:
                     continue
                 if nodes.intersection(fds):
-                    holders.append({"pid": int(pid_dir.name), "cmd": "<redacted>"})
+                    cmdline = (_read(pid_dir / "cmdline") or "").replace("\0", " ").strip()
+                    holders.append({"pid": int(pid_dir.name), "cmd": cmdline[:160]})
         stuck: list[dict[str, Any]] = []
         for pid_dir in Path("/proc").iterdir():
             if not pid_dir.name.isdigit():
@@ -176,18 +216,19 @@ class LinuxBackend:
             media_node=media,
             holders=holders,
             stuck_tasks=stuck,
-            faults=self.journal_since("boot"),
+            faults=self.journal_since(),
         )
 
-    def journal_since(self, since: str) -> list[str]:
+    def journal_since(self, since: str | None = None) -> list[str]:
         try:
-            out = subprocess.run(
-                ["journalctl", "-k", "--since", since, "--no-pager", "-o", "cat"],
-                capture_output=True, text=True, timeout=15,
-            ).stdout
-        except (OSError, subprocess.SubprocessError):
-            return []
-        return [line for line in out.splitlines() if any(m in line for m in AVD_JOURNAL_MARKERS)]
+            proc = subprocess.run(
+                journalctl_cmd(since), capture_output=True, text=True, timeout=15,
+            )
+        except OSError as exc:
+            raise GuardError(f"journalctl is not available: {exc}") from exc
+        if proc.returncode != 0:
+            raise GuardError(f"journalctl failed ({proc.returncode})")
+        return [line for line in proc.stdout.splitlines() if any(m in line for m in AVD_JOURNAL_MARKERS)]
 
 
 class FakeBackend:
@@ -217,7 +258,7 @@ class FakeBackend:
             faults=faults,
         )
 
-    def journal_since(self, since: str) -> list[str]:
+    def journal_since(self, since: str | None = None) -> list[str]:
         del since
         return [
             line for line in (self.root / "journal").read_text().splitlines()
@@ -268,8 +309,14 @@ class Lease:
         }
         tmp = self.meta_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(meta) + "\n")
-        os.fsync(os.open(tmp, os.O_RDONLY))
+        with tmp.open("rb") as handle:
+            os.fsync(handle.fileno())
         tmp.replace(self.meta_path)
+        dirfd = os.open(self.lock_dir, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(dirfd)
+        finally:
+            os.close(dirfd)
         return None
 
     def release(self) -> None:
@@ -386,6 +433,9 @@ def run_guarded(
     child_env = os.environ.copy()
     if env:
         child_env.update(env)
+    inferred = infer_driver_path(cmd)
+    if inferred and not child_env.get("LIBVA_DRIVERS_PATH"):
+        child_env["LIBVA_DRIVERS_PATH"] = inferred
     child_env[LEASE_ENV] = run_id
     child_env[IDENTITY_ENV] = identity
     child_env["LIBVA_HW_GUARD"] = "1"
@@ -420,7 +470,10 @@ def run_guarded(
         )
         started = time.monotonic()
         journal_origin = time.strftime("%Y-%m-%d %H:%M:%S")
-        log.write(event="start", run_id=run_id, cmd=cmd)
+        start_record = {"event": "start", "run_id": run_id}
+        if verbose:
+            start_record["cmd"] = cmd
+        log.write(**start_record)
         proc = subprocess.Popen(cmd, env=child_env, start_new_session=True)
         deadline_at = started + deadline
         while proc.poll() is None:
@@ -430,20 +483,35 @@ def run_guarded(
             elif inject == "avd-error" and fake:
                 backend.inject_fault("apple_avd: firmware timeout H3")
             elif inject == "foreign" and fake:
-                backend.inject_holder()
-            elif inject == "stuck-child":
-                wedged = True
-                request_stop("stuck-child")
+                backend.inject_holder(99999)
+            elif inject == "owned-holder" and fake:
+                backend.inject_holder(proc.pid)
+            elif inject == "stuck-child" and fake:
+                backend.inject_stuck()
             now = time.monotonic()
             if now >= deadline_at:
                 timed_out = True
                 request_stop("timeout")
             current = backend.state()
-            if current.faults or (fake and backend.journal_since(journal_origin)):
+            try:
+                new_faults = backend.journal_since(journal_origin)
+            except GuardError as exc:
+                request_stop(str(exc))
+                new_faults = []
+            if current.faults or new_faults:
                 request_stop("avd-error")
-            foreign = [h for h in current.holders if int(h.get("pid") or 0) != proc.pid]
+            foreign = foreign_holders(current, proc.pid)
             if foreign:
                 request_stop("foreign-client")
+                log.write(event="abort", reason="foreign-client", holders=foreign)
+            if current.wedged:
+                other = [
+                    task for task in current.stuck_tasks
+                    if not is_owned_holder(int(task.get("pid") or 0), proc.pid)
+                ]
+                if other:
+                    wedged = True
+                    request_stop("wedged")
             if stop:
                 break
             try:
@@ -451,17 +519,14 @@ def run_guarded(
             except subprocess.TimeoutExpired:
                 continue
         if proc.poll() is None:
-            if inject == "stuck-child":
-                wedged = True
-            else:
-                wedged = _kill_group(proc)
+            wedged = _kill_group(proc) or wedged
             if timed_out and abort_reason is None:
                 abort_reason = "timeout"
         returncode = proc.poll()
         final = backend.state()
-        if final.busy and not foreign_ok(final, proc.pid):
-            # Child should be gone; remaining holders are foreign.
-            pass
+        leftover = foreign_holders(final, proc.pid)
+        if leftover and abort_reason is None:
+            abort_reason = "leftover-holders"
         status = "ok"
         if abort_reason == "signal":
             status = "signal"
@@ -481,7 +546,8 @@ def run_guarded(
             timed_out=timed_out,
             wedged=wedged,
             abort_reason=abort_reason,
-            idle=not backend.state().busy,
+            idle=not leftover,
+            holders=leftover,
         )
         return RunStatus(
             status=status,
@@ -500,10 +566,6 @@ def run_guarded(
             _kill_group(proc)
         lease.release()
         log.close()
-
-
-def foreign_ok(state: DecoderState, child_pid: int) -> bool:
-    return all(int(h.get("pid") or 0) in (child_pid, os.getpid()) for h in state.holders)
 
 
 def run_self_test() -> int:
@@ -559,6 +621,46 @@ def run_self_test() -> int:
     proc1.terminate()
     proc1.wait(timeout=5)
 
+    check(journalctl_cmd()[-1] == "-b", "boot journal query must use journalctl -b")
+    check("--since" not in journalctl_cmd(), "boot journal query must not use --since")
+    check(infer_driver_path(["sh", "tests/hwdownload.sh", "/tmp/build/src"]) == "/tmp/build/src",
+          "driver path not inferred from hardware script argv")
+
+    xdg_ident = f"selftest-{os.getpid()}"
+    xdg_holder = work / "xdg-holder.py"
+    xdg_holder.write_text(
+        "import os, sys, time\n"
+        "from pathlib import Path\n"
+        "sys.path.insert(0, os.environ['HWGUARD_DIR'])\n"
+        "import hwguard\n"
+        "lease = hwguard.Lease(hwguard.default_lock_dir(), os.environ['IDENT'], 'holder')\n"
+        "busy = lease.acquire()\n"
+        "print('ACQUIRED' if busy is None else 'BUSY', flush=True)\n"
+        "time.sleep(8)\n"
+        "lease.release()\n"
+    )
+    xdg_a = os.environ.copy()
+    xdg_a["HWGUARD_DIR"] = str(root / "tests")
+    xdg_a["IDENT"] = xdg_ident
+    xdg_a["XDG_RUNTIME_DIR"] = str(work / "xdg-a")
+    (work / "xdg-a").mkdir()
+    (work / "xdg-b").mkdir()
+    xdg_proc = subprocess.Popen(
+        [sys.executable, str(xdg_holder)], env=xdg_a,
+        stdout=subprocess.PIPE, text=True,
+    )
+    xdg_line = xdg_proc.stdout.readline() if xdg_proc.stdout else ""
+    check("ACQUIRED" in xdg_line, f"host-wide first locker failed: {xdg_line!r}")
+    xdg_second = run_guarded(
+        [sys.executable, "-c", "print('should-not-run')"],
+        fake=True, fake_root=fake_root / "xdg", identity=xdg_ident,
+        deadline=2, log_path=work / "xdg-busy.jsonl",
+        env={"XDG_RUNTIME_DIR": str(work / "xdg-b")},
+    )
+    check(xdg_second.status == "busy", f"different XDG_RUNTIME_DIR still leased: {xdg_second}")
+    xdg_proc.terminate()
+    xdg_proc.wait(timeout=5)
+
     timed = run_guarded(
         sleeper, fake=True, fake_root=fake_root / "t", lock_dir=lock_dir / "t",
         deadline=0.4, poll=0.05, inject="timeout", log_path=work / "timeout.jsonl",
@@ -578,12 +680,25 @@ def run_self_test() -> int:
     )
     check(foreign.status == "abort" and foreign.abort_reason == "foreign-client",
           f"foreign inject: {foreign}")
+    owned = run_guarded(
+        [sys.executable, "-c", "import time; time.sleep(0.4)"],
+        fake=True, fake_root=fake_root / "o", lock_dir=lock_dir / "o",
+        deadline=5, poll=0.05, inject="owned-holder", log_path=work / "owned.jsonl",
+    )
+    check(owned.status == "ok" and owned.abort_reason is None,
+          f"owned descendant holder aborted: {owned}")
 
     stuck = run_guarded(
         sleeper, fake=True, fake_root=fake_root / "s", lock_dir=lock_dir / "s",
         deadline=8, poll=0.05, inject="stuck-child", log_path=work / "stuck.jsonl",
     )
     check(stuck.status == "wedged" and stuck.wedged, f"stuck-child inject: {stuck}")
+    check(stuck.abort_reason == "wedged", f"stuck-child abort_reason: {stuck.abort_reason}")
+    stuck_final = json.loads((work / "stuck.jsonl").read_text().strip().splitlines()[-1])
+    check(stuck_final.get("event") == "final", "stuck-child missing final event")
+    check(stuck_final.get("wedged") is True, "stuck-child final wedged flag")
+    check("returncode" in stuck_final, "stuck-child final missing returncode")
+    check("idle" in stuck_final, "stuck-child final missing idle")
 
     # SIGINT: child sleeps, parent handler via inject=signal using a subprocess sending SIGINT
     sig_script = work / "sig.py"
@@ -612,10 +727,20 @@ def run_self_test() -> int:
     out, _ = sig_proc.communicate(timeout=10)
     check("signal" in out, f"SIGINT did not record signal status: {out!r}")
 
-    # Redaction: foreign holder cmd must not appear in publishable log
     foreign_log = (work / "foreign.jsonl").read_text()
+    check("holders" in foreign_log, "foreign abort did not record holders")
     check("/secret/clip.mkv" not in foreign_log, "publishable log leaked media path")
+    check("clip.mkv" not in foreign_log, "publishable log leaked media basename")
     check("https://" not in foreign_log, "publishable log leaked URL")
+    check('"cmd"' not in foreign_log.split('"holders"')[0], "publishable start event kept argv")
+    verbose_foreign = run_guarded(
+        sleeper, fake=True, fake_root=fake_root / "fv", lock_dir=lock_dir / "fv",
+        deadline=8, poll=0.05, inject="foreign", log_path=work / "foreign-verbose.jsonl",
+        verbose=True,
+    )
+    check(verbose_foreign.abort_reason == "foreign-client", "verbose foreign inject failed")
+    verbose_log = (work / "foreign-verbose.jsonl").read_text()
+    check("/secret/clip.mkv" in verbose_log, "verbose log omitted holder command")
 
     # Scripts refuse unguarded hardware
     require = root / "tests" / "require-hw-guard.sh"
@@ -667,7 +792,10 @@ def main() -> int:
     parser.add_argument("--log", type=Path)
     parser.add_argument("--verbose-log", action="store_true",
                         help="include unredacted local command detail")
-    parser.add_argument("--inject", choices=("timeout", "avd-error", "foreign", "stuck-child"))
+    parser.add_argument(
+        "--inject",
+        choices=("timeout", "avd-error", "foreign", "owned-holder", "stuck-child"),
+    )
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
