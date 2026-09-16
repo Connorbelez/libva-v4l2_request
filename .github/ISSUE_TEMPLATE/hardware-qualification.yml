@@ -1,0 +1,96 @@
+name: Record hardware qualification
+description: Plan or report qualification with explicit provenance and limits.
+body:
+- type: markdown
+  attributes:
+    value: 'This is a public report. For a suspected vulnerability, stop here and follow [SECURITY.md](https://github.com/iconidentify/libva-v4l2_request/blob/avd-fixes/SECURITY.md).
+
+      Share only a minimal synthetic or redistributable example and relevant redacted excerpts. Do
+      not upload private media, credentials, personal paths/URLs, core dumps or unrelated process
+      logs. Do not rerun a known decoder wedge. Routine reports stay in these forks.'
+- type: textarea
+  id: environment
+  attributes:
+    label: Source and environment
+    description: Give source commit/package version, device/SoC, OS/kernel, client/version and driver
+      selection where relevant. Distinguish installed from loaded module identity. Write unknown or
+      not applicable instead of guessing.
+  validations:
+    required: true
+- type: dropdown
+  id: run-state
+  attributes:
+    label: Run state
+    description: A planned or partial run is not a passing qualification.
+    options:
+    - Not run (planning only)
+    - Completed
+    - Failed
+    - Aborted or timed out
+  validations:
+    required: true
+- type: dropdown
+  id: decoder
+  attributes:
+    label: Observed decode path
+    description: Choose what the evidence establishes. A compiled codec or successful API call does
+      not prove correct hardware output.
+    options:
+    - Hardware frames verified
+    - Software fallback
+    - Expected rejection
+    - Wrong output
+    - Not run
+    - Unknown
+  validations:
+    required: true
+- type: textarea
+  id: scope
+  attributes:
+    label: Qualification scope
+    description: Name the exact device/codec/client/display/boot row and test vectors. Link the guard
+      lease and required authorisation, or state what is still missing.
+  validations:
+    required: true
+- type: textarea
+  id: results
+  attributes:
+    label: Commands, provenance and results
+    description: For executed runs, give driver/package hashes, tools, kernel/loaded-module provenance,
+      exact commands, raw passed/total counts and vector sets, including failures. For a plan, state
+      the intended checks and missing evidence.
+  validations:
+    required: true
+- type: textarea
+  id: guard
+  attributes:
+    label: Guard and final device state
+    description: For executed runs, give read-only preflight, deadline, new errors/foreign clients,
+      abort reason and final idle state. Link redacted evidence. Otherwise state not run. A user-space
+      pass does not prove boot stability.
+  validations:
+    required: true
+- type: textarea
+  id: remaining
+  attributes:
+    label: Remaining gaps
+    description: List untested cases, regressions and follow-on work. Keep software fallback and safe
+      rejection separate from correct hardware output.
+  validations:
+    required: true
+- type: textarea
+  id: attribution
+  attributes:
+    label: AI assistance and imported work
+    description: If applicable, describe AI assistance and credit imported material with its source
+      and licence.
+  validations:
+    required: false
+- type: checkboxes
+  id: privacy
+  attributes:
+    label: Before submitting
+    description: Review the public text and attachments.
+    options:
+    - label: I have removed sensitive data and this is not a private vulnerability report.
+      required: true
