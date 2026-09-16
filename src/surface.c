@@ -309,6 +309,12 @@ static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 				uint32_t width, uint32_t height)
 {
 #if HAVE_V4L2_PIX_FMT_P010
+#if HAVE_V4L2_CTRL_H264
+	struct v4l2_ctrl_h264_sps h264 = {0};
+#endif
+#if HAVE_V4L2_CTRL_HEVC
+	struct v4l2_ctrl_hevc_sps hevc = {0};
+#endif
 	struct v4l2_ext_control control = {0};
 	struct v4l2_ext_controls controls = {
 		.which = V4L2_CTRL_WHICH_CUR_VAL,
@@ -321,8 +327,7 @@ static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 
 	switch (coded) {
 #if HAVE_V4L2_CTRL_H264
-	case V4L2_PIX_FMT_H264_SLICE: {
-		struct v4l2_ctrl_h264_sps h264 = {0};
+	case V4L2_PIX_FMT_H264_SLICE:
 		h264.profile_idc = 110;		/* High 10 */
 		h264.chroma_format_idc = 1;
 		h264.bit_depth_luma_minus8 = 2;
@@ -334,11 +339,9 @@ static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 		control.ptr = &h264;
 		control.size = sizeof(h264);
 		break;
-	}
 #endif
 #if HAVE_V4L2_CTRL_HEVC
-	case V4L2_PIX_FMT_HEVC_SLICE: {
-		struct v4l2_ctrl_hevc_sps hevc = {0};
+	case V4L2_PIX_FMT_HEVC_SLICE:
 		hevc.pic_width_in_luma_samples = width;
 		hevc.pic_height_in_luma_samples = height;
 		hevc.chroma_format_idc = 1;
@@ -348,7 +351,6 @@ static void probe_set_bit_depth(int fd, uint32_t coded, uint32_t pixelformat,
 		control.ptr = &hevc;
 		control.size = sizeof(hevc);
 		break;
-	}
 #endif
 	default:
 		return;

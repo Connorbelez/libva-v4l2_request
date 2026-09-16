@@ -61,6 +61,15 @@ foreach case : ['render-errors', 'begin-errors', 'target-lifetime', 'reference-o
   test('picture-' + case, picture, args: [case], timeout: 10)
 endforeach
 
+if conf.get('HAVE_V4L2_PIX_FMT_P010') == 1 and (conf.get('HAVE_V4L2_CTRL_H264') == 1 or conf.get('HAVE_V4L2_CTRL_HEVC') == 1)
+  surface_probe = executable('surface-probe', 'surface-probe.c', driver_sources,
+    c_args: ['-UNDEBUG'],
+    include_directories: [root_inc, include_directories('../src')],
+    dependencies: [libva_dep, libdrm_dep, threads_dep],
+    link_args: ['-Wl,--wrap=ioctl'])
+  test('surface-probe', surface_probe, timeout: 10)
+endif
+
 python3 = find_program('python3')
 test('support-matrix', python3, args: files('support-matrix.py'), timeout: 30)
 test('conformance-result', python3, args: [files('compare-results.py'), '--self-test'], timeout: 30)
