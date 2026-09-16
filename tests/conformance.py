@@ -22,6 +22,7 @@ from conformance_result import (
     SuiteResult,
     VectorResult,
     infer_category,
+    log_indicates_fallback,
     parse_frame_log,
     redact_argv,
     redact_text,
@@ -90,7 +91,7 @@ def main():
             log.flush()
             os.fsync(log.fileno())
         record(dict(event="start", suite=suite["name"], decoder=decoder,
-                    driver=env.get("LIBVA_DRIVERS_PATH"),
+                    driver=redact_text(str(env.get("LIBVA_DRIVERS_PATH") or "")),
                     high10=env.get("LIBVA_V4L2_H264_HIGH10", "off"),
                     profile_mismatch=args.profile_mismatch))
         try:
@@ -124,6 +125,7 @@ def main():
                         exit_status = 2
                         return 2
                 frames_text = (output / (stem + ".frames")).read_text()
+                log_text = (output / (stem + ".log")).read_text()
                 summaries, actual = parse_frame_log(frames_text)
                 if actual is None:
                     digest = re.search(r"^MD5=([0-9a-f]{32})$", frames_text, re.MULTILINE)
@@ -135,27 +137,63 @@ def main():
                     size = frame.size()
                     if size not in sizes:
                         sizes.append(size)
+                hashed_software = bool(summaries) and all(
+                    frame.format and frame.format != "vaapi" for frame in summaries
+                )
+                fallback = log_indicates_fallback(log_text) or hashed_software
+                category = infer_category(
+                    mode, success, actual, vector.get("result"), fallback=fallback
+                )
+                mismatch = None
+                if category == "checksum_mismatch" and summaries:
+                    mismatch = {
+                        "vector": vector["name"],
+                        "reason": "stream_md5",
+                        "expected_md5": vector.get("result"),
+                        "candidate_md5": actual,
+                        "index": summaries[0].index,
+                        "candidate": summaries[0].to_dict(),
+                    }
                 recorded.append(VectorResult(
                     name=vector["name"],
                     success=success,
-                    category=infer_category(mode, success, actual, vector.get("result")),
+                    category=category,
                     expected_md5=vector.get("result"),
                     actual_md5=actual,
                     frames=len(summaries) if summaries else len(re.findall(r"^frame ", frames_text, re.MULTILINE)),
                     native_sizes=sizes,
                     frame_summaries=summaries,
+                    first_differing_frame=mismatch,
                     returncode=status,
                 ))
                 record(dict(event="result", vector=vector["name"], returncode=status,
                             expected=vector["result"], actual=actual,
                             frames=recorded[-1].frames,
                             success=success, files=stem,
-                            native_sizes=sizes))
+                            native_sizes=sizes, category=category,
+                            software_fallback=fallback))
                 print(f"{vector['name']}: {'PASS' if success else 'FAIL'}", flush=True)
             record(dict(event="finished", passed=len(vectors)-failures, total=len(vectors)))
             complete = True
             exit_status = int(failures != 0)
+        except KeyboardInterrupt:
+            abort = abort or {
+                "kind": "user",
+                "vector": recorded[-1].name if recorded else "",
+            }
+            exit_status = 2
+            raise
+        except Exception as exc:
+            abort = abort or {
+                "kind": "decode_fault",
+                "vector": recorded[-1].name if recorded else "",
+            }
+            print(f"conformance run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            exit_status = 2
+            return 2
         finally:
+            if not complete and abort is None:
+                abort = {"kind": "user", "vector": recorded[-1].name if recorded else ""}
             result = SuiteResult(
                 suite=str(suite["name"]),
                 suite_key=SUITE_KEYS.get(suite["name"], ""),
@@ -178,7 +216,10 @@ def main():
                     "argv": ["conformance.py", suite["name"], "<resources>", decoder],
                 },
             )
-            write_summary(output / "summary.json", result)
+            try:
+                write_summary(output / "summary.json", result)
+            except Exception as exc:
+                print(f"summary not written: {exc}", file=sys.stderr)
     print(f"{len(vectors)-failures}/{len(vectors)} passed; records: {output}")
     return exit_status
 

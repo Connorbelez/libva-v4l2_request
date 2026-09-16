@@ -23,15 +23,19 @@ from conformance_result import (
     ResultError,
     SuiteResult,
     VectorResult,
+    companion_record_path,
     compare,
     hardware_green,
+    infer_category,
     load_path,
+    log_indicates_fallback,
     parse_frame_log,
     r11_totals_match,
     redact_argv,
     report_bundle,
     from_jsonl,
     from_native,
+    validate_native_schema,
     validate_suite,
 )
 
@@ -128,6 +132,7 @@ def run_self_test() -> int:
     check(schema.is_file(), "missing docs/conformance-result.schema.json")
     schema_data = json.loads(schema.read_text())
     check(schema_data.get("$defs", {}).get("vector"), "schema missing vector definition")
+    check("abort" in schema_data.get("properties", {}), "schema missing abort")
 
     try:
         r11 = load_path(pass_sets)
@@ -158,6 +163,7 @@ def run_self_test() -> int:
     swapped_vectors[fail_idx].category = "hardware_pass"
     swapped = copy.deepcopy(hevc)
     swapped.vectors = swapped_vectors
+    swapped.passed = sum(1 for vector in swapped.vectors if vector.success)
     swapped_compare = compare(hevc, swapped)
     check(swapped.passed == hevc.passed, "swapped fixture must keep the same total")
     check(lost_name in swapped_compare.lost_passes, "swapped fixture did not report lost pass")
@@ -316,6 +322,49 @@ def run_self_test() -> int:
 
     native = from_native(imported.to_dict())
     check(native.passing_names() == imported.passing_names(), "native round-trip changed pass set")
+    schema_errors = validate_native_schema(imported.to_dict())
+    check(not schema_errors, "imported native record failed schema: " + "; ".join(schema_errors))
+    try:
+        from_native({**imported.to_dict(), "suite": ""})
+        errors.append("empty suite name was accepted")
+    except ResultError:
+        pass
+
+    hide = copy.deepcopy(hevc)
+    hide.subset = {"rationale": "hide denominator", "selected": hide.names()}
+    hide.total = hide.passed
+    check(validate_suite(hide), "subset 144/144 record must be invalid")
+    shrink = copy.deepcopy(hevc)
+    shrink.vectors = [vector for vector in hevc.vectors if vector.success]
+    shrink.passed = len(shrink.vectors)
+    shrink.total = len(shrink.vectors)
+    shrink.subset = {"rationale": "eligible only", "selected": shrink.names()}
+    shrink_errors = validate_suite(shrink)
+    check(not shrink_errors, "complete 144-vector subset record should validate counts")
+    shrink_compare = compare(hevc, shrink)
+    check(not hardware_green(shrink_compare), "144/144 subset candidate was hardware-green")
+    check(any("subset" in item or "total changed" in item for item in shrink_compare.errors),
+          "subset denominator hide missing error")
+
+    pin_mismatch = copy.deepcopy(hevc.vectors[0])
+    pin_mismatch.success = False
+    pin_mismatch.category = "checksum_mismatch"
+    pin_mismatch.expected_md5 = "aa" * 16
+    pin_mismatch.actual_md5 = "bb" * 16
+    pin_mismatch.frame_summaries = frames
+    pin_mismatch.native_sizes = ["640x360", "1920x1080"]
+    pin_candidate = copy.deepcopy(hevc)
+    pin_candidate.vectors = [copy.deepcopy(vector) for vector in hevc.vectors]
+    pin_candidate.vectors[0] = pin_mismatch
+    pin_candidate.passed = sum(1 for vector in pin_candidate.vectors if vector.success)
+    pin_compare = compare(hevc, pin_candidate)
+    check(pin_compare.first_differing_frames, "r11 pin vs checksum mismatch missing first-frame evidence")
+    check(not hardware_green(pin_compare), "checksum mismatch against r11 pin was green")
+
+    check(log_indicates_fallback("Failed setup for format vaapi: hwaccel initialisation returned error."),
+          "hwaccel init failure should count as software fallback")
+    check(infer_category("hardware", False, None, "aa", fallback=True) == "software_fallback",
+          "infer_category fallback=True did not return software_fallback")
 
     fixtures = root / "tests" / "fixtures" / "conformance-result"
     manifest = json.loads((fixtures / "manifest.json").read_text())
@@ -351,10 +400,18 @@ def run_self_test() -> int:
             if expect != "load-error":
                 errors.append(f"{path.name} unexpected load error: {exc}")
 
-    companion_record = Path(
-        "/home/chrisk/src/omarchy-m1-video/docs/codec-validation-r11-2026-09-15.json"
-    )
-    if companion_record.is_file():
+    for fixture_file in fixtures.glob("*"):
+        if fixture_file.suffix in {".json", ".jsonl"}:
+            text = fixture_file.read_text()
+            check("/home/" not in text and "/Users/" not in text,
+                  f"{fixture_file.name} contains a private home path")
+
+    for fixture_file in fixtures.glob("pass-*.json"):
+        native_errors = validate_native_schema(json.loads(fixture_file.read_text()))
+        check(not native_errors, f"{fixture_file.name} schema: " + "; ".join(native_errors))
+
+    companion_record = companion_record_path(root)
+    if companion_record is not None:
         full = load(companion_record)
         drift = r11_totals_match(full)
         check(not drift, "full companion r11 drift: " + "; ".join(drift))

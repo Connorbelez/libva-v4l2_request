@@ -9,6 +9,7 @@ are compared by vector name, not by totals alone.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -50,6 +51,33 @@ SUITE_KEYS = {
     "VP9-TEST-VECTORS": "vp9",
     "VP9-TEST-VECTORS-HIGH-10BIT-420": "vp9-high10",
     "JVT-AVC_V1-profile-mismatch-overrides": "overrides",
+}
+ABORT_KINDS = ("timeout", "malformed", "foreign_client", "user", "decode_fault")
+FALLBACK_HINTS = (
+    "failed setup for format",
+    "hwaccel initialisation returned error",
+    "hardware acceleration is not available",
+    "no vaapi",
+)
+# SHA-256 of sorted newline-joined vector names from the r11 pin. CI fails if
+# the pin's names change while totals stay the same.
+R11_PASS_SET_DIGESTS = {
+    "hevc": {
+        "passing": "ddcbf5074ddb948e895933793fdbc2454e467ada515181fae1c5c7a9bde4dd36",
+        "failing": "06e03544aca578b92b74718b7ddf9484ed23601b259f65d57455cf9642b8c978",
+    },
+    "avc": {
+        "passing": "63d4e15ad0bd8ecf7a512d98d7879bbf00fceaa5de2fdb3c40f1d0a5f2abc510",
+        "failing": "85ebbb6f2db15c97a1ba720d02063f2101b4b502f7068ddd503b359a730bb866",
+    },
+    "frext": {
+        "passing": "89c31e67615ee2f2127702ad32b645b26b926aa816e4fa24b1c2967f75246a9d",
+        "failing": "2db66df7ffb2b7421ccf296c763cfe01002b73dc670a130faafff7059fe221a3",
+    },
+    "vp9": {
+        "passing": "1e65cac0598dbf1620ed5a257d1c44aecc881d88dc90dbc21ab1e90fa62cb150",
+        "failing": "633aa7f84eb4f2d89513bffbec54f6ed24286c9e1434a3db5155cc0a32a89d5c",
+    },
 }
 
 
@@ -225,6 +253,16 @@ def parse_frame_log(text: str) -> tuple[list[FrameSummary], str | None]:
     return frames, digest
 
 
+def name_digest(names: Iterable[str]) -> str:
+    payload = "\n".join(sorted(names)).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def log_indicates_fallback(text: str) -> bool:
+    lowered = text.lower()
+    return any(hint in lowered for hint in FALLBACK_HINTS)
+
+
 def infer_category(mode: str, success: bool, actual: str | None, expected: str | None,
                    *, timeout: bool = False, fallback: bool = False) -> str:
     if timeout:
@@ -239,41 +277,64 @@ def infer_category(mode: str, success: bool, actual: str | None, expected: str |
 
 
 def first_frame_diff(baseline: VectorResult, candidate: VectorResult) -> dict[str, Any] | None:
-    if not baseline.frame_summaries or not candidate.frame_summaries:
-        if (baseline.actual_md5 and candidate.actual_md5
-                and baseline.actual_md5 != candidate.actual_md5):
+    if baseline.frame_summaries and candidate.frame_summaries:
+        limit = min(len(baseline.frame_summaries), len(candidate.frame_summaries))
+        for index in range(limit):
+            left = baseline.frame_summaries[index]
+            right = candidate.frame_summaries[index]
+            if left.md5 != right.md5 or left.width != right.width or left.height != right.height:
+                return {
+                    "vector": candidate.name,
+                    "index": left.index,
+                    "baseline": left.to_dict(),
+                    "candidate": right.to_dict(),
+                }
+        if len(baseline.frame_summaries) != len(candidate.frame_summaries):
             return {
                 "vector": candidate.name,
-                "reason": "stream_md5",
-                "baseline_md5": baseline.actual_md5,
-                "candidate_md5": candidate.actual_md5,
+                "reason": "frame_count",
+                "baseline_frames": len(baseline.frame_summaries),
+                "candidate_frames": len(candidate.frame_summaries),
             }
         return None
-    limit = min(len(baseline.frame_summaries), len(candidate.frame_summaries))
-    for index in range(limit):
-        left = baseline.frame_summaries[index]
-        right = candidate.frame_summaries[index]
-        if left.md5 != right.md5 or left.width != right.width or left.height != right.height:
-            return {
-                "vector": candidate.name,
-                "index": left.index,
-                "baseline": left.to_dict(),
-                "candidate": right.to_dict(),
-            }
-    if len(baseline.frame_summaries) != len(candidate.frame_summaries):
-        return {
-            "vector": candidate.name,
-            "reason": "frame_count",
-            "baseline_frames": len(baseline.frame_summaries),
-            "candidate_frames": len(candidate.frame_summaries),
-        }
-    return None
+    expected = candidate.expected_md5 or baseline.expected_md5
+    base_md5 = baseline.actual_md5 or baseline.expected_md5
+    cand_md5 = candidate.actual_md5
+    mismatch = candidate.category == "checksum_mismatch"
+    if base_md5 and cand_md5 and base_md5 != cand_md5:
+        mismatch = True
+    if expected and cand_md5 and expected != cand_md5:
+        mismatch = True
+    if not mismatch:
+        return None
+    evidence: dict[str, Any] = {
+        "vector": candidate.name,
+        "reason": "stream_md5",
+        "expected_md5": expected,
+        "baseline_md5": base_md5,
+        "candidate_md5": cand_md5,
+    }
+    if candidate.frame_summaries:
+        first = candidate.frame_summaries[0]
+        evidence["index"] = first.index
+        evidence["candidate"] = first.to_dict()
+        evidence["native_sizes"] = list(candidate.native_sizes)
+    if candidate.first_differing_frame:
+        for key, value in candidate.first_differing_frame.items():
+            evidence.setdefault(key, value)
+    return evidence
 
 
 def validate_suite(result: SuiteResult) -> list[str]:
     errors: list[str] = []
+    if not (result.suite or "").strip():
+        errors.append("suite name is empty")
     if result.mode not in MODES:
         errors.append(f"invalid mode {result.mode!r}")
+    if result.abort is not None:
+        kind = result.abort.get("kind") if isinstance(result.abort, dict) else None
+        if kind not in ABORT_KINDS:
+            errors.append(f"invalid abort.kind {kind!r}")
     if result.total < 1:
         errors.append("total must be >= 1")
     if result.passed < 0 or result.passed > result.total:
@@ -281,7 +342,7 @@ def validate_suite(result: SuiteResult) -> list[str]:
     names = result.names()
     if len(names) != len(set(names)):
         errors.append("duplicate vector names")
-    if result.complete and not result.subset and len(result.vectors) != result.total:
+    if result.complete and len(result.vectors) != result.total:
         errors.append(
             f"vector count {len(result.vectors)} != declared total {result.total}"
         )
@@ -614,7 +675,13 @@ def compare(baseline: SuiteResult, candidate: SuiteResult) -> Comparison:
         )
     if missing:
         errors.append("missing vectors: " + ", ".join(missing))
-    if not candidate.subset and candidate.total != baseline.total and not missing:
+    if candidate.subset and not baseline.subset:
+        if candidate.total != baseline.total or set(candidate.names()) != set(baseline.names()):
+            errors.append(
+                f"candidate is a subset run {candidate.passed}/{candidate.total} "
+                f"against full-suite {baseline.passed}/{baseline.total}"
+            )
+    if candidate.total != baseline.total:
         errors.append(
             f"full-suite total changed {baseline.passed}/{baseline.total} -> "
             f"{candidate.passed}/{candidate.total}"
@@ -670,6 +737,24 @@ def report_bundle(suites: dict[str, SuiteResult]) -> list[str]:
     return lines
 
 
+def r11_pass_set_digests_match(suites: dict[str, SuiteResult]) -> list[str]:
+    errors = []
+    for key, expected in R11_PASS_SET_DIGESTS.items():
+        result = suites.get(key)
+        if result is None:
+            errors.append(f"missing digest suite {key}")
+            continue
+        passing = name_digest(result.passing_names())
+        failing = name_digest(
+            name for name in result.names() if name not in set(result.passing_names())
+        )
+        if passing != expected["passing"]:
+            errors.append(f"{key} passing-vector digest drifted")
+        if failing != expected["failing"]:
+            errors.append(f"{key} failing-vector digest drifted")
+    return errors
+
+
 def r11_totals_match(suites: dict[str, SuiteResult]) -> list[str]:
     errors = []
     for key, (official, passed, total) in PRIMARY_SUITES.items():
@@ -683,7 +768,60 @@ def r11_totals_match(suites: dict[str, SuiteResult]) -> list[str]:
             )
         if not result.complete or result.mode != "hardware":
             errors.append(f"{official} is not a complete hardware record")
+    errors.extend(r11_pass_set_digests_match(suites))
     return errors
+
+
+def validate_native_schema(data: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(data, dict):
+        return ["native record is not an object"]
+    if data.get("schema_version") != SCHEMA_VERSION:
+        errors.append("schema_version must be 1.0.0")
+    if data.get("kind") != KIND:
+        errors.append("kind must be conformance-suite-result")
+    suite = data.get("suite")
+    if not isinstance(suite, str) or not suite.strip():
+        errors.append("suite must be a non-empty string")
+    if data.get("mode") not in MODES:
+        errors.append("mode must be hardware or software")
+    if not isinstance(data.get("complete"), bool):
+        errors.append("complete must be a boolean")
+    abort = data.get("abort")
+    if abort is not None:
+        if not isinstance(abort, dict) or abort.get("kind") not in ABORT_KINDS:
+            errors.append("abort.kind is not a known abort kind")
+    for key in ("passed", "total"):
+        value = data.get(key)
+        if not isinstance(value, int) or isinstance(value, bool):
+            errors.append(f"{key} must be an integer")
+    vectors = data.get("vectors")
+    if not isinstance(vectors, list):
+        errors.append("vectors must be an array")
+        return errors
+    for item in vectors:
+        if not isinstance(item, dict):
+            errors.append("vector is not an object")
+            continue
+        if not item.get("name"):
+            errors.append("vector missing name")
+        if not isinstance(item.get("success"), bool):
+            errors.append(f"{item.get('name')}: success must be boolean")
+        if item.get("category") not in CATEGORIES:
+            errors.append(f"{item.get('name')}: invalid category {item.get('category')!r}")
+    return errors
+
+
+def companion_record_path(root: Path) -> Path | None:
+    env = os.environ.get("CONFORMANCE_R11_COMPANION")
+    candidates = []
+    if env:
+        candidates.append(Path(env))
+    candidates.append(root.parent / "omarchy-m1-video" / "docs" / "codec-validation-r11-2026-09-15.json")
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
 
 
 def write_summary(path: Path, result: SuiteResult) -> None:
