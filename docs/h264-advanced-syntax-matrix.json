@@ -1,0 +1,4532 @@
+{
+  "summary": {
+    "vectors": 62,
+    "feature_counts": {
+      "field_coding": 25,
+      "fmo": 3,
+      "mbaff": 27,
+      "slice_group_counts": 3,
+      "slice_group_map_types": 3,
+      "slice_order_not_monotonic": 3,
+      "slice_types": 62,
+      "sp_or_si": 2
+    },
+    "vectors_per_feature": {
+      "field_coding": [
+        "CABREF3_Sand_D",
+        "CAFI1_SVA_C",
+        "CAPA1_TOSHIBA_B",
+        "CVFI1_SVA_C",
+        "CVFI1_Sony_D",
+        "CVFI2_SVA_C",
+        "CVFI2_Sony_H",
+        "CVMP_MOT_FLD_L30_B",
+        "CVMP_MOT_FRM_L31_B",
+        "CVNLFI1_Sony_C",
+        "CVNLFI2_Sony_H",
+        "CVPA1_TOSHIBA_B",
+        "FI1_Sony_E",
+        "MR6_BT_B",
+        "MR7_BT_B",
+        "MR8_BT_B",
+        "Sharp_MP_Field_1_B",
+        "Sharp_MP_Field_2_B",
+        "Sharp_MP_Field_3_B",
+        "Sharp_MP_PAFF_1r2",
+        "Sharp_MP_PAFF_2r",
+        "cabac_mot_fld0_full",
+        "cabac_mot_picaff0_full",
+        "cavlc_mot_fld0_full_B",
+        "cavlc_mot_picaff0_full_B"
+      ],
+      "fmo": [
+        "FM1_BT_B",
+        "FM1_FT_E",
+        "FM2_SVA_C"
+      ],
+      "mbaff": [
+        "CAMA1_Sony_C",
+        "CAMA1_TOSHIBA_B",
+        "CAMA3_Sand_E",
+        "CAMACI3_Sony_C",
+        "CAMANL1_TOSHIBA_B",
+        "CAMANL2_TOSHIBA_B",
+        "CAMANL3_Sand_E",
+        "CAMASL3_Sony_B",
+        "CAMP_MOT_MBAFF_L30",
+        "CAMP_MOT_MBAFF_L31",
+        "CANLMA2_Sony_C",
+        "CANLMA3_Sony_C",
+        "CAPAMA3_Sand_F",
+        "CVCANLMA2_Sony_C",
+        "CVMA1_Sony_D",
+        "CVMA1_TOSHIBA_B",
+        "CVMANL1_TOSHIBA_B",
+        "CVMANL2_TOSHIBA_B",
+        "CVMAPAQP3_Sony_E",
+        "CVMAQP2_Sony_G",
+        "CVMAQP3_Sony_D",
+        "MR9_BT_B",
+        "cabac_mot_mbaff0_full",
+        "cama1_vtc_c",
+        "cama2_vtc_b",
+        "cama3_vtc_b",
+        "cavlc_mot_mbaff0_full_B"
+      ],
+      "slice_group_counts": [
+        "FM1_BT_B",
+        "FM1_FT_E",
+        "FM2_SVA_C"
+      ],
+      "slice_group_map_types": [
+        "FM1_BT_B",
+        "FM1_FT_E",
+        "FM2_SVA_C"
+      ],
+      "slice_order_not_monotonic": [
+        "FM1_BT_B",
+        "FM1_FT_E",
+        "FM2_SVA_C"
+      ],
+      "slice_types": [
+        "BA3_SVA_C",
+        "CABREF3_Sand_D",
+        "CAFI1_SVA_C",
+        "CAMA1_Sony_C",
+        "CAMA1_TOSHIBA_B",
+        "CAMA3_Sand_E",
+        "CAMACI3_Sony_C",
+        "CAMANL1_TOSHIBA_B",
+        "CAMANL2_TOSHIBA_B",
+        "CAMANL3_Sand_E",
+        "CAMASL3_Sony_B",
+        "CAMP_MOT_MBAFF_L30",
+        "CAMP_MOT_MBAFF_L31",
+        "CANLMA2_Sony_C",
+        "CANLMA3_Sony_C",
+        "CAPA1_TOSHIBA_B",
+        "CAPAMA3_Sand_F",
+        "CVCANLMA2_Sony_C",
+        "CVFI1_SVA_C",
+        "CVFI1_Sony_D",
+        "CVFI2_SVA_C",
+        "CVFI2_Sony_H",
+        "CVMA1_Sony_D",
+        "CVMA1_TOSHIBA_B",
+        "CVMANL1_TOSHIBA_B",
+        "CVMANL2_TOSHIBA_B",
+        "CVMAPAQP3_Sony_E",
+        "CVMAQP2_Sony_G",
+        "CVMAQP3_Sony_D",
+        "CVMP_MOT_FLD_L30_B",
+        "CVMP_MOT_FRM_L31_B",
+        "CVNLFI1_Sony_C",
+        "CVNLFI2_Sony_H",
+        "CVPA1_TOSHIBA_B",
+        "FI1_Sony_E",
+        "FM1_BT_B",
+        "FM1_FT_E",
+        "FM2_SVA_C",
+        "MR2_TANDBERG_E",
+        "MR3_TANDBERG_B",
+        "MR4_TANDBERG_C",
+        "MR5_TANDBERG_C",
+        "MR6_BT_B",
+        "MR7_BT_B",
+        "MR8_BT_B",
+        "MR9_BT_B",
+        "SP1_BT_A",
+        "Sharp_MP_Field_1_B",
+        "Sharp_MP_Field_2_B",
+        "Sharp_MP_Field_3_B",
+        "Sharp_MP_PAFF_1r2",
+        "Sharp_MP_PAFF_2r",
+        "cabac_mot_fld0_full",
+        "cabac_mot_mbaff0_full",
+        "cabac_mot_picaff0_full",
+        "cama1_vtc_c",
+        "cama2_vtc_b",
+        "cama3_vtc_b",
+        "cavlc_mot_fld0_full_B",
+        "cavlc_mot_mbaff0_full_B",
+        "cavlc_mot_picaff0_full_B",
+        "sp2_bt_b"
+      ],
+      "sp_or_si": [
+        "SP1_BT_A",
+        "sp2_bt_b"
+      ]
+    },
+    "multi_label_vectors": [
+      "FM1_BT_B",
+      "FM1_FT_E",
+      "FM2_SVA_C"
+    ],
+    "errors": []
+  },
+  "vectors": [
+    {
+      "file": "BA3_SVA_C.264",
+      "bytes": 10611,
+      "nal_counts": {
+        "1": 32,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 33,
+      "features": {
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 88,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "BA3_SVA_C",
+      "profile": "Extended"
+    },
+    {
+      "file": "CABREF3_Sand_D.264",
+      "bytes": 287163,
+      "nal_counts": {
+        "1": 99,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 100,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 40,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 4,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CABREF3_Sand_D",
+      "profile": "Main"
+    },
+    {
+      "file": "CAFI1_SVA_C.264",
+      "bytes": 257764,
+      "nal_counts": {
+        "1": 65,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 66,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAFI1_SVA_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMA1_Sony_C.jsv",
+      "bytes": 301917,
+      "nal_counts": {
+        "1": 4,
+        "5": 1,
+        "7": 1,
+        "8": 5
+      },
+      "sps_count": 1,
+      "pps_count": 5,
+      "slice_count": 5,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "I"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMA1_Sony_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMA1_TOSHIBA_B.264",
+      "bytes": 1429707,
+      "nal_counts": {
+        "1": 89,
+        "5": 1,
+        "7": 6,
+        "8": 90,
+        "9": 90,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 90,
+      "slice_count": 90,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMA1_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMA3_Sand_E.264",
+      "bytes": 275734,
+      "nal_counts": {
+        "1": 49,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 50,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 40,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 4,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMA3_Sand_E",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMACI3_Sony_C.jsv",
+      "bytes": 71613,
+      "nal_counts": {
+        "1": 16,
+        "5": 1,
+        "7": 1,
+        "8": 17
+      },
+      "sps_count": 1,
+      "pps_count": 17,
+      "slice_count": 17,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMACI3_Sony_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMANL1_TOSHIBA_B.264",
+      "bytes": 1432454,
+      "nal_counts": {
+        "1": 89,
+        "5": 1,
+        "7": 6,
+        "8": 90,
+        "9": 90,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 90,
+      "slice_count": 90,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMANL1_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMANL2_TOSHIBA_B.264",
+      "bytes": 1447843,
+      "nal_counts": {
+        "1": 89,
+        "5": 1,
+        "7": 6,
+        "8": 90,
+        "9": 90,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 90,
+      "slice_count": 90,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMANL2_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMANL3_Sand_E.264",
+      "bytes": 278858,
+      "nal_counts": {
+        "1": 49,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 50,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 40,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 4,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMANL3_Sand_E",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMASL3_Sony_B.jsv",
+      "bytes": 73426,
+      "nal_counts": {
+        "1": 64,
+        "5": 4,
+        "7": 1,
+        "8": 17
+      },
+      "sps_count": 1,
+      "pps_count": 17,
+      "slice_count": 68,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMASL3_Sony_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMP_MOT_MBAFF_L30.26l",
+      "bytes": 623720,
+      "nal_counts": {
+        "1": 29,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 30,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 2,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMP_MOT_MBAFF_L30",
+      "profile": "Main"
+    },
+    {
+      "file": "CAMP_MOT_MBAFF_L31.26l",
+      "bytes": 468220,
+      "nal_counts": {
+        "1": 29,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 30,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 2,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAMP_MOT_MBAFF_L31",
+      "profile": "Main"
+    },
+    {
+      "file": "CANLMA2_Sony_C.jsv",
+      "bytes": 524455,
+      "nal_counts": {
+        "1": 16,
+        "5": 1,
+        "7": 1,
+        "8": 17
+      },
+      "sps_count": 1,
+      "pps_count": 17,
+      "slice_count": 17,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CANLMA2_Sony_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CANLMA3_Sony_C.jsv",
+      "bytes": 516876,
+      "nal_counts": {
+        "1": 16,
+        "5": 1,
+        "7": 1,
+        "8": 17
+      },
+      "sps_count": 1,
+      "pps_count": 17,
+      "slice_count": 17,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CANLMA3_Sony_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CAPA1_TOSHIBA_B.264",
+      "bytes": 1014353,
+      "nal_counts": {
+        "1": 137,
+        "5": 1,
+        "7": 6,
+        "8": 138,
+        "9": 138,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 138,
+      "slice_count": 138,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAPA1_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CAPAMA3_Sand_F.264",
+      "bytes": 340855,
+      "nal_counts": {
+        "1": 78,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 79,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 40,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 4,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CAPAMA3_Sand_F",
+      "profile": "Main"
+    },
+    {
+      "file": "CVCANLMA2_Sony_C.jsv",
+      "bytes": 544970,
+      "nal_counts": {
+        "1": 16,
+        "5": 1,
+        "7": 1,
+        "8": 17
+      },
+      "sps_count": 1,
+      "pps_count": 17,
+      "slice_count": 17,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVCANLMA2_Sony_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CVFI1_SVA_C.264",
+      "bytes": 87225,
+      "nal_counts": {
+        "1": 13,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 14,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVFI1_SVA_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CVFI1_Sony_D.jsv",
+      "bytes": 524421,
+      "nal_counts": {
+        "1": 231,
+        "5": 7,
+        "7": 1,
+        "8": 34
+      },
+      "sps_count": 1,
+      "pps_count": 34,
+      "slice_count": 238,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVFI1_Sony_D",
+      "profile": "Main"
+    },
+    {
+      "file": "CVFI2_SVA_C.264",
+      "bytes": 128245,
+      "nal_counts": {
+        "1": 25,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 26,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVFI2_SVA_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CVFI2_Sony_H.jsv",
+      "bytes": 553382,
+      "nal_counts": {
+        "1": 231,
+        "5": 7,
+        "7": 1,
+        "8": 34
+      },
+      "sps_count": 1,
+      "pps_count": 34,
+      "slice_count": 238,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVFI2_Sony_H",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMA1_Sony_D.jsv",
+      "bytes": 315283,
+      "nal_counts": {
+        "1": 4,
+        "5": 1,
+        "7": 1,
+        "8": 5
+      },
+      "sps_count": 1,
+      "pps_count": 5,
+      "slice_count": 5,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "I"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMA1_Sony_D",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMA1_TOSHIBA_B.264",
+      "bytes": 1487542,
+      "nal_counts": {
+        "1": 89,
+        "5": 1,
+        "7": 6,
+        "8": 90,
+        "9": 90,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 90,
+      "slice_count": 90,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMA1_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMANL1_TOSHIBA_B.264",
+      "bytes": 1501093,
+      "nal_counts": {
+        "1": 89,
+        "5": 1,
+        "7": 6,
+        "8": 90,
+        "9": 90,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 90,
+      "slice_count": 90,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMANL1_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMANL2_TOSHIBA_B.264",
+      "bytes": 1519860,
+      "nal_counts": {
+        "1": 89,
+        "5": 1,
+        "7": 6,
+        "8": 90,
+        "9": 90,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 90,
+      "slice_count": 90,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMANL2_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMAPAQP3_Sony_E.jsv",
+      "bytes": 770638,
+      "nal_counts": {
+        "1": 13,
+        "5": 1,
+        "7": 1,
+        "8": 14
+      },
+      "sps_count": 1,
+      "pps_count": 14,
+      "slice_count": 14,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMAPAQP3_Sony_E",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMAQP2_Sony_G.jsv",
+      "bytes": 150227,
+      "nal_counts": {
+        "1": 16,
+        "5": 1,
+        "7": 1,
+        "8": 17
+      },
+      "sps_count": 1,
+      "pps_count": 17,
+      "slice_count": 17,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMAQP2_Sony_G",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMAQP3_Sony_D.jsv",
+      "bytes": 160689,
+      "nal_counts": {
+        "1": 16,
+        "5": 1,
+        "7": 1,
+        "8": 17
+      },
+      "sps_count": 1,
+      "pps_count": 17,
+      "slice_count": 17,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMAQP3_Sony_D",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMP_MOT_FLD_L30_B.26l",
+      "bytes": 561762,
+      "nal_counts": {
+        "1": 59,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 60,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 2,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMP_MOT_FLD_L30_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CVMP_MOT_FRM_L31_B.26l",
+      "bytes": 495417,
+      "nal_counts": {
+        "1": 59,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 60,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 2,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVMP_MOT_FRM_L31_B",
+      "profile": "Main"
+    },
+    {
+      "file": "CVNLFI1_Sony_C.jsv",
+      "bytes": 528443,
+      "nal_counts": {
+        "1": 231,
+        "5": 7,
+        "7": 1,
+        "8": 34
+      },
+      "sps_count": 1,
+      "pps_count": 34,
+      "slice_count": 238,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVNLFI1_Sony_C",
+      "profile": "Main"
+    },
+    {
+      "file": "CVNLFI2_Sony_H.jsv",
+      "bytes": 555758,
+      "nal_counts": {
+        "1": 231,
+        "5": 7,
+        "7": 1,
+        "8": 34
+      },
+      "sps_count": 1,
+      "pps_count": 34,
+      "slice_count": 238,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVNLFI2_Sony_H",
+      "profile": "Main"
+    },
+    {
+      "file": "CVPA1_TOSHIBA_B.264",
+      "bytes": 1120832,
+      "nal_counts": {
+        "1": 137,
+        "5": 1,
+        "7": 6,
+        "8": 138,
+        "9": 138,
+        "11": 1
+      },
+      "sps_count": 6,
+      "pps_count": 138,
+      "slice_count": 138,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 21,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "CVPA1_TOSHIBA_B",
+      "profile": "Main"
+    },
+    {
+      "file": "FI1_Sony_E.jsv",
+      "bytes": 108322,
+      "nal_counts": {
+        "1": 33,
+        "5": 1,
+        "7": 1,
+        "8": 34
+      },
+      "sps_count": 1,
+      "pps_count": 34,
+      "slice_count": 34,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 12,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "FI1_Sony_E",
+      "profile": "Main"
+    },
+    {
+      "file": "FM1_BT_B.h264",
+      "bytes": 447469,
+      "nal_counts": {
+        "1": 1682,
+        "5": 5,
+        "7": 1,
+        "8": 8
+      },
+      "sps_count": 1,
+      "pps_count": 8,
+      "slice_count": 1687,
+      "features": {
+        "fmo": true,
+        "slice_group_counts": [
+          2,
+          3,
+          7,
+          8
+        ],
+        "slice_group_map_types": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "slice_types": [
+          "I",
+          "P"
+        ],
+        "slice_order_not_monotonic": 227
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 66,
+          "level_idc": 10,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 1,
+          "max_num_ref_frames": 4,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 1,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 7,
+          "slice_group_map_type": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 2,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 7,
+          "slice_group_map_type": 1,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 3,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 2,
+          "slice_group_map_type": 2,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "FM1_BT_B",
+      "profile": "Baseline"
+    },
+    {
+      "file": "FM1_FT_E.264",
+      "bytes": 233023,
+      "nal_counts": {
+        "1": 575,
+        "5": 7,
+        "6": 1,
+        "7": 22,
+        "8": 11
+      },
+      "sps_count": 22,
+      "pps_count": 11,
+      "slice_count": 582,
+      "features": {
+        "fmo": true,
+        "slice_group_counts": [
+          2,
+          3,
+          4
+        ],
+        "slice_group_map_types": [
+          1,
+          2,
+          3
+        ],
+        "slice_types": [
+          "I",
+          "P"
+        ],
+        "slice_order_not_monotonic": 95
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 66,
+          "level_idc": 20,
+          "seq_parameter_set_id": 1,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 2,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 66,
+          "level_idc": 20,
+          "seq_parameter_set_id": 1,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 2,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 66,
+          "level_idc": 20,
+          "seq_parameter_set_id": 1,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 2,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "profile_idc": 66,
+          "level_idc": 20,
+          "seq_parameter_set_id": 1,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 2,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 1,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 1,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 1,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 1,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 1,
+          "slice_group_map_type": 1,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "FM1_FT_E",
+      "profile": "Baseline"
+    },
+    {
+      "file": "FM2_SVA_C.264",
+      "bytes": 10145,
+      "nal_counts": {
+        "1": 80,
+        "5": 5,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 85,
+      "features": {
+        "fmo": true,
+        "slice_group_counts": [
+          3
+        ],
+        "slice_group_map_types": [
+          0
+        ],
+        "slice_types": [
+          "I",
+          "P"
+        ],
+        "slice_order_not_monotonic": 17
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 66,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 1,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 2,
+          "slice_group_map_type": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "FM2_SVA_C",
+      "profile": "Baseline"
+    },
+    {
+      "file": "MR2_TANDBERG_E.264",
+      "bytes": 271181,
+      "nal_counts": {
+        "1": 299,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 300,
+      "features": {
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 66,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 2,
+          "max_num_ref_frames": 15,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR2_TANDBERG_E",
+      "profile": "Baseline"
+    },
+    {
+      "file": "MR3_TANDBERG_B.264",
+      "bytes": 252570,
+      "nal_counts": {
+        "1": 299,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 300,
+      "features": {
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 66,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 2,
+          "max_num_ref_frames": 15,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR3_TANDBERG_B",
+      "profile": "Baseline"
+    },
+    {
+      "file": "MR4_TANDBERG_C.264",
+      "bytes": 382111,
+      "nal_counts": {
+        "1": 299,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 300,
+      "features": {
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 66,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 3,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR4_TANDBERG_C",
+      "profile": "Baseline"
+    },
+    {
+      "file": "MR5_TANDBERG_C.264",
+      "bytes": 382496,
+      "nal_counts": {
+        "1": 299,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 300,
+      "features": {
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 66,
+          "level_idc": 31,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 4,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR5_TANDBERG_C",
+      "profile": "Baseline"
+    },
+    {
+      "file": "MR6_BT_B.h264",
+      "bytes": 130685,
+      "nal_counts": {
+        "1": 119,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 120,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 88,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR6_BT_B",
+      "profile": "Extended"
+    },
+    {
+      "file": "MR7_BT_B.h264",
+      "bytes": 123966,
+      "nal_counts": {
+        "1": 65,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 66,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 88,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR7_BT_B",
+      "profile": "Extended"
+    },
+    {
+      "file": "MR8_BT_B.h264",
+      "bytes": 105819,
+      "nal_counts": {
+        "1": 115,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 116,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 88,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 6,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR8_BT_B",
+      "profile": "Extended"
+    },
+    {
+      "file": "MR9_BT_B.h264",
+      "bytes": 96006,
+      "nal_counts": {
+        "1": 63,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 64,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 21,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 6,
+          "pic_width_in_mbs_minus1": 11,
+          "pic_height_in_map_units_minus1": 3,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "MR9_BT_B",
+      "profile": "Main"
+    },
+    {
+      "file": "sp1_bt_a.h264",
+      "bytes": 285768,
+      "nal_counts": {
+        "1": 399,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 400,
+      "features": {
+        "slice_types": [
+          "I",
+          "P",
+          "SP"
+        ],
+        "sp_or_si": true
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 88,
+          "level_idc": 10,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "SP1_BT_A",
+      "profile": "Extended"
+    },
+    {
+      "file": "Sharp_MP_Field_1_B.jvt",
+      "bytes": 256418,
+      "nal_counts": {
+        "1": 29,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1,
+        "11": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 30,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "Sharp_MP_Field_1_B",
+      "profile": "Main"
+    },
+    {
+      "file": "Sharp_MP_Field_2_B.jvt",
+      "bytes": 188413,
+      "nal_counts": {
+        "1": 29,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1,
+        "11": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 30,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "Sharp_MP_Field_2_B",
+      "profile": "Main"
+    },
+    {
+      "file": "Sharp_MP_Field_3_B.jvt",
+      "bytes": 179458,
+      "nal_counts": {
+        "1": 29,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1,
+        "11": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 30,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "Sharp_MP_Field_3_B",
+      "profile": "Main"
+    },
+    {
+      "file": "Sharp_MP_PAFF_1r2.jvt",
+      "bytes": 149391,
+      "nal_counts": {
+        "1": 22,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1,
+        "11": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 23,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "Sharp_MP_PAFF_1r2",
+      "profile": "Main"
+    },
+    {
+      "file": "Sharp_MP_PAFF_2.jvt",
+      "bytes": 174220,
+      "nal_counts": {
+        "1": 22,
+        "5": 1,
+        "7": 1,
+        "8": 1,
+        "10": 1,
+        "11": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 23,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 12,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "Sharp_MP_PAFF_2r",
+      "profile": "Main"
+    },
+    {
+      "file": "camp_mot_fld0_full.26l",
+      "bytes": 405556,
+      "nal_counts": {
+        "1": 59,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 60,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 22,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 3,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cabac_mot_fld0_full",
+      "profile": "Main"
+    },
+    {
+      "file": "camp_mot_mbaff0_full.26l",
+      "bytes": 423053,
+      "nal_counts": {
+        "1": 29,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 30,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 22,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 3,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cabac_mot_mbaff0_full",
+      "profile": "Main"
+    },
+    {
+      "file": "camp_mot_picaff0_full.26l",
+      "bytes": 408004,
+      "nal_counts": {
+        "1": 44,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 45,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 22,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 3,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cabac_mot_picaff0_full",
+      "profile": "Main"
+    },
+    {
+      "file": "cama1_vtc_c.avc",
+      "bytes": 126132,
+      "nal_counts": {
+        "1": 4,
+        "5": 1,
+        "7": 1,
+        "8": 5
+      },
+      "sps_count": 1,
+      "pps_count": 5,
+      "slice_count": 5,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 2,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 6,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cama1_vtc_c",
+      "profile": "Main"
+    },
+    {
+      "file": "cama2_vtc_b.avc",
+      "bytes": 197607,
+      "nal_counts": {
+        "1": 4,
+        "5": 1,
+        "7": 1,
+        "8": 5
+      },
+      "sps_count": 1,
+      "pps_count": 5,
+      "slice_count": 5,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 2,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 17,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cama2_vtc_b",
+      "profile": "Main"
+    },
+    {
+      "file": "cama3_vtc_b.avc",
+      "bytes": 198174,
+      "nal_counts": {
+        "1": 4,
+        "5": 1,
+        "7": 1,
+        "8": 5
+      },
+      "sps_count": 1,
+      "pps_count": 5,
+      "slice_count": 5,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 30,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 2,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 1,
+          "max_num_ref_frames": 5,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 17,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        },
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cama3_vtc_b",
+      "profile": "Main"
+    },
+    {
+      "file": "cvmp_mot_fld0_full_B.26l",
+      "bytes": 404183,
+      "nal_counts": {
+        "1": 59,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 60,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 22,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 3,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cavlc_mot_fld0_full_B",
+      "profile": "Main"
+    },
+    {
+      "file": "cvmp_mot_mbaff0_full_B.26l",
+      "bytes": 461615,
+      "nal_counts": {
+        "1": 29,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 30,
+      "features": {
+        "mbaff": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 22,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 3,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 1,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cavlc_mot_mbaff0_full_B",
+      "profile": "Main"
+    },
+    {
+      "file": "cvmp_mot_picaff0_full_B.26l",
+      "bytes": 451544,
+      "nal_counts": {
+        "1": 44,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 45,
+      "features": {
+        "field_coding": true,
+        "slice_types": [
+          "B",
+          "I",
+          "P"
+        ]
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 77,
+          "level_idc": 22,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 11,
+          "pic_order_cnt_type": 0,
+          "log2_max_pic_order_cnt_lsb_minus4": 4,
+          "max_num_ref_frames": 3,
+          "pic_width_in_mbs_minus1": 44,
+          "pic_height_in_map_units_minus1": 14,
+          "frame_mbs_only_flag": 0,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 1,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "cavlc_mot_picaff0_full_B",
+      "profile": "Main"
+    },
+    {
+      "file": "sp2_bt_b.h264",
+      "bytes": 200443,
+      "nal_counts": {
+        "1": 399,
+        "5": 1,
+        "7": 1,
+        "8": 1
+      },
+      "sps_count": 1,
+      "pps_count": 1,
+      "slice_count": 400,
+      "features": {
+        "slice_types": [
+          "I",
+          "P",
+          "SP"
+        ],
+        "sp_or_si": true
+      },
+      "errors": [],
+      "sps": [
+        {
+          "profile_idc": 88,
+          "level_idc": 10,
+          "seq_parameter_set_id": 0,
+          "chroma_format_idc": 1,
+          "bit_depth_luma_minus8": 0,
+          "log2_max_frame_num_minus4": 0,
+          "pic_order_cnt_type": 1,
+          "delta_pic_order_always_zero_flag": 0,
+          "max_num_ref_frames": 1,
+          "pic_width_in_mbs_minus1": 10,
+          "pic_height_in_map_units_minus1": 8,
+          "frame_mbs_only_flag": 1,
+          "mb_adaptive_frame_field_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "pps": [
+        {
+          "pic_parameter_set_id": 0,
+          "seq_parameter_set_id": 0,
+          "bottom_field_pic_order_in_frame_present_flag": 0,
+          "num_slice_groups_minus1": 0,
+          "redundant_pic_cnt_present_flag": 0,
+          "parse_ok": true
+        }
+      ],
+      "vector": "sp2_bt_b",
+      "profile": "Extended"
+    }
+  ]
+}

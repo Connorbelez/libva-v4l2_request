@@ -146,7 +146,14 @@ HEVC failures in the 147:
 H.264 `JVT-AVC_V1` 62 non-passes include all 49 Main vectors with
 `frame_mbs_only_flag=0` (interlace/MBAFF, kernel rejection), Baseline/Extended
 streams including FMO, and five streams that only pass with an explicit
-profile-mismatch override.
+profile-mismatch override. The measured split is in
+[H264_ADVANCED_SYNTAX.md](H264_ADVANCED_SYNTAX.md): three FMO vectors (all
+declaring the slice-group map only in the picture parameter set), two SP/SI
+vectors, five plain profile-override vectors, 52 interlace-driven, and no vector
+using data partitions at all. FMO, data partitions (NAL 2/3/4) and extension
+NALs (20/21) are rejected as unimplemented with a named diagnostic; arbitrary
+slice order without slice groups is not a rejection boundary and stays
+unqualified.
 
 VP9 89 non-passes: 60 sub-64-pixel (`expected_rejection`), 2 Profile 1 4:2:2/4:4:4
 (`unsupported`), 2 context-changing resize streams plus 24 inter-frame-resize and

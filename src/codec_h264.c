@@ -45,6 +45,12 @@ struct h264_slice_info {
 	bool num_ref_idx_override;
 	uint32_t redundant_pic_cnt;
 	bool valid;
+	/* Recognised but unsupported syntax: the slice data is a valid NAL unit
+	 * of a form this driver cannot submit. Kept apart from "invalid" so the
+	 * client receives the status that means "fall back", not "your buffer is
+	 * broken". */
+	bool unsupported;
+	uint32_t unsupported_nal_unit_type;
 };
 
 struct h264_context {
@@ -112,8 +118,24 @@ static void h264_parse_slice_header(struct h264_context *codec,
 		return;
 	info->nal_ref_idc = v4l2r_bits_read(&b, 2);
 	info->nal_unit_type = v4l2r_bits_read(&b, 5);
-	if (info->nal_unit_type != 1 && info->nal_unit_type != 5)
-		return; /* Data partitions and extension NALs are not implemented. */
+	if (info->nal_unit_type != 1 && info->nal_unit_type != 5) {
+		switch (info->nal_unit_type) {
+		case 2: /* partition A */
+		case 3: /* partition B */
+		case 4: /* partition C */
+		case 20: /* SVC/MVC extension */
+		case 21: /* 3D-AVC extension */
+			/* Recognised and unsupported: report it as such instead of
+			 * returning as if the buffer were malformed. Anything else in a
+			 * slice-data buffer is treated as invalid. */
+			info->unsupported = true;
+			info->unsupported_nal_unit_type = info->nal_unit_type;
+			break;
+		default:
+			break;
+		}
+		return;
+	}
 	info->idr = info->nal_unit_type == 5;
 
 	v4l2r_bits_ue(&b);				/* first_mb_in_slice */
@@ -681,10 +703,21 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 	slice_data = data + va_slice->slice_data_offset;
 	h264_parse_slice_header(codec, va_slice, slice_data,
 				va_slice->slice_data_size, &info);
+	if (info.unsupported) {
+		/* Data partitions and extension NALs are not representable in the
+		 * VA or V4L2 H.264 interfaces; fail as unimplemented so the client
+		 * can fall back, and let the failure stay sticky for this picture. */
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_UNSUPPORTED,
+			   "h264-unsupported-nal", 0,
+			   info.unsupported_nal_unit_type <= 4 ?
+			   "H.264 data partitions (NAL 2/3/4) are not implemented" :
+			   "H.264 extension NALs (20/21) are not implemented");
+		return VA_STATUS_ERROR_UNIMPLEMENTED;
+	}
 	if (!info.valid) {
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_BITSTREAM,
 			   "h264-slice-header", 0,
-			   "invalid or unsupported H.264 slice header");
+			   "invalid H.264 slice header");
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	}
 	/* Validate before flushing a pending slice. Unavailable references are
@@ -918,8 +951,16 @@ static VAStatus h264_render_buffer_impl(struct v4l2r_context *ctx,
 			return VA_STATUS_ERROR_INVALID_BUFFER;
 		/* We cannot translate FMO maps. Do not silently drop this field
 		 * and submit a different PPS to the kernel. */
-		if (h264_has_slice_groups(buf->data))
+		if (h264_has_slice_groups(buf->data)) {
+			/* The VA H.264 picture buffer marks the slice-group fields
+			 * deprecated and says FMO is not supported; the V4L2 controls
+			 * carry num_slice_groups_minus1 but no slice-group map. Fail as
+			 * unimplemented so the client can fall back to software. */
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING,
+				   V4L2R_DIAG_UNSUPPORTED, "h264-fmo", 0,
+				   "H.264 FMO (flexible macroblock ordering) is not implemented");
 			return VA_STATUS_ERROR_UNIMPLEMENTED;
+		}
 		h264_fill_picture(ctx, buf->data);
 		return VA_STATUS_SUCCESS;
 	case VAIQMatrixBufferType:

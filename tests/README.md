@@ -39,7 +39,14 @@ errors during teardown, grown OUTPUT indices, bitstream size overflow, odd-width
 copies, truncated image backing, invalid dimensions and zero-element buffer resizing.
 The HEVC case checks exact-capacity entry points, malformed headers and 24,000 deterministic
 random inputs, AVD reference ordering and index remapping, retained long-term references,
-unavailable references at random-access points, and failed-picture submission. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
+unavailable references at random-access points, and failed-picture submission. Two
+`hevc-capability-*` cases pin the range-extension boundary from
+[docs/HEVC_RANGE_EXTENSIONS.md](../docs/HEVC_RANGE_EXTENSIONS.md): only Main and Main10 are
+enumerated, every libva RExt/SCC profile and every non-4:2:0 or wrong-depth RT format is
+refused at `vaCreateConfig` without leaking a handle, and unequal-depth, equal 9/11-bit, 12-bit,
+monochrome, 4:2:2, 4:4:4 and separate-plane pictures are refused at `vaRenderPicture` with no
+SPS staged and no ioctl issued, in both AVD and generic contexts, while 8/10-bit 4:2:0 pictures
+are staged unchanged. H.264 adds another 24,000 parser inputs, truncated/unsupported NALs, slice-group
 rejection, High 10 quantizer modes and fake-device capability checks. Three H.264 submission
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
@@ -61,6 +68,18 @@ malicious-video exploit.
 Four VP9 cases cover malformed/incomplete headers, failed-submission state rollback, colour-range
 inheritance, missing/cross-context references and 24,000 deterministic parser inputs. These join
 the H.264 and HEVC inputs for 72,000 generated inputs across three registered parser cases.
+Those generated inputs are smoke coverage, not independent tests. Coverage-guided
+no-device fuzzing (issue #22) lives in `fuzz-h264`, `fuzz-hevc`, `fuzz-vp9` and
+`fuzz-va-api`: each replays pinned synthetic seeds twice under ASan/UBSan and
+compares a normalized oracle (a second differing call is a harness failure).
+`fuzz-budgets` checks oversize file-input truncation, non-regular I/O exit 99
+and the replay `SIGALRM` handler; `fuzz-timeout-campaign` proves campaign
+builds leave `SIGALRM` to libFuzzer; `fuzz-replay-mismatch` proves identity
+compare rejects a non-deterministic stub. `fuzz-provenance` checks
+`tests/fuzz/provenance.json`. libFuzzer campaign binaries are opt-in
+(`-Dfuzzing=enabled`) and are documented in [../docs/FUZZING.md](../docs/FUZZING.md);
+the 24 CPU-hour run is not a meson test and must not run on public PR CI.
+Clang CI runs `sh tests/fuzz-campaign.sh --smoke`.
 Six shared-lifecycle cases add failed Render/Begin recovery, active-target lifetime, reference
 ownership, invalid context arguments, and submission errors surviving a later buffer completion.
 `picture.c` calls the public picture entrypoints with an intercepted codec. The original target
@@ -89,6 +108,37 @@ one shared VA display. The clips contain 24, 36, 48 and 60 frames, so earlier co
 destroyed while later ones continue. Each stream must match its independently decoded
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
+
+The `concurrent-stress` Meson cases (issue #36) add offline caller schedules: they call the
+real public entrypoints from multiple threads against an in-memory model decoder
+(no device, no real sleeping — the model completes queued work after a seeded number
+of model-time ticks; in-driver overlap is not measured). `threads-1/2/4` decode mixed-codec
+frames, read them back through GetImage, exported dma-bufs and derived images, and
+destroy each context while later streams continue; `teardown-1/2/4` destroy one
+context mid-decode and require every published frame to complete byte-exact while
+the other streams verify all of theirs; `failure-4` has a separate misbehaving client
+(bogus ids, foreign surfaces, double destroys, live context churn) that owns its own
+context while every valid stream completes exactly. The model device is the decode
+oracle: slice bytes are hashed when a request is queued and the completion writes a
+pattern derived from that hash into the target CAPTURE plane, so lost frames,
+cross-stream pixels and stale buffer reuse all fail an exact byte comparison. The
+decoder only reuses a surface after the reader verified its previous frame, matching
+a real decoder surface pool. Per-stream MD5s, seeds, ioctl/poll/completion counts and
+the maximum of simultaneously in-flight public entrypoints are printed for the
+evidence record; the mid-decode teardown victim is destroyed while it provably holds
+a staged picture open (between BeginPicture and its buffer creation) and verifies
+exactly half its frames byte-exact — every other count and hash is exact, and a
+first-call rendezvous coordinates caller starts outside the driver. Instrumented
+in-driver overlap remains an open #36 criterion.
+`concurrent-process.py` drives the same single-stream worker in 1/2/4
+separate processes behind a start barrier (per-process isolation; every worker's
+digest is derived independently from the declared seed/frame recipe and compared
+exactly, negative fixtures cover stalled workers, inherited stdout holders and
+launch failures; one real decoder is the separate guarded hardware gate), and
+`concurrent-tsan.sh` re-runs the schedules under ThreadSanitizer in a fresh
+sanitizer build with the same compiler Meson uses, skipping with exit 77 and the
+printed reason only for known runtime-unavailable startup failures. Schedules,
+seeds and recorded hashes: [../docs/CONCURRENCY_STRESS.md](../docs/CONCURRENCY_STRESS.md).
 
 CI also runs `sh tests/install-smoke.sh` (issue #34): it builds and installs the driver
 twice into disposable `DESTDIR` roots — once at the default, libva pkg-config-derived
@@ -175,17 +225,21 @@ libva's pkg-config Version is the VA API version (libva 2.20 reports 1.20.0), so
 `libva >= 1.7.0` build floor means library release 2.7 — the oldest combination verified
 to build and pass the offline suite (Ubuntu 20.04: libva 2.7, gcc 9, 5.4 headers).
 
-Executed CI configurations and their expected Meson test sets (counts from the r11
-suite plus the CI checks, corpus checks and P010 probe regression; codec-gated tests register only
-when the codec is compiled in):
+Executed CI configurations and their expected Meson test sets (codec-gated tests
+register only when the codec is compiled in). The counts are re-measured from the
+registered set (enumerate the selected build rather than relying on historical
+counts) — they include the r11 regression suite, the
+lifecycle, failure-cleanup, diagnostics, corpus and CI checks, and the 12
+concurrent-stress cases (7 threaded schedules, 4 process checks, 1 ThreadSanitizer
+pass; the numbers in earlier revisions predated several of those additions):
 
 | Configuration | Codecs | Expected tests |
 | --- | --- | --- |
-| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 53 (full suite) |
-| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 46 (no hevc-parser, vp9-\*, image-bounds) |
-| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 41 (regression minus image-bounds, picture, python checks) |
-| all codecs disabled (any headers) | none | 42 on 6.8 headers (core plus image-bounds) |
-| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 49 (core plus codec tests of every compiled-in codec except vp9-\*) |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | full registered suite; enumerate with `meson test -C build --list` |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | HEVC/VP9/AV1-specific cases absent |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | codec-gated cases absent; core and Python checks remain |
+| all codecs disabled (any headers) | none | core cases, available image cases, and no-device VA fuzz replay |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | compiled-in codec tests, excluding VP9 cases |
 
 `deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
 auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all

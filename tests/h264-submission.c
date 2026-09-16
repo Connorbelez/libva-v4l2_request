@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Exercise codec submission without opening a device. */
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/resource.h>
 #define v4l2r_codec_h264 v4l2r_test_codec_h264
 #define v4l2r_decode test_decode
@@ -122,6 +125,70 @@ static void incomplete(void)
     }
 }
 
+/* A NAL unit whose header byte declares the given type, with no payload: the
+ * parser rejects it before reading further, which is what these cases measure. */
+static size_t nal_only(unsigned int unit_type)
+{
+    memset(data, 0, sizeof(data));
+    pos = 0;
+    bits(0, 1);   /* forbidden_zero_bit */
+    bits(2, 2);   /* nal_ref_idc */
+    bits(unit_type, 5);
+    return 1;
+}
+
+static void unsupported_nals(const unsigned int *types, size_t count)
+{
+    for (unsigned int mode = 0; mode < 2; mode++) {
+        codec.decode_mode = mode ? V4L2_STATELESS_H264_DECODE_MODE_FRAME_BASED :
+                                  V4L2_STATELESS_H264_DECODE_MODE_SLICE_BASED;
+        for (size_t i = 0; i < count; i++) {
+            begin();
+            VASliceParameterBufferH264 slice = {.slice_type = SLICE_I,
+                .slice_data_size = nal_only(types[i])};
+            assert(render(&slice) == VA_STATUS_ERROR_UNIMPLEMENTED);
+            assert(codec.failed && !submitted && !appended);
+            VASliceParameterBufferH264 valid = {.slice_type = SLICE_I,
+                .slice_data_size = header(SLICE_I)};
+            assert(parameters(&valid, 1) == VA_STATUS_ERROR_INVALID_BUFFER);
+            assert(h264_end_picture(&ctx) == VA_STATUS_ERROR_INVALID_BUFFER);
+            assert(!submitted);
+            begin();
+            assert(render(&valid) == VA_STATUS_SUCCESS);
+            assert(h264_end_picture(&ctx) == VA_STATUS_SUCCESS && submitted == 1);
+        }
+    }
+}
+
+static void unsupported_partition(void)
+{
+    static const unsigned int types[] = {2, 3, 4};
+    unsupported_nals(types, sizeof(types) / sizeof(types[0]));
+}
+
+static void unsupported_extension(void)
+{
+    static const unsigned int types[] = {20, 21};
+    unsupported_nals(types, sizeof(types) / sizeof(types[0]));
+}
+
+static void unsupported_fmo(void)
+{
+    begin();
+    VAPictureParameterBufferH264 pic = {0};
+    pic.seq_fields.bits.frame_mbs_only_flag = 1;
+    /* libva deprecates the FMO fields; intentionally exercise that input. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    pic.num_slice_groups_minus1 = 1; /* slice groups declared by the client */
+#pragma GCC diagnostic pop
+    struct v4l2r_buffer buf = {.type = VAPictureParameterBufferType,
+        .data = &pic, .element_size = sizeof(pic), .nb_elements = 1};
+    assert(h264_render_buffer(&ctx, &buf) == VA_STATUS_ERROR_UNIMPLEMENTED);
+    assert(codec.failed && !submitted && !appended);
+    assert(h264_end_picture(&ctx) == VA_STATUS_ERROR_INVALID_BUFFER);
+}
+
 static void slice_count(void)
 {
     begin();
@@ -213,6 +280,9 @@ int main(int argc, char **argv)
     if (!strcmp(argv[1], "incomplete")) incomplete();
     else if (!strcmp(argv[1], "slice-count")) slice_count();
     else if (!strcmp(argv[1], "references")) references();
+    else if (!strcmp(argv[1], "unsupported-partition")) unsupported_partition();
+    else if (!strcmp(argv[1], "unsupported-extension")) unsupported_extension();
+    else if (!strcmp(argv[1], "unsupported-fmo")) unsupported_fmo();
     else assert(!"unknown case");
     h264_uninit(&ctx);
     v4l2r_handles_destroy(&drv.surfaces);
