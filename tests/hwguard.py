@@ -133,7 +133,8 @@ def foreign_holders(state: DecoderState, child_pid: int) -> list[dict[str, Any]]
         # A short vector can finish between the fd scan and classification.
         # Preserve ownership observed during the scan instead of treating a
         # vanished /proc entry as evidence of a foreign decoder client.
-        if holder.get("pgrp") != child_pid
+        if holder.get("owner_root") != child_pid
+        and holder.get("pgrp") != child_pid
         and not is_owned_holder(int(holder.get("pid") or 0), child_pid)
     ]
 
@@ -196,6 +197,7 @@ def _read(path: Path) -> str | None:
 class LinuxBackend:
     def __init__(self, preflight_since: str | None = None) -> None:
         self.preflight_since = preflight_since
+        self.owner_pid: int | None = None
 
     def state(self) -> DecoderState:
         video = media = None
@@ -213,6 +215,11 @@ class LinuxBackend:
                 if not pid_dir.name.isdigit():
                     continue
                 pgrp = process_group(int(pid_dir.name))
+                # timeout(1) and other wrappers may create a separate group.
+                # Observe the ancestry while the fd holder still exists too.
+                owner_root = self.owner_pid if self.owner_pid and is_owned_holder(
+                    int(pid_dir.name), self.owner_pid
+                ) else None
                 try:
                     fds = [os.readlink(fd) for fd in (pid_dir / "fd").iterdir()]
                 except OSError:
@@ -220,6 +227,7 @@ class LinuxBackend:
                 if nodes.intersection(fds):
                     cmdline = (_read(pid_dir / "cmdline") or "").replace("\0", " ").strip()
                     holders.append({"pid": int(pid_dir.name), "pgrp": pgrp,
+                                    "owner_root": owner_root,
                                     "cmd": cmdline[:160]})
         stuck: list[dict[str, Any]] = []
         for pid_dir in Path("/proc").iterdir():
@@ -506,6 +514,8 @@ def run_guarded(
             start_record["cmd"] = cmd
         log.write(**start_record)
         proc = subprocess.Popen(cmd, env=child_env, start_new_session=True)
+        if isinstance(backend, LinuxBackend):
+            backend.owner_pid = proc.pid
         deadline_at = started + deadline
         while proc.poll() is None:
             if inject == "timeout":
@@ -624,10 +634,11 @@ def run_self_test() -> int:
     gone_pid = 999999999
     snapshot = DecoderState(True, "/dev/video-fake", None, holders=[
         {"pid": gone_pid, "pgrp": os.getpid()},
+        {"pid": gone_pid, "pgrp": gone_pid, "owner_root": os.getpid()},
         {"pid": gone_pid, "pgrp": gone_pid},
         {"pid": gone_pid},
     ])
-    check(foreign_holders(snapshot, os.getpid()) == snapshot.holders[1:],
+    check(foreign_holders(snapshot, os.getpid()) == snapshot.holders[2:],
           "exited owned holder must stay owned; foreign/unknown must not")
 
     holder_script = work / "holder.py"
