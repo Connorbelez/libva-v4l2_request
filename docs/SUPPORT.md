@@ -201,4 +201,4 @@ matrix row for every advertised VA profile. `python3 tests/compare-results.py
 - Preserve exact passing-vector names when rerunning a suite. Compare sets, not just totals.
 - Do not mark a new device `supported` by copying M1 rows.
 - Do not delete failing vectors. Record their outcome.
-- Ticket [libva-v4l2_request#21](https://github.com/iconidentify/libva-v4l2_request/issues/21) owns later result-schema work; this contract is the support matrix, not the conformance runner format.
+- Result comparison is `python3 tests/compare-results.py` ([#21](https://github.com/iconidentify/libva-v4l2_request/issues/21) / [PR #52](https://github.com/iconidentify/libva-v4l2_request/pull/52)). This document remains the support matrix, not the runner format.
