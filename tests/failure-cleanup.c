@@ -441,9 +441,20 @@ int main(int argc, char **argv)
                !strcmp(test, "capture-queue") ? 0 : -1, 1, EIO);
         assert(picture(id, sid) != VA_STATUS_SUCCESS && injected == 1);
         armed = false; failed_surface(sid);
-        unsigned int before = queues;
-        /* Ambiguous partial ownership must not submit another picture. */
-        assert(picture(id, surface()) != VA_STATUS_SUCCESS && queues == before);
+        if (!strcmp(test, "capture-queue")) {
+            /* An idle request can be reinitialized. Exercise a full ring
+             * twice: without release the stranded OUTPUT slot times out. */
+            for (unsigned int n = 0; n < 2 * V4L2R_OUTPUT_BUFFERS; n++) {
+                VASurfaceID next = surface();
+                assert(picture(id, next) == VA_STATUS_SUCCESS);
+                assert(table.vaSyncSurface(&va, next) == VA_STATUS_SUCCESS);
+            }
+        } else {
+            unsigned int before = queues;
+            /* CAPTURE already belongs to the queue: don't allow a later
+             * request to consume the failed frame's destination. */
+            assert(picture(id, surface()) != VA_STATUS_SUCCESS && queues == before);
+        }
         assert(table.vaDestroyContext(&va, id) == VA_STATUS_SUCCESS);
         id = context(); assert(picture(id, surface()) == VA_STATUS_SUCCESS);
     } else if (!strcmp(test, "dequeue-error")) {

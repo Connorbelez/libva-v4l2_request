@@ -148,6 +148,7 @@ void v4l2r_diag_configure(const struct v4l2r_diag_options *options);
 /* Wait for events on one fd: 0, -ETIMEDOUT, -EPIPE on an error or hangup,
  * -ENODEV on an invalid fd, -EIO without the requested event, or -errno. */
 int v4l2r_poll_one(int fd, short events, int timeout_ms);
+int v4l2r_poll_until(int fd, short events, uint64_t deadline);
 
 /*
  * One V4L2 stateless decoder found during device enumeration: the media
@@ -368,6 +369,8 @@ struct v4l2r_context {
 	uint32_t output_capabilities;
 	uint32_t capture_capabilities;
 	bool streaming;			/* CAPTURE side fully configured */
+	bool output_streaming;		/* OUTPUT may start before CAPTURE */
+	bool failed;			/* ambiguous queue ownership: recreate context */
 	/*
 	 * Memory type of the CAPTURE queue, fixed by the first buffer created
 	 * on it (V4L2 does not allow mixing): V4L2_MEMORY_MMAP, the default,
@@ -644,6 +647,7 @@ VAStatus v4l2r_wait_completed(struct v4l2r_context *ctx, uint64_t target);
 
 /* Non-blocking dequeue sweep, used by vaQuerySurfaceStatus. */
 void v4l2r_reap_capture(struct v4l2r_context *ctx);
+void v4l2r_context_fail(struct v4l2r_context *ctx);
 
 /* --- context management (context.c) --- */
 

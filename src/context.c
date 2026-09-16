@@ -663,6 +663,8 @@ static int capture_buffer_bind(struct v4l2r_context *ctx,
 
 	/* Refresh the completion counter with anything already finished. */
 	v4l2r_reap_capture(ctx);
+	if (ctx->failed)
+		return -EIO;
 
 	/*
 	 * The first buffer fixes the queue's memory type. Normally the
@@ -790,6 +792,8 @@ void v4l2r_context_release_capture(struct v4l2r_context *ctx, int index)
 
 VAStatus v4l2r_flush_surface(struct v4l2r_surface *surface)
 {
+	if (surface && surface->ctx && surface->ctx->failed)
+		return surface->decode_status;
 	if (surface && surface->ctx && surface->ctx->codec &&
 	    surface->ctx->codec->flush)
 		return surface->ctx->codec->flush(surface->ctx, surface);
@@ -802,6 +806,9 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 	enum v4l2_buf_type type;
 	bool starting = !ctx->streaming;
 	int ret;
+
+	if (ctx->failed)
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 
 	if (surface->ctx && surface->ctx != ctx) {
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
@@ -875,14 +882,20 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 				   strerror(-ret));
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
+		ctx->output_streaming = true;
 	}
 
 	/* Bind (and, if reused, drain the references of) the surface's CAPTURE
 	 * buffer for this frame's decode. */
 	ret = capture_buffer_bind(ctx, surface);
-	if (ret < 0)
+	if (ret < 0) {
+		/* A failed first bind follows OUTPUT STREAMON. Repeating format
+		 * setup on that partially configured instance is not valid. */
+		if (starting)
+			v4l2r_context_fail(ctx);
 		return ret == -ENOMEM || ret == -ENOSPC ?
 			VA_STATUS_ERROR_ALLOCATION_FAILED : VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 
 	/* The decode context provides the real storage now; drop any
 	 * standalone backing from pre-decode export probing. With a
@@ -902,6 +915,7 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 				   V4L2R_DIAG_KERNEL, "capture-streamon", ret,
 				   "failed to start CAPTURE streaming: %s",
 				   strerror(-ret));
+			v4l2r_context_fail(ctx);
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
 
@@ -1218,7 +1232,7 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	 * surfaces may still be downloaded after this context goes away. Keep
 	 * failures on the surface instead of turning an aborted decode into a
 	 * successful read of stale pixels. */
-	if (ctx->streaming) {
+	if (ctx->streaming && !ctx->failed) {
 		for (unsigned int i = 0; i < ctx->nb_captures; i++) {
 			surface = ctx->captures[i].surface;
 			if (surface && surface != abandoned) {
@@ -1240,11 +1254,13 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 		}
 	}
 
-	if (ctx->video_fd >= 0 && ctx->streaming) {
+	if (ctx->video_fd >= 0 && (ctx->streaming || ctx->output_streaming)) {
 		type = ctx->output_format.type;
 		ioctl(ctx->video_fd, VIDIOC_STREAMOFF, &type);
-		type = ctx->capture_format.type;
-		ioctl(ctx->video_fd, VIDIOC_STREAMOFF, &type);
+		if (ctx->streaming) {
+			type = ctx->capture_format.type;
+			ioctl(ctx->video_fd, VIDIOC_STREAMOFF, &type);
+		}
 	}
 
 	v4l2r_convert_destroy(ctx);
@@ -1318,6 +1334,8 @@ VAStatus v4l2r_BeginPicture(VADriverContextP va_ctx, VAContextID context_id,
 			   "BeginPicture while a picture is already open");
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
+	if (ctx->failed)
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	if (!surface) {
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
 			   "begin-picture", 0, "invalid render target 0x%08x",

@@ -92,13 +92,20 @@ int v4l2r_query_control_default(struct v4l2r_context *ctx, uint32_t id,
 	return 0;
 }
 
-int v4l2r_poll_one(int fd, short events, int timeout_ms)
+int v4l2r_poll_until(int fd, short events, uint64_t deadline)
 {
 	struct pollfd pollfd = {
 		.fd = fd,
 		.events = events,
 	};
-	int ret = poll(&pollfd, 1, timeout_ms);
+	int ret;
+	do {
+		uint64_t now = v4l2r_now_ns();
+		if (now >= deadline)
+			return -ETIMEDOUT;
+		int remaining = (int)((deadline - now + 999999) / 1000000);
+		ret = poll(&pollfd, 1, remaining);
+	} while (ret < 0 && errno == EINTR);
 
 	if (ret < 0)
 		return -errno;
@@ -112,6 +119,28 @@ int v4l2r_poll_one(int fd, short events, int timeout_ms)
 		return -EIO;
 
 	return 0;
+}
+
+int v4l2r_poll_one(int fd, short events, int timeout_ms)
+{
+	return v4l2r_poll_until(fd, events, v4l2r_now_ns() +
+		(uint64_t)(timeout_ms > 0 ? timeout_ms : 0) * 1000000);
+}
+
+/* The caller holds ctx->mutex (or exclusive teardown ownership). A failed
+ * queue cannot be repaired by pretending its buffers completed. Retain the
+ * first surface error, stop new submissions and leave cancellation to close. */
+void v4l2r_context_fail(struct v4l2r_context *ctx)
+{
+	ctx->failed = true;
+	for (unsigned int i = 0; i < ctx->nb_captures; i++) {
+		struct v4l2r_surface *s = ctx->captures[i].surface;
+		if (s && ((ctx->queued_capture & (UINT64_C(1) << i)) ||
+			  s->convert_pending) && s->decode_status == VA_STATUS_SUCCESS)
+			s->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
+	}
+	if (ctx->pic.target && ctx->pic.target->decode_status == VA_STATUS_SUCCESS)
+		ctx->pic.target->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
 }
 
 /* --- queue/dequeue primitives, ctx->mutex must be held --- */
@@ -225,14 +254,15 @@ static int dequeue_buffer(struct v4l2r_context *ctx, enum v4l2_buf_type type)
 	if (V4L2_TYPE_IS_OUTPUT(type)) {
 		/* Grown OUTPUT buffers get new kernel indices beyond the ring's
 		 * four slots; the bitmasks support indices 0..31. */
-		if (buffer.index >= 32)
+		if (buffer.index >= 32 || !(ctx->queued_output & (1u << buffer.index)))
 			return -ERANGE;
 		ctx->queued_output &= ~(1u << buffer.index);
 		v4l2r_trace("DQBUF OUTPUT  #%u (bitstream consumed)\n",
 			  buffer.index);
 	} else {
 		if (buffer.index >= ctx->nb_captures ||
-		    buffer.index >= V4L2R_MAX_CAPTURE_BUFFERS)
+		    buffer.index >= V4L2R_MAX_CAPTURE_BUFFERS ||
+		    !(ctx->queued_capture & (UINT64_C(1) << buffer.index)))
 			return -ERANGE;
 		ctx->queued_capture &= ~(UINT64_C(1) << buffer.index);
 		ctx->completed++;
@@ -267,26 +297,37 @@ static int dequeue_buffer(struct v4l2r_context *ctx, enum v4l2_buf_type type)
 	return 0;
 }
 
-static void dequeue_completed_buffers(struct v4l2r_context *ctx,
+static int dequeue_completed_buffers(struct v4l2r_context *ctx,
 				      enum v4l2_buf_type type)
 {
-	while (!dequeue_buffer(ctx, type))
-		continue;
+	uint64_t deadline = v4l2r_now_ns() + (uint64_t)V4L2R_POLL_TIMEOUT_MS * 1000000;
+	for (;;) {
+		int ret = dequeue_buffer(ctx, type);
+		if (ret == -EAGAIN)
+			return 0;
+		if (ret < 0 && ret != -EINTR)
+			return ret;
+		if (v4l2r_now_ns() >= deadline)
+			return -ETIMEDOUT;
+	}
 }
 
 static int wait_on_capture_locked(struct v4l2r_context *ctx, uint32_t index)
 {
-	if (ctx->queued_capture)
-		dequeue_completed_buffers(ctx, ctx->capture_format.type);
+	uint64_t deadline = v4l2r_now_ns() + (uint64_t)V4L2R_POLL_TIMEOUT_MS * 1000000;
+	if (ctx->queued_capture) {
+		int ret = dequeue_completed_buffers(ctx, ctx->capture_format.type);
+		if (ret < 0)
+			return ret;
+	}
 
 	while (ctx->queued_capture & (UINT64_C(1) << index)) {
-		int ret = v4l2r_poll_one(ctx->video_fd, POLLIN,
-					 V4L2R_POLL_TIMEOUT_MS);
+		int ret = v4l2r_poll_until(ctx->video_fd, POLLIN, deadline);
 		if (ret < 0)
 			return ret;
 
 		ret = dequeue_buffer(ctx, ctx->capture_format.type);
-		if (ret < 0 && ret != -EAGAIN)
+		if (ret < 0 && ret != -EAGAIN && ret != -EINTR)
 			return ret;
 	}
 
@@ -301,7 +342,11 @@ VAStatus v4l2r_sync_capture(struct v4l2r_context *ctx, int capture_index)
 		return VA_STATUS_SUCCESS;
 
 	pthread_mutex_lock(&ctx->mutex);
-	ret = wait_on_capture_locked(ctx, capture_index);
+	ret = ctx->failed ?
+		(ctx->queued_capture & (UINT64_C(1) << capture_index) ? -EIO : 0) :
+		wait_on_capture_locked(ctx, capture_index);
+	if (ret < 0)
+		v4l2r_context_fail(ctx);
 	pthread_mutex_unlock(&ctx->mutex);
 
 	if (ret < 0) {
@@ -317,27 +362,31 @@ VAStatus v4l2r_sync_capture(struct v4l2r_context *ctx, int capture_index)
 void v4l2r_reap_capture(struct v4l2r_context *ctx)
 {
 	pthread_mutex_lock(&ctx->mutex);
-	if (ctx->queued_capture)
-		dequeue_completed_buffers(ctx, ctx->capture_format.type);
+	if (!ctx->failed && ctx->queued_capture &&
+	    dequeue_completed_buffers(ctx, ctx->capture_format.type) < 0)
+		v4l2r_context_fail(ctx);
 	pthread_mutex_unlock(&ctx->mutex);
 }
 
 static int wait_completed_locked(struct v4l2r_context *ctx, uint64_t target)
 {
-	if (ctx->queued_capture)
-		dequeue_completed_buffers(ctx, ctx->capture_format.type);
+	uint64_t deadline = v4l2r_now_ns() + (uint64_t)V4L2R_POLL_TIMEOUT_MS * 1000000;
+	if (ctx->queued_capture) {
+		int ret = dequeue_completed_buffers(ctx, ctx->capture_format.type);
+		if (ret < 0)
+			return ret;
+	}
 
 	/* Dequeue CAPTURE buffers in order until enough frames have completed.
 	 * Completion is in submission order, so this drains exactly the frames
 	 * submitted up to the target sequence. */
 	while (ctx->completed < target && ctx->queued_capture) {
-		int ret = v4l2r_poll_one(ctx->video_fd, POLLIN,
-					 V4L2R_POLL_TIMEOUT_MS);
+		int ret = v4l2r_poll_until(ctx->video_fd, POLLIN, deadline);
 		if (ret < 0)
 			return ret;
 
 		ret = dequeue_buffer(ctx, ctx->capture_format.type);
-		if (ret < 0 && ret != -EAGAIN)
+		if (ret < 0 && ret != -EAGAIN && ret != -EINTR)
 			return ret;
 	}
 
@@ -352,7 +401,9 @@ VAStatus v4l2r_wait_completed(struct v4l2r_context *ctx, uint64_t target)
 		return VA_STATUS_SUCCESS;
 
 	pthread_mutex_lock(&ctx->mutex);
-	ret = wait_completed_locked(ctx, target);
+	ret = ctx->failed ? -EIO : wait_completed_locked(ctx, target);
+	if (ret < 0)
+		v4l2r_context_fail(ctx);
 	pthread_mutex_unlock(&ctx->mutex);
 
 	if (ret < 0) {
@@ -376,6 +427,10 @@ static struct v4l2r_output_buffer *next_output(struct v4l2r_context *ctx)
 	struct v4l2r_output_buffer *output;
 	uint8_t index;
 	int ret = 0;
+	uint64_t deadline = v4l2r_now_ns() + (uint64_t)V4L2R_POLL_TIMEOUT_MS * 1000000;
+
+	if (ctx->failed)
+		return NULL;
 
 	pthread_mutex_lock(&ctx->mutex);
 
@@ -383,17 +438,19 @@ static struct v4l2r_output_buffer *next_output(struct v4l2r_context *ctx)
 	output = &ctx->output[index];
 	ctx->next_output = (index + 1) % V4L2R_OUTPUT_BUFFERS;
 
-	if (ctx->queued_output)
-		dequeue_completed_buffers(ctx, ctx->output_format.type);
+	if (ctx->queued_output) {
+		ret = dequeue_completed_buffers(ctx, ctx->output_format.type);
+		if (ret < 0)
+			goto fail;
+	}
 
 	while (ctx->queued_output & (1u << output->index)) {
-		ret = v4l2r_poll_one(ctx->video_fd, POLLOUT,
-				     V4L2R_POLL_TIMEOUT_MS);
+		ret = v4l2r_poll_until(ctx->video_fd, POLLOUT, deadline);
 		if (ret < 0)
 			goto fail;
 
 		ret = dequeue_buffer(ctx, ctx->output_format.type);
-		if (ret < 0 && ret != -EAGAIN)
+		if (ret < 0 && ret != -EAGAIN && ret != -EINTR)
 			goto fail;
 	}
 
@@ -403,6 +460,7 @@ static struct v4l2r_output_buffer *next_output(struct v4l2r_context *ctx)
 	return output;
 
 fail:
+	v4l2r_context_fail(ctx);
 	pthread_mutex_unlock(&ctx->mutex);
 	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, v4l2r_diag_errno_category(ret),
 		   "output-wait", ret, "failed waiting on OUTPUT buffer %u",
@@ -521,6 +579,7 @@ static VAStatus queue_decode(struct v4l2r_context *ctx,
 	struct v4l2r_output_buffer *output = ctx->pic.output;
 	struct v4l2r_surface *target = ctx->pic.target;
 	uint32_t flags;
+	bool attached = false;
 	int ret;
 
 	if (!output || !target || target->capture_index < 0) {
@@ -530,13 +589,20 @@ static VAStatus queue_decode(struct v4l2r_context *ctx,
 	}
 
 	pthread_mutex_lock(&ctx->mutex);
-
-	ret = wait_on_request(ctx, output);
-	if (ret < 0)
+	if (ctx->failed)
 		goto fail;
 
-	if (ctx->queued_output)
-		dequeue_completed_buffers(ctx, ctx->output_format.type);
+	ret = wait_on_request(ctx, output);
+	if (ret < 0) {
+		v4l2r_context_fail(ctx);
+		goto fail;
+	}
+
+	if (ctx->queued_output &&
+	    dequeue_completed_buffers(ctx, ctx->output_format.type) < 0) {
+		v4l2r_context_fail(ctx);
+		goto fail;
+	}
 
 	ret = v4l2r_set_controls(ctx, output->request_fd, controls, count);
 	if (ret < 0) {
@@ -573,6 +639,7 @@ static VAStatus queue_decode(struct v4l2r_context *ctx,
 			   output->index, strerror(-ret));
 		goto fail;
 	}
+	attached = true;
 
 	if (first_slice) {
 		/* Queue the specific CAPTURE buffer tied to the target
@@ -602,11 +669,6 @@ static VAStatus queue_decode(struct v4l2r_context *ctx,
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
 			   "request-queue", ret, "failed to queue request %d: %s",
 			   output->request_fd, strerror(-ret));
-		/* The OUTPUT buffer stays bound to the still-idle request and
-		 * will never be dequeued; the REINIT in wait_on_request()
-		 * releases it when the ring comes back around, so waiting for
-		 * a dequeue would only stall next_output(). */
-		ctx->queued_output &= ~(1u << output->index);
 		goto fail;
 	}
 
@@ -617,6 +679,20 @@ static VAStatus queue_decode(struct v4l2r_context *ctx,
 	return VA_STATUS_SUCCESS;
 
 fail:
+	/* An OUTPUT attached to an idle request cannot dequeue. Release it
+	 * now, before next_output() would wait on the stranded ring slot. */
+	if (attached) {
+		if (ioctl(output->request_fd, MEDIA_REQUEST_IOC_REINIT) < 0)
+			v4l2r_context_fail(ctx);
+		else
+			ctx->queued_output &= ~(1u << output->index);
+	}
+	/* CAPTURE has no request binding to undo. It may also contain an
+	 * earlier slice. New work must not consume that failed destination. */
+	if (ctx->queued_capture & (UINT64_C(1) << target->capture_index))
+		v4l2r_context_fail(ctx);
+	if (target->decode_status == VA_STATUS_SUCCESS)
+		target->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
 	pthread_mutex_unlock(&ctx->mutex);
 	return VA_STATUS_ERROR_OPERATION_FAILED;
 }
@@ -627,17 +703,22 @@ VAStatus v4l2r_decode(struct v4l2r_context *ctx,
 {
 	VAStatus status;
 
+	if (ctx->failed)
+		return VA_STATUS_ERROR_OPERATION_FAILED;
+
 	/* First submission of the context configures the CAPTURE side using
 	 * the codec controls that are now known (e.g. SPS bit depth). Set
 	 * them without a request first so the driver can base its CAPTURE
 	 * format decision on them. */
 	if (!ctx->streaming) {
 		int ret = v4l2r_set_controls(ctx, -1, controls, count);
-		if (ret < 0)
+		if (ret < 0) {
 			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING,
 				   V4L2R_DIAG_KERNEL, "set-initial-controls", ret,
 				   "failed to set initial controls: %s",
 				   strerror(-ret));
+			return VA_STATUS_ERROR_OPERATION_FAILED;
+		}
 	}
 
 	/* Bind a fresh CAPTURE buffer to the target once per frame (on its
