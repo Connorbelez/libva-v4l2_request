@@ -3,8 +3,10 @@
 Related: [issue #33](https://github.com/iconidentify/libva-v4l2_request/issues/33),
 under [roadmap #7](https://github.com/iconidentify/libva-v4l2_request/issues/7).
 
-This initial draft defines the source investigation needed to publish a codec
-feasibility map. It does not establish feasibility or change a support claim.
+This plan records the original investigation scope. The completed
+[source inventory and feasibility decision](../CODEC_FEASIBILITY.md) now maps
+the candidates to pinned evidence and existing implementation children. Neither
+document changes a support claim.
 
 ## Prerequisite and starting point
 
@@ -90,6 +92,6 @@ exists. The accepted feasibility decision must be merged into the owning
 default branch. Research closure must not promote any support-matrix row.
 
 The final PR must map every acceptance criterion in issue #33 to evidence and
-state the source identities, tests run and remaining limits. The initial draft
-contains this plan only; the inventory, conclusions and child-task decisions
-remain to be produced.
+state the source identities, tests run and remaining limits. The accompanying
+[decision](../CODEC_FEASIBILITY.md) supplies the inventory, conclusions and
+child-task decisions; qualification remains in those children.
