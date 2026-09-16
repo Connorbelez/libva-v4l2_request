@@ -1,0 +1,1220 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "libva-v4l2_request-corpus",
+  "date": "2026-09-16",
+  "purpose": "Pin where every codec regression input comes from, under which terms it may be used, which hash identifies it and which documented limitation a failing vector belongs to, so a fresh contributor can reproduce the r11 evidence without private media or an unpinned upstream checkout.",
+  "policy": {
+    "redistribution_values": [
+      "generated-locally",
+      "download-on-demand-only",
+      "redistributable"
+    ],
+    "asset_classes": [
+      "pass",
+      "expected-rejection",
+      "known-wrong-output",
+      "unsupported-hardware-format",
+      "unsupported-profile",
+      "unsupported-dimension",
+      "unimplemented-syntax",
+      "requires-profile-override",
+      "capability-boundary"
+    ],
+    "coverage_vocabulary": [
+      "progressive",
+      "interlaced",
+      "8-bit-420",
+      "10-bit-420",
+      "422-format",
+      "444-format",
+      "12-bit",
+      "lossless",
+      "full-range",
+      "long-term-reference",
+      "multi-slice",
+      "multi-tile",
+      "multi-context-interleave",
+      "resolution-change",
+      "crop-odd-dimensions",
+      "sub-64-dimension",
+      "profile-override",
+      "truncated-input"
+    ],
+    "hash_pinning": {
+      "corpus_identity": "sha256 of the extracted input file consumed by tests/conformance.py",
+      "upstream_checksum": "md5 (source_checksum) of the upstream download, taken from the pinned suite file and verified before an asset is accepted; the pinned suite digest makes that value itself tamper-evident",
+      "suite_definition": "sha256 of the pinned Fluster suite file; a changed definition invalidates names, checksums and totals",
+      "rule": "A hash becomes an expectation only when a reviewer records it here. tests/corpus.py lock reports hashes and never edits this file.",
+      "licence_rule": "Each entry states whether usable terms were identified or not established (terms_status), where terms were checked (terms_reference, terms_checked) and what that implies. Nothing may be redistributed without an identified licence; 'not established' is recorded explicitly instead of inferred."
+    },
+    "redaction": "Publishable manifests, logs and lock files carry no personal paths, media, tokens, process arguments or extracted core dumps.",
+    "terms_status_values": [
+      "identified",
+      "not-established"
+    ]
+  },
+  "upstreams": {
+    "fluster": {
+      "repo": "https://github.com/fluendo/fluster",
+      "commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "commit_date": "2026-09-01T17:52:20+02:00",
+      "test_suites_path": "test_suites",
+      "note": "Suite definitions are read from this pinned checkout. The r11 evidence was produced from an unpinned local checkout, which is recorded as a gap below."
+    }
+  },
+  "suites": [
+    {
+      "id": "fluster/h.265/JCT-VC-HEVC_V1",
+      "kind": "fluster-suite",
+      "codec": "hevc",
+      "suite_name": "JCT-VC-HEVC_V1",
+      "suite_file": "test_suites/h.265/JCT-VC-HEVC_V1.json",
+      "suite_file_sha256": "778c3cf8724b7f3a9f9ad59d4633531f110e3d660d27f47721b96e148224d04f",
+      "suite_upstream_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "vector_count": 147,
+      "r11_pass_set_key": "hevc",
+      "acquisition": {
+        "method": "fluster-download",
+        "tool": "python3 fluster.py -r <cache> download JCT-VC-HEVC_V1",
+        "resources_layout": "<cache>/<suite_name>/<vector_name>/<input_file>",
+        "mirror_compatible": true
+      },
+      "license": {
+        "redistribution": "download-on-demand-only",
+        "terms_status": "not-established",
+        "terms_reference": "https://www.itu.int/en/Pages/copyright.aspx",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors are distributed from the ITU wftp3 working file area with no per-file terms page. ITU's Disclaimer and Copyright notice (terms_reference) states that permission to reproduce ITU materials should be requested from jur@itu.int and that third-party copyrights must be respected; it grants no redistribution right. Reproduction of the bitstreams is therefore not established, and the resulting decision is download-on-demand-only, local testing, no redistribution. Fluster's own documentation states terms only for the tool (LGPL-3.0), not for the resources.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Usage terms are not established for the ITU/JCT-VC and JVT bitstreams, which is recorded rather than implied."
+      },
+      "r11_expected": {
+        "passed": 144,
+        "total": 147,
+        "passing_frames": 8889,
+        "high10": "off",
+        "profile_mismatch": false,
+        "baseline_record": "codec-validation-r9-2026-09-15.json"
+      },
+      "assets": {
+        "AMP_A_Samsung_7": {
+          "class": "pass",
+          "covers": [
+            "progressive",
+            "8-bit-420"
+          ],
+          "asset_sha256": "09a9c0d78a502ece45f1df02c773b18bb3133fe21a8f1e9046db19bfa68f7c29",
+          "bytes": 265406
+        },
+        "RPS_E_qualcomm_5": {
+          "class": "known-wrong-output",
+          "covers": [
+            "long-term-reference"
+          ],
+          "asset_sha256": "b82c5c8c251943cc41b59e7f63f72890641fdcdbcec8e916223e4ee28a16c7ad",
+          "bytes": 438168
+        },
+        "VPSSPSPPS_A_MainConcept_1": {
+          "class": "known-wrong-output",
+          "covers": [
+            "progressive"
+          ],
+          "asset_sha256": "8501a5e5f0f191d3810a7aecab43aacac1fcc28f08cb3731158cc48a89501a27",
+          "bytes": 106928
+        },
+        "TSUNEQBD_A_MAIN10_Technicolor_2": {
+          "class": "capability-boundary",
+          "covers": [
+            "10-bit-420"
+          ],
+          "asset_sha256": "a0b12cc3b180a410614931c94a693852c34aa89587a934aa5af9dbaa10cd7dfc",
+          "bytes": 209282
+        }
+      }
+    },
+    {
+      "id": "fluster/h.264/JVT-AVC_V1",
+      "kind": "fluster-suite",
+      "codec": "h264",
+      "suite_name": "JVT-AVC_V1",
+      "suite_file": "test_suites/h.264/JVT-AVC_V1.json",
+      "suite_file_sha256": "602cb6495b77514d11812c9a957682dc583172b24524ea29bc83bfa1d5803bb0",
+      "suite_upstream_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "vector_count": 135,
+      "r11_pass_set_key": "avc",
+      "acquisition": {
+        "method": "fluster-download",
+        "tool": "python3 fluster.py -r <cache> download JVT-AVC_V1",
+        "resources_layout": "<cache>/<suite_name>/<vector_name>/<input_file>",
+        "mirror_compatible": true
+      },
+      "license": {
+        "redistribution": "download-on-demand-only",
+        "terms_status": "not-established",
+        "terms_reference": "https://www.itu.int/en/Pages/copyright.aspx",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors are distributed from the ITU wftp3 working file area with no per-file terms page. ITU's Disclaimer and Copyright notice (terms_reference) states that permission to reproduce ITU materials should be requested from jur@itu.int and that third-party copyrights must be respected; it grants no redistribution right. Reproduction of the bitstreams is therefore not established, and the resulting decision is download-on-demand-only, local testing, no redistribution. Fluster's own documentation states terms only for the tool (LGPL-3.0), not for the resources.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Usage terms are not established for the ITU/JCT-VC and JVT bitstreams, which is recorded rather than implied."
+      },
+      "r11_expected": {
+        "passed": 73,
+        "total": 135,
+        "passing_frames": 10134,
+        "high10": "off",
+        "profile_mismatch": false,
+        "baseline_record": "codec-validation-r9-2026-09-15.json"
+      },
+      "assets": {
+        "AUD_MW_E": {
+          "class": "pass",
+          "covers": [
+            "progressive",
+            "8-bit-420"
+          ],
+          "asset_sha256": "173b75a2883f3208894877549362f118721f45633bf08007396703ef2c358987",
+          "bytes": 54828
+        },
+        "BA3_SVA_C": {
+          "class": "requires-profile-override",
+          "covers": [
+            "profile-override",
+            "progressive"
+          ],
+          "asset_sha256": "f21e84fb480d24d1d912cc61d6487afd4f05b9a4956536313715a5741e3b695b",
+          "bytes": 10611
+        },
+        "cabac_mot_fld0_full": {
+          "class": "unimplemented-syntax",
+          "covers": [
+            "interlaced"
+          ],
+          "asset_sha256": "2ff34d3b7fa25106dda248350730de340beeb32c94ed2028eb610dfeea377499",
+          "bytes": 405556
+        }
+      }
+    },
+    {
+      "id": "fluster/h.264/JVT-FR-EXT",
+      "kind": "fluster-suite",
+      "codec": "h264-frext",
+      "suite_name": "JVT-FR-EXT",
+      "suite_file": "test_suites/h.264/JVT-FR-EXT.json",
+      "suite_file_sha256": "4adeeb82abbc258c7f7247f1bcf7e9d70788bf0ea28ee209e498ab9c31746a51",
+      "suite_upstream_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "vector_count": 69,
+      "r11_pass_set_key": "frext",
+      "acquisition": {
+        "method": "fluster-download",
+        "tool": "python3 fluster.py -r <cache> download JVT-FR-EXT",
+        "resources_layout": "<cache>/<suite_name>/<vector_name>/<input_file>",
+        "mirror_compatible": true
+      },
+      "license": {
+        "redistribution": "download-on-demand-only",
+        "terms_status": "not-established",
+        "terms_reference": "https://www.itu.int/en/Pages/copyright.aspx",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors are distributed from the ITU wftp3 working file area with no per-file terms page. ITU's Disclaimer and Copyright notice (terms_reference) states that permission to reproduce ITU materials should be requested from jur@itu.int and that third-party copyrights must be respected; it grants no redistribution right. Reproduction of the bitstreams is therefore not established, and the resulting decision is download-on-demand-only, local testing, no redistribution. Fluster's own documentation states terms only for the tool (LGPL-3.0), not for the resources.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Usage terms are not established for the ITU/JCT-VC and JVT bitstreams, which is recorded rather than implied."
+      },
+      "r11_expected": {
+        "passed": 27,
+        "total": 69,
+        "passing_frames": 4077,
+        "high10": "ffmpeg",
+        "profile_mismatch": false,
+        "baseline_record": "codec-validation-r9-2026-09-15.json"
+      },
+      "assets": {
+        "Hi422FR1_SONY_A": {
+          "class": "unsupported-hardware-format",
+          "covers": [
+            "422-format"
+          ],
+          "asset_sha256": "d0fcd8a6699d85f78eb80d8c2b2113ce6eb03347a0dc8ed19aa51b308986a589",
+          "bytes": 174556
+        }
+      }
+    },
+    {
+      "id": "fluster/vp9/VP9-TEST-VECTORS",
+      "kind": "fluster-suite",
+      "codec": "vp9",
+      "suite_name": "VP9-TEST-VECTORS",
+      "suite_file": "test_suites/vp9/VP9-TEST-VECTORS.json",
+      "suite_file_sha256": "37f79fb4b3c529f54f8f54b0e36040b410d75a2bf71d022f9726e5545bd129b0",
+      "suite_upstream_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "vector_count": 305,
+      "r11_pass_set_key": "vp9",
+      "acquisition": {
+        "method": "fluster-download",
+        "tool": "python3 fluster.py -r <cache> download VP9-TEST-VECTORS",
+        "resources_layout": "<cache>/<suite_name>/<vector_name>/<input_file>",
+        "mirror_compatible": true
+      },
+      "license": {
+        "redistribution": "download-on-demand-only",
+        "terms_status": "not-established",
+        "terms_reference": "https://www.webmproject.org/license/",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors come from the WebM project test-data bucket named in each vector source. The bucket's test_data/libvpx/ directory carries no LICENSE file (checked 2026-09-16: 404), and the WebM project licence page (terms_reference) states terms for the project's software and format, not for this test data. No usable per-file terms could be found, so the decision is download-on-demand-only, local testing, no redistribution.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Terms not established; recorded explicitly instead of inferred from the catalogue description."
+      },
+      "r11_expected": {
+        "passed": 216,
+        "total": 305,
+        "passing_frames": 3334,
+        "high10": "off",
+        "profile_mismatch": false,
+        "baseline_record": "codec-validation-r10-2026-09-15.json"
+      },
+      "assets": {
+        "vp90-2-00-quantizer-00.webm": {
+          "class": "pass",
+          "covers": [
+            "progressive",
+            "8-bit-420"
+          ],
+          "asset_sha256": "92f26f690d76b46bab8b0807e95b593b7cb159472cfecc35ddf545c889825c6d",
+          "bytes": 148198
+        },
+        "vp90-2-02-size-08x08.webm": {
+          "class": "unsupported-dimension",
+          "covers": [
+            "sub-64-dimension"
+          ],
+          "asset_sha256": "c21ae0a7f0eae0fce0879133e1d6bcd8be58bb4a06eb324571dd50d3f158115e",
+          "bytes": 1367
+        },
+        "vp90-2-21-resize_inter_640x360_5_1-2.webm": {
+          "class": "known-wrong-output",
+          "covers": [
+            "resolution-change"
+          ],
+          "asset_sha256": "db3e3f40a289909ae21e5025afe9d82b649cce7c152791e0c1efba4ee9aa3b4b",
+          "bytes": 89400
+        },
+        "vp91-2-04-yuv422.webm": {
+          "class": "unsupported-profile",
+          "covers": [
+            "422-format"
+          ],
+          "asset_sha256": "b5b1c12f6a828715bcdc15e7485c2c43a0afb53488093ed4fadbc02f9bed78bb",
+          "bytes": 13749
+        }
+      }
+    },
+    {
+      "id": "fluster/vp9/VP9-TEST-VECTORS-HIGH",
+      "kind": "fluster-suite",
+      "codec": "vp9",
+      "suite_name": "VP9-TEST-VECTORS-HIGH",
+      "suite_file": "test_suites/vp9/VP9-TEST-VECTORS-HIGH.json",
+      "suite_file_sha256": "0f0bbd89d3001522d8aa7b86f3a0c1b5ed3d323767a22ed4d504e1b67c4d2df5",
+      "suite_upstream_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "vector_count": 6,
+      "r11_pass_set_key": "vp9-high10",
+      "acquisition": {
+        "method": "fluster-download",
+        "tool": "python3 fluster.py -r <cache> download VP9-TEST-VECTORS-HIGH",
+        "resources_layout": "<cache>/<suite_name>/<vector_name>/<input_file>",
+        "mirror_compatible": true
+      },
+      "license": {
+        "redistribution": "download-on-demand-only",
+        "terms_status": "not-established",
+        "terms_reference": "https://www.webmproject.org/license/",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The vectors come from the WebM project test-data bucket named in each vector source. The bucket's test_data/libvpx/ directory carries no LICENSE file (checked 2026-09-16: 404), and the WebM project licence page (terms_reference) states terms for the project's software and format, not for this test data. No usable per-file terms could be found, so the decision is download-on-demand-only, local testing, no redistribution.",
+        "license_name": null,
+        "basis": "The vectors stay with their distributor; this repository commits only acquisition metadata, checksums and classifications, so no third-party media is copied.",
+        "notes": "Terms not established; recorded explicitly instead of inferred from the catalogue description."
+      },
+      "r11_expected": {
+        "passed": 1,
+        "total": 1,
+        "passing_frames": 10,
+        "high10": "off",
+        "profile_mismatch": false,
+        "baseline_record": null
+      },
+      "assets": {
+        "vp92-2-20-10bit-yuv420.webm": {
+          "class": "pass",
+          "covers": [
+            "10-bit-420"
+          ],
+          "asset_sha256": "c4b56b148d5039aa824fde3d4877dbd2604d0de7f77af96f4ba1ade537396a38",
+          "bytes": 12690
+        }
+      }
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "ki-hevc-ltr-known-wrong-output",
+      "suite": "fluster/h.265/JCT-VC-HEVC_V1",
+      "class": "known-wrong-output",
+      "summary": "Long-term reference handling for RPS_E still produces wrong output; short-term-only AVD ordering is preserved in decode order and long-term streams keep the original order.",
+      "evidence": [
+        "docs/RPS_E.md",
+        "docs/r11-pass-sets.json",
+        "https://github.com/iconidentify/omarchy-m1-video/blob/main/docs/CODEC_STATUS.md"
+      ],
+      "hardware_needed": true,
+      "review": "Recorded from the r11 M1 record; re-review when the HEVC reference handling changes.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^RPS_E_qualcomm_5$"
+      },
+      "vectors": [
+        "RPS_E_qualcomm_5"
+      ]
+    },
+    {
+      "id": "ki-hevc-main10-capability-boundary",
+      "suite": "fluster/h.265/JCT-VC-HEVC_V1",
+      "class": "capability-boundary",
+      "summary": "Main 10 stream in the 8-bit configuration of the suite run: the 10-bit path must be enabled deliberately, and this is a capability boundary rather than a hardware failure claim.",
+      "evidence": [
+        "docs/r11-pass-sets.json (hevc.high10=off)"
+      ],
+      "hardware_needed": true,
+      "review": "Confirm against a deliberate 10-bit run before changing the class.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^TSUNEQBD_A_MAIN10_Technicolor_2$"
+      },
+      "vectors": [
+        "TSUNEQBD_A_MAIN10_Technicolor_2"
+      ]
+    },
+    {
+      "id": "ki-hevc-ffmpeg-paramset-known-wrong-output",
+      "suite": "fluster/h.265/JCT-VC-HEVC_V1",
+      "class": "known-wrong-output",
+      "summary": "FFmpeg's parameter-set parser loses pictures in this stream; direct GStreamer V4L2 passes it. Do not count it as a driver pass or a driver failure without the client name.",
+      "evidence": [
+        "tests/README.md (codec conformance without software fallback)"
+      ],
+      "hardware_needed": true,
+      "review": "Client-dependent; keep the client in the evidence.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^VPSSPSPPS_A_MainConcept_1$"
+      },
+      "vectors": [
+        "VPSSPSPPS_A_MainConcept_1"
+      ]
+    },
+    {
+      "id": "ki-avc-profile-override",
+      "suite": "fluster/h.264/JVT-AVC_V1",
+      "class": "requires-profile-override",
+      "summary": "Progressive Baseline/Extended streams that FFmpeg's profile selection rejects; they decoded bit-exact on the M1 with an explicit allow_profile_mismatch override.",
+      "evidence": [
+        "tests/README.md",
+        "docs/r11-pass-sets.json (suites.overrides)"
+      ],
+      "hardware_needed": true,
+      "review": "A per-file workaround for tested coding features, not Baseline/Extended support.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^(BA3_SVA_C|MR2_TANDBERG_E|MR3_TANDBERG_B|MR4_TANDBERG_C|MR5_TANDBERG_C)$"
+      },
+      "vectors": [
+        "BA3_SVA_C",
+        "MR2_TANDBERG_E",
+        "MR3_TANDBERG_B",
+        "MR4_TANDBERG_C",
+        "MR5_TANDBERG_C"
+      ]
+    },
+    {
+      "id": "ki-avc-unimplemented-syntax",
+      "suite": "fluster/h.264/JVT-AVC_V1",
+      "class": "unimplemented-syntax",
+      "summary": "Interlacing, MBAFF, field pictures, FMO, ASO, data partitions and similar syntax are not implemented; the earlier parsing defects in these paths are fixed and the remaining gap needs work, not a new workaround.",
+      "evidence": [
+        "tests/README.md",
+        "docs/ROADMAP.md (#11, #27)"
+      ],
+      "hardware_needed": true,
+      "review": "Re-review whenever H.264 syntax support changes.",
+      "derive": {
+        "base": "r11_failing",
+        "exclude_entries": [
+          "ki-avc-profile-override"
+        ]
+      },
+      "vectors": [
+        "CABREF3_Sand_D",
+        "CAFI1_SVA_C",
+        "CAMA1_Sony_C",
+        "CAMA1_TOSHIBA_B",
+        "CAMA3_Sand_E",
+        "CAMACI3_Sony_C",
+        "CAMANL1_TOSHIBA_B",
+        "CAMANL2_TOSHIBA_B",
+        "CAMANL3_Sand_E",
+        "CAMASL3_Sony_B",
+        "CAMP_MOT_MBAFF_L30",
+        "CAMP_MOT_MBAFF_L31",
+        "CANLMA2_Sony_C",
+        "CANLMA3_Sony_C",
+        "CAPA1_TOSHIBA_B",
+        "CAPAMA3_Sand_F",
+        "CVCANLMA2_Sony_C",
+        "CVFI1_SVA_C",
+        "CVFI1_Sony_D",
+        "CVFI2_SVA_C",
+        "CVFI2_Sony_H",
+        "CVMA1_Sony_D",
+        "CVMA1_TOSHIBA_B",
+        "CVMANL1_TOSHIBA_B",
+        "CVMANL2_TOSHIBA_B",
+        "CVMAPAQP3_Sony_E",
+        "CVMAQP2_Sony_G",
+        "CVMAQP3_Sony_D",
+        "CVMP_MOT_FLD_L30_B",
+        "CVMP_MOT_FRM_L31_B",
+        "CVNLFI1_Sony_C",
+        "CVNLFI2_Sony_H",
+        "CVPA1_TOSHIBA_B",
+        "FI1_Sony_E",
+        "FM1_BT_B",
+        "FM1_FT_E",
+        "FM2_SVA_C",
+        "MR6_BT_B",
+        "MR7_BT_B",
+        "MR8_BT_B",
+        "MR9_BT_B",
+        "SP1_BT_A",
+        "Sharp_MP_Field_1_B",
+        "Sharp_MP_Field_2_B",
+        "Sharp_MP_Field_3_B",
+        "Sharp_MP_PAFF_1r2",
+        "Sharp_MP_PAFF_2r",
+        "cabac_mot_fld0_full",
+        "cabac_mot_mbaff0_full",
+        "cabac_mot_picaff0_full",
+        "cama1_vtc_c",
+        "cama2_vtc_b",
+        "cama3_vtc_b",
+        "cavlc_mot_fld0_full_B",
+        "cavlc_mot_mbaff0_full_B",
+        "cavlc_mot_picaff0_full_B",
+        "sp2_bt_b"
+      ]
+    },
+    {
+      "id": "ki-frext-422-unsupported-format",
+      "suite": "fluster/h.264/JVT-FR-EXT",
+      "class": "unsupported-hardware-format",
+      "summary": "High 4:2:2 output is outside the tested hardware formats; FFmpeg can silently fall back to software here, so these vectors are not hardware evidence either way.",
+      "evidence": [
+        "tests/README.md",
+        "docs/SUPPORT.md"
+      ],
+      "hardware_needed": true,
+      "review": "Only a supported 4:2:2 capability claim may remove this class.",
+      "derive": {
+        "base": "r11_failing",
+        "output_format_in": [
+          "yuv422p",
+          "yuv422p10le"
+        ]
+      },
+      "vectors": [
+        "FREXT1_TANDBERG_A",
+        "FREXT2_TANDBERG_A",
+        "FREXT3_TANDBERG_A",
+        "Hi422FR10_SONY_A",
+        "Hi422FR11_SONY_A",
+        "Hi422FR12_SONY_A",
+        "Hi422FR13_SONY_A",
+        "Hi422FR14_SONY_A",
+        "Hi422FR15_SONY_A",
+        "Hi422FR1_SONY_A",
+        "Hi422FR2_SONY_A",
+        "Hi422FR3_SONY_A",
+        "Hi422FR4_SONY_A",
+        "Hi422FR6_SONY_A",
+        "Hi422FR7_SONY_A",
+        "Hi422FR8_SONY_A",
+        "Hi422FR9_SONY_A",
+        "Hi422FREXT16_SONY_A",
+        "Hi422FREXT17_SONY_A",
+        "Hi422FREXT18_SONY_A",
+        "Hi422FREXT19_SONY_A"
+      ]
+    },
+    {
+      "id": "ki-frext-high-unimplemented-syntax",
+      "suite": "fluster/h.264/JVT-FR-EXT",
+      "class": "unimplemented-syntax",
+      "summary": "High-profile syntax (interlacing, frame packing, data partitions and related features) is unimplemented; the opt-in High 10 path passes 27 of 69 FRExt vectors.",
+      "evidence": [
+        "tests/README.md",
+        "docs/r11-pass-sets.json (frext)"
+      ],
+      "hardware_needed": true,
+      "review": "Re-review with the FRExt evidence record.",
+      "derive": {
+        "base": "r11_failing",
+        "output_format_in": [
+          "yuv420p"
+        ]
+      },
+      "vectors": [
+        "FREXT01_JVC_D",
+        "FREXT02_JVC_C",
+        "FRExt2_Panasonic_C",
+        "FRExt4_Panasonic_B",
+        "HCAFF1_HHI_B",
+        "HCAMFF1_HHI_B",
+        "HCHP3_HHI_A",
+        "HPCAFLNL_BRCM_C",
+        "HPCAFL_BRCM_C",
+        "HPCAMAPALQ_BRCM_B",
+        "HPCVFLNL_BRCM_A",
+        "HPCVFL_BRCM_A",
+        "HVLCFI0_Sony_B",
+        "HVLCMFF0_Sony_B",
+        "HVLCPFF0_Sony_B",
+        "brcm_freh10",
+        "brcm_freh11",
+        "brcm_freh4",
+        "brcm_freh5",
+        "brcm_freh6",
+        "freh7_b"
+      ]
+    },
+    {
+      "id": "ki-vp9-sub64-dimension",
+      "suite": "fluster/vp9/VP9-TEST-VECTORS",
+      "class": "unsupported-dimension",
+      "summary": "Streams with a dimension below 64 pixels are rejected before submission; software passes them, so this is a decoder capability boundary, not corrupt input.",
+      "evidence": [
+        "tests/README.md (VP9 validation)"
+      ],
+      "hardware_needed": true,
+      "review": "Changing the minimum dimension is a support-contract change.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^vp90-2-02-size-\\d+x\\d+\\.webm$",
+        "dimension_below": 64
+      },
+      "vectors": [
+        "vp90-2-02-size-08x08.webm",
+        "vp90-2-02-size-08x10.webm",
+        "vp90-2-02-size-08x16.webm",
+        "vp90-2-02-size-08x18.webm",
+        "vp90-2-02-size-08x32.webm",
+        "vp90-2-02-size-08x34.webm",
+        "vp90-2-02-size-08x64.webm",
+        "vp90-2-02-size-08x66.webm",
+        "vp90-2-02-size-10x08.webm",
+        "vp90-2-02-size-10x10.webm",
+        "vp90-2-02-size-10x16.webm",
+        "vp90-2-02-size-10x18.webm",
+        "vp90-2-02-size-10x32.webm",
+        "vp90-2-02-size-10x34.webm",
+        "vp90-2-02-size-10x64.webm",
+        "vp90-2-02-size-10x66.webm",
+        "vp90-2-02-size-16x08.webm",
+        "vp90-2-02-size-16x10.webm",
+        "vp90-2-02-size-16x16.webm",
+        "vp90-2-02-size-16x18.webm",
+        "vp90-2-02-size-16x32.webm",
+        "vp90-2-02-size-16x34.webm",
+        "vp90-2-02-size-16x64.webm",
+        "vp90-2-02-size-16x66.webm",
+        "vp90-2-02-size-18x08.webm",
+        "vp90-2-02-size-18x10.webm",
+        "vp90-2-02-size-18x16.webm",
+        "vp90-2-02-size-18x18.webm",
+        "vp90-2-02-size-18x32.webm",
+        "vp90-2-02-size-18x34.webm",
+        "vp90-2-02-size-18x64.webm",
+        "vp90-2-02-size-18x66.webm",
+        "vp90-2-02-size-32x08.webm",
+        "vp90-2-02-size-32x10.webm",
+        "vp90-2-02-size-32x16.webm",
+        "vp90-2-02-size-32x18.webm",
+        "vp90-2-02-size-32x32.webm",
+        "vp90-2-02-size-32x34.webm",
+        "vp90-2-02-size-32x64.webm",
+        "vp90-2-02-size-32x66.webm",
+        "vp90-2-02-size-34x08.webm",
+        "vp90-2-02-size-34x10.webm",
+        "vp90-2-02-size-34x16.webm",
+        "vp90-2-02-size-34x18.webm",
+        "vp90-2-02-size-34x32.webm",
+        "vp90-2-02-size-34x34.webm",
+        "vp90-2-02-size-34x64.webm",
+        "vp90-2-02-size-34x66.webm",
+        "vp90-2-02-size-64x08.webm",
+        "vp90-2-02-size-64x10.webm",
+        "vp90-2-02-size-64x16.webm",
+        "vp90-2-02-size-64x18.webm",
+        "vp90-2-02-size-64x32.webm",
+        "vp90-2-02-size-64x34.webm",
+        "vp90-2-02-size-66x08.webm",
+        "vp90-2-02-size-66x10.webm",
+        "vp90-2-02-size-66x16.webm",
+        "vp90-2-02-size-66x18.webm",
+        "vp90-2-02-size-66x32.webm",
+        "vp90-2-02-size-66x34.webm"
+      ]
+    },
+    {
+      "id": "ki-vp9-profile1-unsupported-format",
+      "suite": "fluster/vp9/VP9-TEST-VECTORS",
+      "class": "unsupported-profile",
+      "summary": "Profile 1 4:2:2/4:4:4 streams are outside the advertised VP9 profiles on the tested device (profiles 0 and 2).",
+      "evidence": [
+        "tests/README.md",
+        "docs/SUPPORT.md"
+      ],
+      "hardware_needed": true,
+      "review": "Tie any change to an advertised-profile change.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^vp91-2-04-yuv(422|444)\\.webm$",
+        "output_format_in": [
+          "yuv422p",
+          "yuv444p"
+        ]
+      },
+      "vectors": [
+        "vp91-2-04-yuv422.webm",
+        "vp91-2-04-yuv444.webm"
+      ]
+    },
+    {
+      "id": "ki-vp9-resize-rejected-before-submission",
+      "suite": "fluster/vp9/VP9-TEST-VECTORS",
+      "class": "expected-rejection",
+      "summary": "These two resize streams previously triggered firmware timeouts; userspace now rejects them without new kernel messages. Rejection is not decode support and the streams stay open in the roadmap.",
+      "evidence": [
+        "tests/README.md",
+        "docs/ROADMAP.md (#13)"
+      ],
+      "hardware_needed": true,
+      "review": "Decoding must not be claimed from the rejection.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^vp90-2-(05|18)-resize\\.ivf$"
+      },
+      "vectors": [
+        "vp90-2-05-resize.ivf",
+        "vp90-2-18-resize.ivf"
+      ]
+    },
+    {
+      "id": "ki-vp9-inter-resize-known-wrong-output",
+      "suite": "fluster/vp9/VP9-TEST-VECTORS",
+      "class": "known-wrong-output",
+      "summary": "Inter-frame resize checksums mismatch on AVD; full inter-frame resize support needs the kernel-side work tracked in the roadmap.",
+      "evidence": [
+        "tests/README.md",
+        "docs/ROADMAP.md (#13, #29)"
+      ],
+      "hardware_needed": true,
+      "review": "Re-review with any resize-state implementation.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^vp90-2-21-resize_inter_.*\\.webm$"
+      },
+      "vectors": [
+        "vp90-2-21-resize_inter_1280x720_5_1-2.webm",
+        "vp90-2-21-resize_inter_1280x720_5_3-4.webm",
+        "vp90-2-21-resize_inter_1280x720_7_1-2.webm",
+        "vp90-2-21-resize_inter_1280x720_7_3-4.webm",
+        "vp90-2-21-resize_inter_1920x1080_5_1-2.webm",
+        "vp90-2-21-resize_inter_1920x1080_5_3-4.webm",
+        "vp90-2-21-resize_inter_1920x1080_7_1-2.webm",
+        "vp90-2-21-resize_inter_1920x1080_7_3-4.webm",
+        "vp90-2-21-resize_inter_320x180_5_1-2.webm",
+        "vp90-2-21-resize_inter_320x180_5_3-4.webm",
+        "vp90-2-21-resize_inter_320x180_7_1-2.webm",
+        "vp90-2-21-resize_inter_320x180_7_3-4.webm",
+        "vp90-2-21-resize_inter_320x240_5_1-2.webm",
+        "vp90-2-21-resize_inter_320x240_5_3-4.webm",
+        "vp90-2-21-resize_inter_320x240_7_1-2.webm",
+        "vp90-2-21-resize_inter_320x240_7_3-4.webm",
+        "vp90-2-21-resize_inter_640x360_5_1-2.webm",
+        "vp90-2-21-resize_inter_640x360_5_3-4.webm",
+        "vp90-2-21-resize_inter_640x360_7_1-2.webm",
+        "vp90-2-21-resize_inter_640x360_7_3-4.webm",
+        "vp90-2-21-resize_inter_640x480_5_1-2.webm",
+        "vp90-2-21-resize_inter_640x480_5_3-4.webm",
+        "vp90-2-21-resize_inter_640x480_7_1-2.webm",
+        "vp90-2-21-resize_inter_640x480_7_3-4.webm"
+      ]
+    },
+    {
+      "id": "ki-vp9-svc-reference-mismatch",
+      "suite": "fluster/vp9/VP9-TEST-VECTORS",
+      "class": "known-wrong-output",
+      "summary": "Scalable-video stream also misses its reference checksum in software, with a different digest: the comparison baseline itself is in doubt, so this must not be reported as a plain driver regression.",
+      "evidence": [
+        "tests/README.md (VP9 validation)"
+      ],
+      "hardware_needed": true,
+      "review": "Treat as a reference/software question first.",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^vp90-2-22-svc_1280x720_3\\.ivf$"
+      },
+      "vectors": [
+        "vp90-2-22-svc_1280x720_3.ivf"
+      ]
+    },
+    {
+      "id": "ki-vp9-high10-outside-tested-formats",
+      "suite": "fluster/vp9/VP9-TEST-VECTORS-HIGH",
+      "class": "unsupported-hardware-format",
+      "summary": "12-bit and 4:2:2/4:4:4 high-bit-depth vectors are outside the tested hardware formats; the single 10-bit 4:2:0 vector is the r9 1/1 result.",
+      "evidence": [
+        "tests/README.md (VP9 validation)",
+        "docs/r11-pass-sets.json (vp9-high10)"
+      ],
+      "hardware_needed": true,
+      "review": "Only a supported-format change may remove this class.",
+      "derive": {
+        "base": "suite_all",
+        "output_format_in": [
+          "yuv420p12le",
+          "yuv422p10le",
+          "yuv422p12le",
+          "yuv444p10le",
+          "yuv444p12le"
+        ]
+      },
+      "vectors": [
+        "vp92-2-20-12bit-yuv420.webm",
+        "vp93-2-20-10bit-yuv422.webm",
+        "vp93-2-20-10bit-yuv444.webm",
+        "vp93-2-20-12bit-yuv422.webm",
+        "vp93-2-20-12bit-yuv444.webm"
+      ]
+    }
+  ],
+  "generated": [
+    {
+      "id": "generated/frame-check-resolution-change",
+      "kind": "generated",
+      "codec": "h264",
+      "producer": "tests/frame-check.sh",
+      "frames": 4,
+      "checksum_policy": "compare-to-software-output",
+      "expected_asset_hashes_committed": false,
+      "r11_part": null,
+      "r11_frames": null,
+      "determinism": {
+        "basis": "synthetic lavfi testsrc2 input with fixed encoder settings; the reference is the locally decoded software output",
+        "seed_policy": "no encoder seed is set: the comparison is against output recomputed on the same machine, so a tool change cannot silently pass a committed hash",
+        "tool_pins": [
+          "ffmpeg 6.1.1 / libx264 / libx265 / libvpx-vp9 (see docs/CORPUS.md for the verified container)"
+        ]
+      },
+      "covers": [
+        "progressive",
+        "resolution-change"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
+        }
+      ],
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "Two 2-frame libx264 clips (64x48 and 128x96, testsrc2 rate=1, preset ultrafast) concatenated into one stream, using the script's `cat` step; the frame log must show both native sizes."
+      }
+    },
+    {
+      "id": "generated/frame-check-crop",
+      "kind": "generated",
+      "codec": "h264",
+      "producer": "tests/frame-check.sh",
+      "frames": 2,
+      "checksum_policy": "compare-to-software-output",
+      "expected_asset_hashes_committed": false,
+      "r11_part": null,
+      "r11_frames": null,
+      "determinism": {
+        "basis": "synthetic lavfi testsrc2 input with fixed encoder settings; the reference is the locally decoded software output",
+        "seed_policy": "no encoder seed is set: the comparison is against output recomputed on the same machine, so a tool change cannot silently pass a committed hash",
+        "tool_pins": [
+          "ffmpeg 6.1.1 / libx264 / libx265 / libvpx-vp9 (see docs/CORPUS.md for the verified container)"
+        ]
+      },
+      "covers": [
+        "crop-odd-dimensions"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
+        }
+      ],
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "The same 64x48 clip copied with the h264_metadata bitstream filter cropping 2 pixels on every side (crop_left/right/top/bottom=2), expected as 60x44; the reference is an explicit pixel crop of the uncropped clip, not a metadata-cropped decode."
+      }
+    },
+    {
+      "id": "generated/frame-check-truncated",
+      "kind": "generated",
+      "codec": "h264",
+      "producer": "tests/frame-check.sh",
+      "frames": null,
+      "checksum_policy": "derived-at-runtime",
+      "expected_asset_hashes_committed": false,
+      "r11_part": null,
+      "r11_frames": null,
+      "determinism": {
+        "basis": "synthetic lavfi testsrc2 input with fixed encoder settings; the reference is the locally decoded software output",
+        "seed_policy": "no encoder seed is set: the comparison is against output recomputed on the same machine, so a tool change cannot silently pass a committed hash",
+        "tool_pins": [
+          "ffmpeg 6.1.1 / libx264 / libx265 / libvpx-vp9 (see docs/CORPUS.md for the verified container)"
+        ]
+      },
+      "covers": [
+        "truncated-input"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Corrupt fixture: expected to fail and never treated as reference output."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
+        }
+      ],
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "The first 12 bytes of the concatenated clip (`head -c 12`) used as corrupt input; the run must fail without producing reference hashes."
+      }
+    },
+    {
+      "id": "generated/vp9-matrix",
+      "kind": "generated",
+      "codec": "vp9",
+      "producer": "tests/vp9-matrix.sh",
+      "frames": 192,
+      "checksum_policy": "compare-to-software-output",
+      "expected_asset_hashes_committed": false,
+      "r11_part": "vp9",
+      "r11_frames": 384,
+      "determinism": {
+        "basis": "synthetic lavfi testsrc2 input with fixed encoder settings; the reference is the locally decoded software output",
+        "seed_policy": "no encoder seed is set: the comparison is against output recomputed on the same machine, so a tool change cannot silently pass a committed hash",
+        "tool_pins": [
+          "ffmpeg 6.1.1 / libx264 / libx265 / libvpx-vp9 (see docs/CORPUS.md for the verified container)"
+        ]
+      },
+      "covers": [
+        "8-bit-420",
+        "10-bit-420",
+        "full-range",
+        "lossless",
+        "multi-tile",
+        "progressive"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
+        }
+      ],
+      "reproduction": {
+        "producer": "tests/vp9-matrix.sh",
+        "invocation": "python3 tests/hwguard.py -- sh tests/vp9-matrix.sh BUILD/src",
+        "description": "Eight 24-frame 640x360 clips: 8-bit/10-bit yuv420p x tv/pc range x lossy/lossless, encoded with libvpx-vp9 (-deadline good -cpu-used 5 -threads 2 -tile-columns 1 -tile-rows 1 -lag-in-frames 12 -auto-alt-ref 1 -g 12 -b:v 0), each decoded normally and with early export."
+      }
+    },
+    {
+      "id": "generated/h264-high10",
+      "kind": "generated",
+      "codec": "h264-frext",
+      "producer": "tests/h264-high10.sh",
+      "frames": 72,
+      "checksum_policy": "compare-to-software-output",
+      "expected_asset_hashes_committed": false,
+      "r11_part": "h264_high10",
+      "r11_frames": 144,
+      "determinism": {
+        "basis": "synthetic lavfi testsrc2 input with fixed encoder settings; the reference is the locally decoded software output",
+        "seed_policy": "no encoder seed is set: the comparison is against output recomputed on the same machine, so a tool change cannot silently pass a committed hash",
+        "tool_pins": [
+          "ffmpeg 6.1.1 / libx264 / libx265 / libvpx-vp9 (see docs/CORPUS.md for the verified container)"
+        ]
+      },
+      "covers": [
+        "10-bit-420",
+        "multi-slice",
+        "crop-odd-dimensions",
+        "progressive"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
+        }
+      ],
+      "reproduction": {
+        "producer": "tests/h264-high10.sh",
+        "invocation": "python3 tests/hwguard.py --deadline 180 -- sh tests/h264-high10.sh BUILD/src",
+        "description": "Six 12-frame 10-bit libx264 clips from a 10-bit-capable build: CABAC and CAVLC, QP 1/21/51, four slices, B pictures and a cropped 640x360 output, each decoded normally and with early export under LIBVA_V4L2_H264_HIGH10=ffmpeg."
+      }
+    },
+    {
+      "id": "generated/shared-contexts",
+      "kind": "generated",
+      "codec": "h264+hevc+vp9",
+      "producer": "tests/shared-contexts.sh",
+      "frames": 168,
+      "checksum_policy": "compare-to-software-output",
+      "expected_asset_hashes_committed": false,
+      "r11_part": "shared_contexts",
+      "r11_frames": 336,
+      "determinism": {
+        "basis": "synthetic lavfi testsrc2 input with fixed encoder settings; the reference is the locally decoded software output",
+        "seed_policy": "no encoder seed is set: the comparison is against output recomputed on the same machine, so a tool change cannot silently pass a committed hash",
+        "tool_pins": [
+          "ffmpeg 6.1.1 / libx264 / libx265 / libvpx-vp9 (see docs/CORPUS.md for the verified container)"
+        ]
+      },
+      "covers": [
+        "multi-context-interleave",
+        "8-bit-420",
+        "10-bit-420",
+        "progressive"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
+        }
+      ],
+      "reproduction": {
+        "producer": "tests/shared-contexts.sh",
+        "invocation": "python3 tests/hwguard.py -- sh tests/shared-contexts.sh BUILD/src",
+        "description": "Four clips of 24/36/48/60 frames (H.264, HEVC, 8-bit and 10-bit VP9) interleaved on one VA display so earlier contexts are destroyed while later ones continue; 168 frames compared twice (normal and early export) for 336 comparisons."
+      }
+    },
+    {
+      "id": "generated/hwdownload",
+      "kind": "generated",
+      "codec": "h264+hevc",
+      "producer": "tests/hwdownload.sh",
+      "frames": 30,
+      "checksum_policy": "compare-to-software-output",
+      "expected_asset_hashes_committed": false,
+      "r11_part": null,
+      "r11_frames": null,
+      "determinism": {
+        "basis": "synthetic lavfi testsrc2 input with fixed encoder settings; the reference is the locally decoded software output",
+        "seed_policy": "no encoder seed is set: the comparison is against output recomputed on the same machine, so a tool change cannot silently pass a committed hash",
+        "tool_pins": [
+          "ffmpeg 6.1.1 / libx264 / libx265 / libvpx-vp9 (see docs/CORPUS.md for the verified container)"
+        ]
+      },
+      "covers": [
+        "8-bit-420",
+        "10-bit-420",
+        "progressive"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "The clips are produced locally by this repository's test scripts from synthetic lavfi sources; no third-party media is copied, so the repository licence in COPYING (GPL-3.0-or-later) is the applicable grant, and scripts carry SPDX identifiers where present.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Generated locally from synthetic lavfi sources with the repository's own scripts.",
+        "notes": "Determinism is handled by comparing against locally recomputed software output, not a committed hash."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "6.1.1 (Ubuntu 24.04 container recorded in docs/CORPUS.md)"
+        }
+      ],
+      "reproduction": {
+        "producer": "tests/hwdownload.sh",
+        "invocation": "python3 tests/hwguard.py --deadline 180 -- sh tests/hwdownload.sh BUILD/src [10-bit-clip]",
+        "description": "H.264 640x360 and 1920x1080 and HEVC 640x360 clips plus an optional 10-bit HEVC clip, compared with software for the first 30 frames both normally and with vaDeriveImage disabled; NV12 and P010 must match byte for byte."
+      }
+    }
+  ],
+  "smoke": {
+    "description": "Bounded subset a clean environment and CI can acquire: one representative per state a contributor has to reproduce (pass, expected rejection, known wrong output, unsupported format, capability boundary) plus the generated matrices. The budget bounds the extracted inputs that CI caches; the recorded cold run downloaded 20,809,931 bytes of upstream files and `fetch` reports that volume each time. Full suites stay on demand.",
+    "max_bytes": 4194304,
+    "required_coverage": [
+      "progressive",
+      "interlaced",
+      "8-bit-420",
+      "10-bit-420",
+      "422-format",
+      "long-term-reference",
+      "multi-slice",
+      "multi-tile",
+      "multi-context-interleave",
+      "resolution-change",
+      "crop-odd-dimensions",
+      "sub-64-dimension",
+      "profile-override",
+      "truncated-input"
+    ],
+    "entries": [
+      "fluster/vp9/VP9-TEST-VECTORS#vp90-2-00-quantizer-00.webm",
+      "fluster/vp9/VP9-TEST-VECTORS#vp90-2-02-size-08x08.webm",
+      "fluster/vp9/VP9-TEST-VECTORS#vp90-2-21-resize_inter_640x360_5_1-2.webm",
+      "fluster/vp9/VP9-TEST-VECTORS#vp91-2-04-yuv422.webm",
+      "fluster/vp9/VP9-TEST-VECTORS-HIGH#vp92-2-20-10bit-yuv420.webm",
+      "fluster/h.265/JCT-VC-HEVC_V1#AMP_A_Samsung_7",
+      "fluster/h.265/JCT-VC-HEVC_V1#RPS_E_qualcomm_5",
+      "fluster/h.265/JCT-VC-HEVC_V1#VPSSPSPPS_A_MainConcept_1",
+      "fluster/h.265/JCT-VC-HEVC_V1#TSUNEQBD_A_MAIN10_Technicolor_2",
+      "fluster/h.264/JVT-AVC_V1#AUD_MW_E",
+      "fluster/h.264/JVT-AVC_V1#BA3_SVA_C",
+      "fluster/h.264/JVT-AVC_V1#cabac_mot_fld0_full",
+      "fluster/h.264/JVT-FR-EXT#Hi422FR1_SONY_A",
+      "generated/frame-check-resolution-change",
+      "generated/frame-check-crop",
+      "generated/frame-check-truncated",
+      "generated/vp9-matrix",
+      "generated/h264-high10",
+      "generated/shared-contexts"
+    ]
+  },
+  "excluded_suites": [
+    {
+      "suite_file": "test_suites/h.265/JCT-VC-3D-HEVC.json",
+      "reason_code": "outside-tested-scope",
+      "summary": "3D/multiview HEVC is not part of the r11 evidence and no tested hardware path claims it."
+    },
+    {
+      "suite_file": "test_suites/h.265/JCT-VC-MV-HEVC.json",
+      "reason_code": "outside-tested-scope",
+      "summary": "Multiview HEVC is not part of the r11 evidence."
+    },
+    {
+      "suite_file": "test_suites/h.265/JCT-VC-RExt.json",
+      "reason_code": "unsupported-hardware-format",
+      "summary": "Range extensions cover 12-bit and 4:2:2/4:4:4 formats outside the tested hardware formats."
+    },
+    {
+      "suite_file": "test_suites/h.264/JVT-MVC.json",
+      "reason_code": "outside-tested-scope",
+      "summary": "Multiview H.264 is not part of the r11 evidence."
+    },
+    {
+      "suite_file": "test_suites/h.264/JVT-SVC.json",
+      "reason_code": "outside-tested-scope",
+      "summary": "Scalable H.264 is not part of the r11 evidence; the one VP9 scalable vector is recorded as a reference mismatch."
+    },
+    {
+      "suite_file": "test_suites/h.264/JVT-Professional_profiles.json",
+      "reason_code": "outside-tested-scope",
+      "summary": "Professional profiles are not part of the r11 evidence."
+    },
+    {
+      "suite_file": "test_suites/h.264/Fluendo-H264-High444.json",
+      "reason_code": "unsupported-hardware-format",
+      "summary": "High 4:4:4 is outside the tested hardware formats."
+    },
+    {
+      "suite_file": "test_suites/av1/*.json",
+      "reason_code": "outside-tested-scope",
+      "summary": "The compiled-in AV1 backend has no hardware that exposes AV1 decode in the current evidence; qualifying it is tracked separately (#30)."
+    }
+  ],
+  "known_gaps": [
+    "The r11 pass sets were produced from an unpinned Fluster checkout. This manifest pins commit f3ad284a9e6cac70dc01b02e0de71c2994181d34 and verifies each suite file by SHA-256, so a re-run must state which pin it used; the totals above are only reproducible against a stated pin.",
+    "Per-vector SHA-256 is pinned for the smoke subset only. Other vectors are verified against the upstream source_checksum (MD5) from the pinned suite and receive a SHA-256 through `corpus.py lock`, which reports the value for deliberate review instead of editing this file.",
+    "The r11 records store pass/fail per vector but not the reason. The classifications here are derived from the pinned suites plus the documented notes; they are re-checked on every validate run against the pass sets, and drift fails the check.",
+    "On a macOS host the ITU (JVT/JCT-VC) archives were rejected by the distributor's request filtering, while the same URLs downloaded from an Ubuntu container. Contributors on macOS need a Linux environment or a mirror for those suites; the VP9 vectors downloaded from both.",
+    "Generated matrices are compared against software output recomputed locally rather than against committed hashes, because encoder output depends on tool versions and thread counts. A tool change is therefore visible as a new software reference, not as a silent pass.",
+    "No hardware-qualification evidence is produced by this manifest: it describes acquisition and provenance, not decoding support. Hardware runs stay in tests/hwguard.py with an exclusive lease.",
+    "Usage terms for the official vectors are recorded as not established: the ITU/JCT-VC and JVT bitstreams come from the ITU working file area whose copyright notice grants no reproduction right, and the WebM test-data directory carries no licence file. Nothing is redistributed here, and anyone redistributing them must settle terms with the distributor first.",
+    "Pinning a vector's SHA-256 is separate from acquiring it: `fetch --suite`/`--all` enumerate the pinned suite definition (see `fetch --dry-run`), while the manifest records hashes only for reviewed assets."
+  ],
+  "evidence": {
+    "pass_set_file": "docs/r11-pass-sets.json",
+    "record": "https://github.com/iconidentify/omarchy-m1-video/blob/main/docs/codec-validation-r11-2026-09-15.json",
+    "note": "r11 is M1 (T8103) only: HEVC 144/147, AVC 73/135, opt-in High 10 FRExt 27/69 and VP9 216/305, with exact pass sets pinned. The manifest adds why each remaining failure is expected and how to acquire the input."
+  }
+}

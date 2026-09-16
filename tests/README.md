@@ -67,6 +67,45 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
+## Regression corpus
+
+Inputs behind the codec evidence are pinned, licensed and classified in
+[`corpus/manifest.json`](corpus/manifest.json); acquisition and provenance are documented in
+[../docs/CORPUS.md](../docs/CORPUS.md). No third-party media is redistributed: suites are
+downloaded from their distributor on demand, verified against the upstream checksum from the
+pinned Fluster suite definition, and cached in Fluster's
+`<suite_name>/<vector_name>/<input_file>` layout so the cache can be passed to
+the positional `resources` argument of `conformance.py`.
+
+```sh
+python3 tests/corpus.py self-test                                            # offline, no decoder
+python3 tests/corpus.py validate --fluster /path/to/fluster                   # pins, licences, classifications
+python3 tests/corpus.py fetch  --fluster /path/to/fluster --smoke             # bounded subset, on demand
+python3 tests/corpus.py verify --fluster /path/to/fluster --require smoke     # offline, needs no network
+```
+
+A suite-wide selection enumerates the **pinned suite definition**, not the manifest's pinned
+assets: `fetch --suite ID` takes every vector of that suite, `--all` takes all 662 (and refuses
+without `--confirm-large-corpus`), and `--dry-run` prints the plan while acquiring nothing. The
+same choice appears in `verify`: `--require smoke` checks the smoke subset, `--require all`
+checks the whole corpus. Pinning a vector's SHA-256 is a separate, reviewed step — `fetch` writes
+the identities it acquires to `<cache>/corpus-lock.json`, `verify` checks anything in that lock,
+and `corpus.py lock` reports hashes for review instead of editing the manifest.
+
+Licence decisions are recorded with the evidence behind them: each entry states whether usable
+terms were `identified` or `not-established`, where they were checked and what that implies. For
+the official vectors the honest answer is `not-established` (the ITU notice grants no
+reproduction right; the WebM test-data directory has no licence file), so nothing is
+redistributed and the vectors stay download-on-demand.
+
+The manifest also records **why** each r11 failure is expected
+(`unimplemented-syntax`, `requires-profile-override`, `unsupported-hardware-format`,
+`unsupported-profile`, `unsupported-dimension`, `expected-rejection`, `known-wrong-output`,
+`capability-boundary`). `validate` re-derives every classification from the pinned suite and
+fails if any r11 failing vector is undocumented, if a classification drifts, or if a vector the
+r11 record passes is called a failure. Corrupt fixtures are marked as such and are never
+reference output.
+
 ## Hardware pixel comparisons
 
 Use a normal, unsanitized build, close all video clients, and check that the decoder is idle

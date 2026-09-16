@@ -1,0 +1,264 @@
+{
+  "schema_version": "1.0.0",
+  "manifest_id": "libva-v4l2_request-corpus",
+  "date": "2026-09-16",
+  "purpose": "Self-test fixture: a miniature manifest that exercises every validator without network access or real media.",
+  "policy": {
+    "redistribution_values": [
+      "generated-locally",
+      "download-on-demand-only",
+      "redistributable"
+    ],
+    "asset_classes": [
+      "pass",
+      "expected-rejection",
+      "known-wrong-output",
+      "unsupported-hardware-format",
+      "unsupported-profile",
+      "unsupported-dimension",
+      "unimplemented-syntax",
+      "requires-profile-override",
+      "capability-boundary"
+    ],
+    "coverage_vocabulary": [
+      "progressive",
+      "interlaced",
+      "8-bit-420",
+      "10-bit-420",
+      "422-format",
+      "444-format",
+      "12-bit",
+      "lossless",
+      "full-range",
+      "long-term-reference",
+      "multi-slice",
+      "multi-tile",
+      "multi-context-interleave",
+      "resolution-change",
+      "crop-odd-dimensions",
+      "sub-64-dimension",
+      "profile-override",
+      "truncated-input"
+    ],
+    "hash_pinning": {
+      "corpus_identity": "sha256",
+      "upstream_checksum": "md5 (source_checksum from the pinned suite, used only to detect a changed upstream file)",
+      "rule": "A hash becomes an expectation only when a reviewer records it in the manifest; corpus.py never edits the manifest.",
+      "licence_rule": "terms_status distinguishes an identified licence from not-established terms."
+    },
+    "redaction": "Publishable manifests and logs carry no personal paths, media, tokens, process arguments or core dumps.",
+    "terms_status_values": [
+      "identified",
+      "not-established"
+    ]
+  },
+  "upstreams": {
+    "fluster": {
+      "repo": "https://github.com/fluendo/fluster",
+      "commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "commit_date": "2026-09-03T16:39:06Z",
+      "test_suites_path": "test_suites",
+      "note": "Self-test fixture."
+    }
+  },
+  "suites": [
+    {
+      "id": "fluster/tiny/TINY",
+      "kind": "fluster-suite",
+      "codec": "vp9",
+      "suite_name": "TINY",
+      "suite_file": "test_suites/tiny/TINY.json",
+      "suite_file_sha256": "71b58f9d4c044492d8333d3ce5ce45ecefc448962d31fd5b7989cb1d3931fb7b",
+      "suite_upstream_commit": "f3ad284a9e6cac70dc01b02e0de71c2994181d34",
+      "vector_count": 4,
+      "r11_pass_set_key": "tiny",
+      "acquisition": {
+        "method": "fluster-download",
+        "tool": "python3 tests/corpus.py fetch --fluster <fluster> --cache <cache>",
+        "resources_layout": "<cache>/<suite_name>/<vector_name>/<input_file>",
+        "mirror_compatible": true
+      },
+      "license": {
+        "redistribution": "download-on-demand-only",
+        "terms_status": "not-established",
+        "terms_reference": null,
+        "terms_checked": "2026-09-16",
+        "terms_note": "Self-test fixture: no terms source could be found for the placeholder files, so no terms are established.",
+        "license_name": null,
+        "basis": "Placeholder fixtures written by this repository for the self-test.",
+        "notes": "Not real media and not part of any conformance claim."
+      },
+      "assets": {
+        "tiny-pass.webm": {
+          "class": "pass",
+          "covers": [
+            "8-bit-420"
+          ],
+          "asset_sha256": "c9b47e0f40174cb934b5ad75960f4522a17d2a9d649885cfcf1773090034062d",
+          "bytes": 60
+        },
+        "tiny-size-08x08.webm": {
+          "class": "unsupported-dimension",
+          "covers": [
+            "sub-64-dimension"
+          ],
+          "asset_sha256": null,
+          "bytes": null,
+          "hash_status": "pending"
+        },
+        "tiny-resize.ivf": {
+          "class": "expected-rejection",
+          "covers": [
+            "resolution-change"
+          ],
+          "asset_sha256": null,
+          "bytes": null,
+          "hash_status": "pending"
+        },
+        "tiny-422.webm": {
+          "class": "unsupported-hardware-format",
+          "covers": [
+            "422-format"
+          ],
+          "asset_sha256": null,
+          "bytes": null,
+          "hash_status": "pending"
+        }
+      }
+    }
+  ],
+  "known_issues": [
+    {
+      "id": "ki-tiny-sub64",
+      "suite": "fluster/tiny/TINY",
+      "class": "unsupported-dimension",
+      "summary": "Dimensions below the tested minimum are rejected before submission.",
+      "evidence": [
+        "self-test fixture"
+      ],
+      "hardware_needed": false,
+      "review": "fixture",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^tiny-size-.*\\.webm$",
+        "dimension_below": 64
+      },
+      "vectors": [
+        "tiny-size-08x08.webm"
+      ]
+    },
+    {
+      "id": "ki-tiny-422",
+      "suite": "fluster/tiny/TINY",
+      "class": "unsupported-hardware-format",
+      "summary": "4:2:2 output is outside the tested hardware formats.",
+      "evidence": [
+        "self-test fixture"
+      ],
+      "hardware_needed": false,
+      "review": "fixture",
+      "derive": {
+        "base": "r11_failing",
+        "output_format_in": [
+          "yuv422p"
+        ]
+      },
+      "vectors": [
+        "tiny-422.webm"
+      ]
+    },
+    {
+      "id": "ki-tiny-resize-rejection",
+      "suite": "fluster/tiny/TINY",
+      "class": "expected-rejection",
+      "summary": "A stream that previously wedged the decoder must be rejected in userspace.",
+      "evidence": [
+        "self-test fixture"
+      ],
+      "hardware_needed": true,
+      "review": "fixture",
+      "derive": {
+        "base": "r11_failing",
+        "name_regex": "^tiny-resize\\.ivf$"
+      },
+      "vectors": [
+        "tiny-resize.ivf"
+      ]
+    }
+  ],
+  "generated": [
+    {
+      "id": "generated/tiny-truncated",
+      "kind": "generated",
+      "codec": "h264",
+      "producer": "tests/frame-check.sh",
+      "frames": null,
+      "checksum_policy": "derived-at-runtime",
+      "expected_asset_hashes_committed": false,
+      "determinism": {
+        "basis": "truncation of a locally generated clip",
+        "seed_policy": "not applicable: no encoder randomness",
+        "tool_pins": [
+          "ffmpeg (tests/README.md)"
+        ]
+      },
+      "covers": [
+        "truncated-input"
+      ],
+      "license": {
+        "redistribution": "generated-locally",
+        "terms_status": "identified",
+        "terms_reference": "COPYING",
+        "terms_checked": "2026-09-16",
+        "terms_note": "Produced locally by the repository's own script; the repository licence applies.",
+        "license_name": "GPL-3.0-or-later",
+        "basis": "Derived from a synthetic lavfi clip grown by tests/frame-check.sh.",
+        "notes": "Corrupt by construction; must be rejected."
+      },
+      "tools": [
+        {
+          "name": "ffmpeg",
+          "version": "tests/README.md"
+        }
+      ],
+      "r11_part": null,
+      "r11_frames": null,
+      "reproduction": {
+        "producer": "tests/frame-check.sh",
+        "invocation": "sh tests/frame-check.sh",
+        "description": "First 12 bytes of the concatenated clip used as corrupt input."
+      }
+    }
+  ],
+  "smoke": {
+    "description": "Self-test smoke set: one decodable placeholder, one corrupt-input generator and the pinned subset.",
+    "max_bytes": 4096,
+    "required_coverage": [
+      "8-bit-420",
+      "sub-64-dimension",
+      "422-format",
+      "truncated-input"
+    ],
+    "entries": [
+      "fluster/tiny/TINY#tiny-pass.webm",
+      "fluster/tiny/TINY#tiny-size-08x08.webm",
+      "fluster/tiny/TINY#tiny-422.webm",
+      "generated/tiny-truncated"
+    ]
+  },
+  "excluded_suites": [
+    {
+      "suite_file": "test_suites/tiny/OMITTED.json",
+      "reason_code": "outside-tested-scope",
+      "summary": "Self-test fixture for an omitted suite."
+    }
+  ],
+  "known_gaps": [
+    "Self-test fixture: not a real corpus."
+  ],
+  "evidence": {
+    "pass_set_file": "tests/fixtures/corpus/pass-sets-tiny.json",
+    "record": "self-test fixture",
+    "note": "Fixture evidence only."
+  }
+}
