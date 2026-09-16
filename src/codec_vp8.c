@@ -119,11 +119,11 @@ static void vp8_fill_frame(struct v4l2r_context *ctx,
 	memcpy(frame->entropy.mv_probs, va_pic->mv_probs, sizeof(frame->entropy.mv_probs));
 
 	frame->last_frame_ts =
-		v4l2r_surface_timestamp(ctx->drv, va_pic->last_ref_frame);
+		v4l2r_surface_timestamp(ctx, va_pic->last_ref_frame);
 	frame->golden_frame_ts =
-		v4l2r_surface_timestamp(ctx->drv, va_pic->golden_ref_frame);
+		v4l2r_surface_timestamp(ctx, va_pic->golden_ref_frame);
 	frame->alt_frame_ts =
-		v4l2r_surface_timestamp(ctx->drv, va_pic->alt_ref_frame);
+		v4l2r_surface_timestamp(ctx, va_pic->alt_ref_frame);
 
 	if (codec->keyframe)
 		frame->flags |= V4L2_VP8_FRAME_FLAG_KEY_FRAME;

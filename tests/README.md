@@ -21,12 +21,17 @@ rejection, High 10 quantizer modes and fake-device capability checks. Three H.26
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
-29 Meson cases. The count-overflow case injects the boundary into codec state rather than
+35 Meson cases. The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.
 Four VP9 cases cover malformed/incomplete headers, failed-submission state rollback, colour-range
 inheritance, missing/cross-context references and 24,000 deterministic parser inputs. These join
 the H.264 and HEVC inputs for 72,000 generated inputs across three registered parser cases.
+Six shared-lifecycle cases add failed Render/Begin recovery, active-target lifetime, reference
+ownership, invalid context arguments, and submission errors surviving a later buffer completion.
+`picture.c` calls the public picture entrypoints with an intercepted codec. The original target
+lifetime failure produces an ASan use-after-free when the active target is destroyed before
+EndPicture; this does not establish that a media file can trigger the same API sequence.
 CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
 hardware tests are separate.
 

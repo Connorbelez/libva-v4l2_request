@@ -684,7 +684,7 @@ static VAStatus hevc_fill_decode_params(struct v4l2r_context *ctx,
 			continue;
 
 		entry = &decode->dpb[entries];
-		entry->timestamp = v4l2r_surface_timestamp(ctx->drv,
+		entry->timestamp = v4l2r_surface_timestamp(ctx,
 							   ref->picture_id);
 		/* Random-access pictures may carry unavailable, unused entries
 		 * from before the access point. Omit them; slice validation below

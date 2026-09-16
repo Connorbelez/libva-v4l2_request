@@ -190,7 +190,10 @@ int main(int argc, char **argv)
     for (unsigned int i = 0; i < 3; i++) {
         ids[i] = v4l2r_handles_alloc(&drv.surfaces, sizeof(struct v4l2r_surface));
         V4L2R_SURFACE(&drv, ids[i])->capture_index = i == 1 ? -1 : (int)i;
+        V4L2R_SURFACE(&drv, ids[i])->ctx = &ctx;
+        ctx.captures[i].surface = V4L2R_SURFACE(&drv, ids[i]);
     }
+    ctx.nb_captures = 3;
     if (!strcmp(argv[1], "incomplete")) incomplete();
     else if (!strcmp(argv[1], "slice-count")) slice_count();
     else if (!strcmp(argv[1], "references")) references();

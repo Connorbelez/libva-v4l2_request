@@ -630,16 +630,6 @@ static bool vp9_parse_compressed_header(struct vp9_context *codec,
 
 /* --- control fill --- */
 
-static uint64_t vp9_reference_timestamp(struct v4l2r_context *ctx, VASurfaceID id)
-{
-	struct v4l2r_surface *surface = V4L2R_SURFACE_GET(ctx->drv, id);
-	/* CAPTURE indices are local to the decoder context. A surface from an
-	 * older context can have the same index as an unrelated new buffer. */
-	if (!surface || surface->ctx != ctx)
-		return 0;
-	return v4l2r_surface_timestamp(ctx->drv, id);
-}
-
 static bool vp9_fill_frame(struct v4l2r_context *ctx)
 {
 	struct vp9_context *codec = ctx->codec_priv;
@@ -744,11 +734,11 @@ static bool vp9_fill_frame(struct v4l2r_context *ctx)
 	if (hdr->color_range_full)
 		frame->flags |= V4L2_VP9_FRAME_FLAG_COLOR_RANGE_FULL_SWING;
 
-	frame->last_frame_ts = vp9_reference_timestamp(ctx,
+	frame->last_frame_ts = v4l2r_surface_timestamp(ctx,
 			pic->reference_frames[pic->pic_fields.bits.last_ref_frame]);
-	frame->golden_frame_ts = vp9_reference_timestamp(ctx,
+	frame->golden_frame_ts = v4l2r_surface_timestamp(ctx,
 			pic->reference_frames[pic->pic_fields.bits.golden_ref_frame]);
-	frame->alt_frame_ts = vp9_reference_timestamp(ctx,
+	frame->alt_frame_ts = v4l2r_surface_timestamp(ctx,
 			pic->reference_frames[pic->pic_fields.bits.alt_ref_frame]);
 	/* Inter pictures need all three reference slots backed by decoded
 	 * surfaces. Context teardown (including a size change) can detach a
