@@ -75,7 +75,7 @@ Inputs behind the codec evidence are pinned, licensed and classified in
 downloaded from their distributor on demand, verified against the upstream checksum from the
 pinned Fluster suite definition, and cached in Fluster's
 `<suite_name>/<vector_name>/<input_file>` layout so the cache can be passed to
-`conformance.py --resources` directly.
+the positional `resources` argument of `conformance.py`.
 
 ```sh
 python3 tests/corpus.py self-test                                            # offline, no decoder

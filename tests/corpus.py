@@ -1460,7 +1460,7 @@ def cmd_fetch(args) -> int:
             f"recorded {len(load_lock(cache))} asset identit(ies) in {cache / 'corpus-lock.json'} "
             "(evidence for verify; the manifest is never edited)"
         )
-    print("The cache keeps the Fluster layout, so it can be passed to tests/conformance.py as --resources.")
+    print("The cache keeps the Fluster layout, so it can be passed to tests/conformance.py as its positional resources argument.")
     if any(not (suite.get("assets") or {}).get(vector, {}).get("asset_sha256") for suite, vector in selected):
         print("Some selected vectors are unpinned: run `corpus.py lock` and have a reviewer record the "
               "hashes in tests/corpus/manifest.json (never automatically).")
