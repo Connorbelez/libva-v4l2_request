@@ -3,6 +3,10 @@
 # Requires a supported VA-API device, C compiler, pkg-config, FFmpeg development
 # headers and ffmpeg with libx264, libx265 and libvpx-vp9. Generates its own clips.
 set -eu
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=require-hw-guard.sh
+. "$script_dir/require-hw-guard.sh"
+require_hw_guard "$@" || exit $?
 export LIBVA_DRIVERS_PATH=$(realpath "$1")
 export LIBVA_DRIVER_NAME=v4l2_request
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)

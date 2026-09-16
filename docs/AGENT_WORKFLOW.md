@@ -51,7 +51,9 @@ One active implementation ticket per session. Renew your claim at each meaningfu
 
 ## Hardware is a separate exclusive resource
 
-An issue claim does not reserve the decoder. Use the portable guard when delivered; until then use the existing avd-lab guard described in `tests/README.md`, with a manually coordinated single hardware owner. Never run two agents' tests simultaneously on the same host/decoder.
+An issue claim does not reserve the decoder. Hardware commands go through
+`python3 tests/hwguard.py -- <command>`, which holds an exclusive OS lock per
+decoder identity. Never run two agents' tests simultaneously on the same host/decoder.
 
 Hardware work requires read-only idle/fault preflight, finite deadlines, new-kernel-error/foreign-client monitoring, durable logs and an idle final state. Stop after a new decoder fault or wedge; do not reopen it repeatedly or unload/reload as automatic recovery. Keep tests on selected userspace builds using `LIBVA_DRIVERS_PATH` when possible.
 

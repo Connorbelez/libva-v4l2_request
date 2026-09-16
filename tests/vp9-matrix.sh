@@ -2,6 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Run through a hardware guard: vp9-matrix.sh BUILD/src
 set -eu
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=require-hw-guard.sh
+. "$script_dir/require-hw-guard.sh"
+require_hw_guard "$@" || exit $?
 export LIBVA_DRIVERS_PATH=$(realpath "$1")
 export LIBVA_DRIVER_NAME=v4l2_request
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)

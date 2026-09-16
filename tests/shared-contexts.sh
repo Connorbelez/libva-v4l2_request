@@ -24,6 +24,11 @@ done
 set -- "${1:-}" "$work/h264.mkv" yuv420p "$work/hevc.mkv" yuv420p \
     "$work/vp9-8.webm" yuv420p "$work/vp9-10.webm" yuv420p10le
 driver=$1
+if [ -n "$driver" ]; then
+    # shellcheck source=require-hw-guard.sh
+    . "$script_dir/require-hw-guard.sh"
+    require_hw_guard "$@" || exit $?
+fi
 shift
 # Each stream's independent software result is the expected digest/count.
 i=0

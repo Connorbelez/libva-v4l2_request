@@ -59,3 +59,4 @@ endforeach
 python3 = find_program('python3')
 test('support-matrix', python3, args: files('support-matrix.py'), timeout: 30)
 test('conformance-result', python3, args: [files('compare-results.py'), '--self-test'], timeout: 30)
+test('hwguard', python3, args: [files('hwguard.py'), '--self-test'], timeout: 60)

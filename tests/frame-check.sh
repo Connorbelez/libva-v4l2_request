@@ -38,6 +38,9 @@ if "$work/check" software "$work/truncated.h264" yuv420p > "$work/bad" 2>/dev/nu
 fi
 if grep -q '^MD5=' "$work/bad"; then exit 1; fi
 if [ "$#" -gt 0 ]; then
+    # shellcheck source=require-hw-guard.sh
+    . "$script_dir/require-hw-guard.sh"
+    require_hw_guard "$@" || exit $?
     export LIBVA_DRIVERS_PATH=$(realpath "$1") LIBVA_DRIVER_NAME=v4l2_request
     timeout -k 5 30 "$work/check" vaapi "$work/change.h264" yuv420p > "$work/hardware"
     cmp "$work/software" "$work/hardware"
