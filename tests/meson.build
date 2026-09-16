@@ -94,7 +94,8 @@ if conf.get('HAVE_V4L2_CTRL_H264') == 1
     c_args: ['-UNDEBUG'],
     include_directories: [root_inc, include_directories('../src')],
     dependencies: [libva_dep, libdrm_dep, threads_dep])
-  foreach case : ['incomplete', 'slice-count', 'references']
+  foreach case : ['incomplete', 'slice-count', 'references',
+                  'unsupported-partition', 'unsupported-extension', 'unsupported-fmo']
     test('h264-' + case, submission, args: [case], timeout: 10)
   endforeach
   foreach case : ['h264-parser', 'h264-profile']
