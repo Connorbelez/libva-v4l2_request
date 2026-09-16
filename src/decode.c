@@ -345,8 +345,16 @@ VAStatus v4l2r_sync_capture(struct v4l2r_context *ctx, int capture_index)
 	ret = ctx->failed ?
 		(ctx->queued_capture & (UINT64_C(1) << capture_index) ? -EIO : 0) :
 		wait_on_capture_locked(ctx, capture_index);
-	if (ret < 0)
+	if (ret < 0) {
 		v4l2r_context_fail(ctx);
+		/* The drain may have completed this target before a later
+		 * dequeue failed. Retain the error returned by this sync even
+		 * after its queued bit has cleared; unrelated completed frames
+		 * remain readable. */
+		struct v4l2r_surface *surface = ctx->captures[capture_index].surface;
+		if (surface && surface->decode_status == VA_STATUS_SUCCESS)
+			surface->decode_status = VA_STATUS_ERROR_OPERATION_FAILED;
+	}
 	pthread_mutex_unlock(&ctx->mutex);
 
 	if (ret < 0) {

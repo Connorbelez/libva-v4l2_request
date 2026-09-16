@@ -32,7 +32,7 @@ static struct {
 static struct { void *ptr; size_t size; } maps[LIMIT], heaps[LIMIT];
 static unsigned int fd_count, op, fail_at, injected, queues;
 static bool armed, packed, single_plane, hold, sliced, dequeue_blocked, fast_clock;
-static bool pitch_retry, fail_rollback;
+static bool pitch_retry, fail_rollback, optional_failure;
 static uint64_t model_ns;
 static unsigned long fail_ioctl;
 static int fail_type = -1, fail_errno = EIO;
@@ -220,7 +220,24 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
     OP(VIDIOC_EXPBUF); OP(MEDIA_REQUEST_IOC_REINIT); OP(MEDIA_REQUEST_IOC_QUEUE);
     OP(VIDIOC_S_CTRL); OP(VIDIOC_S_SELECTION);
 #undef OP
-    if (fault(name)) return -1;
+    if (fault(name)) {
+        /* Only capability alternatives may complete despite a failed probe.
+         * Required format setup and actual submitted work must report error. */
+        optional_failure = request == VIDIOC_ENUM_FMT &&
+            !V4L2_TYPE_IS_OUTPUT(((struct v4l2_fmtdesc *)arg)->type);
+        if (request == VIDIOC_G_FMT) {
+            struct v4l2_format *f = arg;
+            optional_failure = !V4L2_TYPE_IS_OUTPUT(f->type) &&
+                !fds[i].formats[0].type;
+        }
+        if (request == VIDIOC_S_FMT) {
+            struct v4l2_format *f = arg;
+            optional_failure = V4L2_TYPE_IS_OUTPUT(f->type) ?
+                v4l2r_format_pixelformat(f) == V4L2_PIX_FMT_VP8 :
+                v4l2r_format_pixelformat(&fds[i].formats[1]) == V4L2_PIX_FMT_VP8;
+        }
+        return -1;
+    }
     if (armed && fail_rollback && injected && request == MEDIA_REQUEST_IOC_REINIT) {
         injected++; errno = EBUSY; return -1;
     }
@@ -475,6 +492,7 @@ static void failed_surface(VASurfaceID sid)
 static unsigned int sweep_run(const char *name, unsigned int point)
 {
     armed = false; fail_ioctl = 0; fail_at = 0; op = injected = 0;
+    optional_failure = false;
     single_plane = strstr(name, "single") != NULL;
     packed = !strcmp(name, "decode-convert");
     pitch_retry = !strcmp(name, "vpp-stride");
@@ -588,6 +606,13 @@ static unsigned int sweep_run(const char *name, unsigned int point)
     unsigned int count = op;
     armed = false; fail_at = 0;
     assert(point ? injected == 1 : status == VA_STATUS_SUCCESS);
+    if (point) {
+        if (optional_failure || preserve)
+            assert(status == VA_STATUS_SUCCESS);
+        else
+            assert(status == VA_STATUS_ERROR_OPERATION_FAILED ||
+                   status == VA_STATUS_ERROR_ALLOCATION_FAILED);
+    }
     if (point) fprintf(stderr, "INJECTED %s: %s, status %#x\n", name, operations[point], status);
     if ((exporting || !strcmp(name, "export-pair")) && status == VA_STATUS_SUCCESS)
         for (unsigned int i = 0; i < desc.num_objects; i++) assert(!close(desc.objects[i].fd));
@@ -624,10 +649,16 @@ static unsigned int sweep_run(const char *name, unsigned int point)
         assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
         V4L2R_CONFIG(drv, cfg)->codec = &codec;
     }
-    if (packed && status != VA_STATUS_SUCCESS) {
+    if (!strncmp(name, "decode", 6) && status != VA_STATUS_SUCCESS) {
+        failed_surface(sid);
         VASurfaceID retry = surface();
-        if (picture(id, retry) == VA_STATUS_SUCCESS)
+        unsigned int before = queues;
+        if (ctx->failed || (ctx->conv && ctx->conv->failed)) {
+            assert(picture(id, retry) != VA_STATUS_SUCCESS && queues == before);
+        } else {
+            assert(picture(id, retry) == VA_STATUS_SUCCESS);
             assert(table.vaSyncSurface(&va, retry) == VA_STATUS_SUCCESS);
+        }
     }
     if (create_vpp) V4L2R_CONFIG(drv, cfg)->codec = &codec;
     /* Recovery on a new model device cannot inherit the old queues. */
