@@ -37,6 +37,9 @@ VAStatus v4l2r_QueryImageFormats(VADriverContextP va_ctx, VAImageFormat *formats
 {
 	(void)va_ctx;
 
+	if (!formats || !num_formats)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+
 	for (unsigned int i = 0; i < sizeof(image_formats) / sizeof(image_formats[0]); i++)
 		formats[i] = image_formats[i];
 
@@ -145,6 +148,9 @@ VAStatus v4l2r_DeriveImage(VADriverContextP va_ctx, VASurfaceID surface_id,
 	VAImageID image_id;
 	VABufferID buffer_id;
 	VAStatus status;
+
+	if (!image)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	surface = V4L2R_SURFACE_GET(drv, surface_id);
 	if (!surface)

@@ -25,7 +25,7 @@ VAStatus v4l2r_CreateBuffer(VADriverContextP va_ctx, VAContextID context_id,
 	struct v4l2r_buffer *buffer;
 	VABufferID id;
 
-	if (!size || !num_elements || (size_t)num_elements > SIZE_MAX / size)
+	if (!buf_id || !size || !num_elements || (size_t)num_elements > SIZE_MAX / size)
 		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	switch (type) {
@@ -102,6 +102,9 @@ VAStatus v4l2r_MapBuffer(VADriverContextP va_ctx, VABufferID buf_id, void **pbuf
 {
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
 	struct v4l2r_buffer *buffer;
+
+	if (!pbuf)
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
 	buffer = V4L2R_BUFFER_GET(drv, buf_id);
 	if (!buffer)
