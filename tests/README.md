@@ -67,6 +67,36 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
+## Regression corpus
+
+Inputs behind the codec evidence are pinned, licensed and classified in
+[`corpus/manifest.json`](corpus/manifest.json); acquisition and provenance are documented in
+[../docs/CORPUS.md](../docs/CORPUS.md). No third-party media is redistributed: suites are
+downloaded from their distributor on demand, verified against the upstream checksum from the
+pinned Fluster suite definition, and cached in Fluster's
+`<suite_name>/<vector_name>/<input_file>` layout so the cache can be passed to
+`conformance.py --resources` directly.
+
+```sh
+python3 tests/corpus.py self-test                                            # offline, no decoder
+python3 tests/corpus.py validate --fluster /path/to/fluster                   # pins, licences, classifications
+python3 tests/corpus.py fetch  --fluster /path/to/fluster --smoke             # bounded subset, on demand
+python3 tests/corpus.py verify --fluster /path/to/fluster --require smoke     # offline, needs no network
+```
+
+`fetch` refuses to pull the whole corpus without `--all --confirm-large-corpus`, so a script
+cannot turn the smoke subset into a multi-gigabyte download by accident. A hash becomes an
+expectation only when a reviewer records it in the manifest; `corpus.py lock` reports the
+SHA-256 of acquired assets instead of editing anything.
+
+The manifest also records **why** each r11 failure is expected
+(`unimplemented-syntax`, `requires-profile-override`, `unsupported-hardware-format`,
+`unsupported-profile`, `unsupported-dimension`, `expected-rejection`, `known-wrong-output`,
+`capability-boundary`). `validate` re-derives every classification from the pinned suite and
+fails if any r11 failing vector is undocumented, if a classification drifts, or if a vector the
+r11 record passes is called a failure. Corrupt fixtures are marked as such and are never
+reference output.
+
 ## Hardware pixel comparisons
 
 Use a normal, unsanitized build, close all video clients, and check that the decoder is idle
