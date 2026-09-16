@@ -76,6 +76,16 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
+CI also runs `sh tests/install-smoke.sh` (issue #34): it builds and installs the driver
+twice into disposable `DESTDIR` roots — once at the default, libva pkg-config-derived
+driverdir, once with a custom `-Ddriverdir` — and checks that exactly one file (the driver
+module, no test binaries) is installed, that it carries no absolute build/worktree path and
+no DWARF debug info (the project's `-Dstrip=true` default), that its vendor/version marker
+string and libva ABI entrypoint symbol (`__vaDriverInit_<major>_<minor>`) are present and
+match the libva it was configured against, and that `ninja uninstall` removes every
+installed file and the now-empty directories it created, leaving the disposable root gone.
+It never touches the host's actual driver directory.
+
 ## Regression corpus
 
 Inputs behind the codec evidence are pinned, licensed and classified in
