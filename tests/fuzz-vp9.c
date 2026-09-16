@@ -8,7 +8,9 @@
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	struct vp9_context codec;
+	bool compressed;
 
+	fuzz_oracle_reset();
 	fuzz_begin_budget();
 	size = fuzz_cap_size(size);
 	memset(&codec, 0, sizeof(codec));
@@ -23,7 +25,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 			codec.va_pic.profile = profile;
 	}
 	vp9_parse_uncompressed_header(&codec, data, size);
-	vp9_parse_compressed_header(&codec, data, size);
+	compressed = vp9_parse_compressed_header(&codec, data, size);
+	if (codec.hdr.valid)
+		fuzz_oracle_last.flags |= FUZZ_ORACLE_VALID;
+	fuzz_oracle_last.extra = codec.hdr.keyframe | ((unsigned)compressed << 1);
+	fuzz_oracle_mix(codec.hdr.valid);
+	fuzz_oracle_mix(codec.hdr.keyframe);
+	fuzz_oracle_mix(codec.hdr.intra_only);
+	fuzz_oracle_mix(codec.hdr.bit_depth);
+	fuzz_oracle_mix(compressed);
 	fuzz_end_budget();
 	return 0;
 }

@@ -51,13 +51,14 @@ jobs:
         run: |
           meson setup build -Db_sanitize=address,undefined
           meson test -C build --print-errorlogs
-      - name: Build libFuzzer campaign binaries (clang only; do not run a campaign)
+      - name: Build libFuzzer campaign binaries and run a bounded smoke (clang only)
         if: matrix.cc == 'clang'
         run: |
           sudo apt-get install -y --no-install-recommends libclang-rt-dev \
             || sudo apt-get install -y --no-install-recommends libclang-rt-18-dev
           meson setup build-fuzz -Db_sanitize=address,undefined -Dfuzzing=enabled
           meson compile -C build-fuzz
+          sh tests/fuzz-campaign.sh --smoke build-fuzz
       - name: Software frame and shared-context checks
         run: |
           sh tests/frame-check.sh
@@ -165,7 +166,8 @@ jobs:
             fi
           done
           for present in decode-error picture-render-errors support-matrix ci-aggregate-fixtures ci-workflow-audit \
-                          fuzz-va-api fuzz-budgets fuzz-provenance; do
+                          fuzz-va-api fuzz-budgets fuzz-provenance \
+                          fuzz-timeout-replay fuzz-timeout-campaign fuzz-replay-mismatch; do
             printf '%s\n' "$tests" | grep -q "^$present\$" || {
               echo "ERROR: expected core test '$present' missing" >&2
               exit 1
@@ -232,7 +234,8 @@ jobs:
             fi
           done
           for present in decode-error image-bounds picture-render-errors support-matrix \
-                          ci-aggregate-fixtures ci-workflow-audit fuzz-va-api fuzz-budgets fuzz-provenance; do
+                          ci-aggregate-fixtures ci-workflow-audit fuzz-va-api fuzz-budgets fuzz-provenance \
+                          fuzz-timeout-replay fuzz-timeout-campaign fuzz-replay-mismatch; do
             printf '%s\n' "$tests" | grep -q "^$present\$" || {
               echo "ERROR: expected test '$present' missing from the all-disabled configuration" >&2
               exit 1

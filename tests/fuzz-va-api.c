@@ -33,7 +33,8 @@ enum {
 	OP_CREATE_CONFIG = 15,
 };
 
-static size_t alloc_used;
+static __thread int alloc_guard;
+static __thread size_t alloc_used;
 static unsigned device_opens;
 static struct v4l2r_driver drv;
 static struct VADriverContext va;
@@ -93,10 +94,13 @@ void *__wrap_malloc(size_t size)
 {
 	void *p;
 
-	if (size > FUZZ_ALLOC_BUDGET || alloc_used + size > FUZZ_ALLOC_BUDGET)
+	/* Only the in-target picture sequence is charged. libFuzzer, libc++
+	 * and process startup must not see NULL from this wrap. */
+	if (alloc_guard &&
+	    (size > FUZZ_ALLOC_BUDGET || alloc_used + size > FUZZ_ALLOC_BUDGET))
 		return NULL;
 	p = __real_malloc(size);
-	if (p)
+	if (p && alloc_guard)
 		alloc_used += size;
 	return p;
 }
@@ -108,13 +112,15 @@ void *__wrap_calloc(size_t n, size_t size)
 
 	if (!n || !size)
 		return __real_calloc(n, size);
-	if (size && n > FUZZ_ALLOC_BUDGET / size)
-		return NULL;
 	bytes = n * size;
-	if (alloc_used + bytes > FUZZ_ALLOC_BUDGET)
-		return NULL;
+	if (alloc_guard) {
+		if (size && n > FUZZ_ALLOC_BUDGET / size)
+			return NULL;
+		if (alloc_used + bytes > FUZZ_ALLOC_BUDGET)
+			return NULL;
+	}
 	p = __real_calloc(n, size);
-	if (p)
+	if (p && alloc_guard)
 		alloc_used += bytes;
 	return p;
 }
@@ -123,10 +129,11 @@ void *__wrap_realloc(void *ptr, size_t size)
 {
 	void *p;
 
-	if (size > FUZZ_ALLOC_BUDGET || alloc_used + size > FUZZ_ALLOC_BUDGET)
+	if (alloc_guard &&
+	    (size > FUZZ_ALLOC_BUDGET || alloc_used + size > FUZZ_ALLOC_BUDGET))
 		return NULL;
 	p = __real_realloc(ptr, size);
-	if (p)
+	if (p && alloc_guard)
 		alloc_used += size;
 	return p;
 }
@@ -437,14 +444,25 @@ static void run_opcodes(const uint8_t *data, size_t size)
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
+	fuzz_oracle_reset();
 	fuzz_begin_budget();
 	alloc_used = 0;
 	device_opens = 0;
+	alloc_guard = 1;
 	size = fuzz_cap_size(size);
 	if (setup() == 0) {
 		run_opcodes(data, size);
+		if (device_opens)
+			fuzz_oracle_last.flags |= FUZZ_ORACLE_ERROR;
+		fuzz_oracle_last.extra = device_opens;
+		fuzz_oracle_mix(device_opens);
+		fuzz_oracle_mix(cid);
+		fuzz_oracle_mix(sid);
+		fuzz_oracle_mix(bid);
+		fuzz_oracle_mix(size ? data[0] : 0);
 		teardown();
 	}
+	alloc_guard = 0;
 	fuzz_end_budget();
 	return 0;
 }

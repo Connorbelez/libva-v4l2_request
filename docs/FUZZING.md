@@ -21,7 +21,7 @@ to clang; gcc cannot link these binaries.
 
 ```sh
 meson setup build-test -Db_sanitize=address,undefined
-meson test -C build-test fuzz-h264 fuzz-hevc fuzz-vp9 fuzz-va-api fuzz-budgets fuzz-provenance --print-errorlogs
+meson test -C build-test fuzz-h264 fuzz-hevc fuzz-vp9 fuzz-va-api fuzz-budgets fuzz-provenance fuzz-timeout-replay fuzz-timeout-campaign fuzz-replay-mismatch --print-errorlogs
 ```
 
 ```sh
@@ -33,12 +33,13 @@ meson compile -C build-fuzz
 
 Each `LLVMFuzzerTestOneInput` call:
 
-- Truncates input to 64 KiB (oversize is not a harness fault).
-- Limits wall time to 1 s in replay (`ITIMER_REAL`). Campaigns use libFuzzer `-timeout=1`.
-- Caps live VA objects (8 extra surfaces/buffers) and, on the VA-API target, total `malloc`/`calloc`/`realloc` bytes (16 MiB). Exhaustion returns NULL / skips the opcode; it does not sanitizer-abort.
+- Truncates input to 64 KiB (oversize is not a harness fault). Replay applies that bound **before** allocating or reading a seed file, including sparse files, and rejects non-regular inputs.
+- Limits wall time to 1 s in replay (`ITIMER_REAL`, compiled with `-DFUZZ_REPLAY_BUILD`). Campaigns are compiled with `-DFUZZ_CAMPAIGN_BUILD` and do not install `SIGALRM`; they use libFuzzer `-timeout=1` so the engine still writes its timeout artifact. `-fsanitize=fuzzer` does not define `FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION` here.
+- Caps live VA objects (8 extra surfaces/buffers) and, on the VA-API target, total `malloc`/`calloc`/`realloc` bytes (16 MiB) **only while that input is running**. Linker wraps are inactive during libFuzzer/runtime startup.
+- Records a normalized oracle (digest, validity, NAL type, extra flags). Replay runs each seed twice and fails on a mismatch; pinned names have expected outcomes (`valid-idr` NAL type, rejected NALs, HEVC guards).
 - Returns 0 for every well-bounded input. Parser rejection is success.
 
-Harness faults print `fuzz-harness:` on stderr and `_exit(99)` (timeout, failed seed I/O). Sanitizer traps are parser/driver defects. The VA-API target wraps `open`/`open64`: `/dev/*` returns `ENODEV` and logs `fuzz-harness: device-open`; ioctls and poll fail closed with `ENODEV`.
+Harness faults print `fuzz-harness:` on stderr and exit 99 (replay timeout via `_exit`, seed I/O, identity mismatch). Sanitizer traps are parser/driver defects. The VA-API target wraps `open`/`open64`: `/dev/*` returns `ENODEV` and logs `fuzz-harness: device-open`; ioctls and poll fail closed with `ENODEV`.
 
 ## Pinned seeds
 
@@ -55,10 +56,18 @@ python3 tests/corpus.py fetch --fluster /path/to/fluster --cache ~/.cache/libva-
 # symlinks of the acquired files. Do not git-add them.
 ```
 
-The HEVC `ue-overflow` seed is the minimized replay of the previous unchecked
-32-leading-zero exp-Golomb / `pred_weight_table` VLA regression. The current
-parser must reject it under ASan/UBSan; `hevc-parser` remains the original
-assert-based case.
+Two HEVC regressions are distinct and both stay in `tests/hevc-parser.c`:
+
+- `pred_weight_table(&b, 0x7fffffff, 1)` — the previous unchecked stack VLA.
+  Slice-header parsing cannot reach that call with an out-of-range count
+  because it rejects `num_ref_idx_* > 14` first. The fuzz seed
+  `hevc/pred-weight-vla` uses a dedicated entry (magic `F5 E1 01`) that
+  calls `pred_weight_table` directly. Replay asserts `b.error`; removing
+  the guard fails that assertion (and ASan on the `[15]` arrays).
+- `v4l2r_bits_ue` on 32 leading zero bits — `hevc/ue-overflow` uses magic
+  `F5 E1 02` plus the original 9-byte fixture so the check actually runs.
+  A raw 9-zero NAL is rejected at the `temporal_id_plus1` gate before any
+  exp-Golomb read.
 
 ## 24 CPU-hour campaign (trusted infrastructure)
 
@@ -69,13 +78,26 @@ farm. Run on a trusted Linux machine:
 ```sh
 CC=clang meson setup build-fuzz -Db_sanitize=address,undefined -Dfuzzing=enabled
 meson compile -C build-fuzz
+sh tests/fuzz-campaign.sh --smoke build-fuzz
 sh tests/fuzz-campaign.sh build-fuzz 24
 ```
 
 `tests/fuzz-campaign.sh` copies the pinned seeds into `$builddir/fuzz-artifacts/<target>/corpus`
-(libFuzzer writes new units there, never into `tests/fuzz/seeds/`). It records engine,
-compiler, source SHA, jobs, `-max_len=65536`, `-timeout=1`, `-rss_limit_mb=2048` (ASan
-quarantine needs more than 256 MiB) and the artifact prefix.
+(libFuzzer writes new units there, never into `tests/fuzz/seeds/`). The first
+argument after flags is CPU-hours per target, not wall hours: wall time is
+`cpu_hours / nproc` so eight cores do not turn 24 CPU-hours into 192. Each
+target writes `campaign-record.txt` with engine, compiler (`${CC:-clang}`),
+source SHA, workers, wall budget, elapsed time, exit status and findings.
+GNU `timeout --kill-after=60s` is required for a full run. Exit 124/137 with
+no `crash-*`/`leak-*`/`oom-*` artifacts is budget exhaustion; a crashing
+worker is a failure even if another worker is still running. Missing campaign
+binaries or a non-positive hour count fail the script; they do not skip to
+success.
+
+`--smoke` runs `-runs=1000` per target (one worker) so a startup abort such as
+a wrapped `malloc` returning NULL to libc++ is visible. Public GitHub-hosted
+clang CI runs only `--smoke`.
+
 Each target is allotted 24 CPU-hours. **Budget exhaustion is not proof of
 correctness.** A reproducible sanitizer failure is a defect: minimize, add the
 seed under `tests/fuzz/seeds/`, record it in `provenance.json`, and (only then)

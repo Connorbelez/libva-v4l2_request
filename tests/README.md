@@ -63,11 +63,16 @@ inheritance, missing/cross-context references and 24,000 deterministic parser in
 the H.264 and HEVC inputs for 72,000 generated inputs across three registered parser cases.
 Those generated inputs are smoke coverage, not independent tests. Coverage-guided
 no-device fuzzing (issue #22) lives in `fuzz-h264`, `fuzz-hevc`, `fuzz-vp9` and
-`fuzz-va-api`: each replays pinned synthetic seeds twice under ASan/UBSan.
-`fuzz-budgets` checks oversize input truncation; `fuzz-provenance` checks
+`fuzz-va-api`: each replays pinned synthetic seeds twice under ASan/UBSan and
+compares a normalized oracle (a second differing call is a harness failure).
+`fuzz-budgets` checks oversize file-input truncation, non-regular I/O exit 99
+and the replay `SIGALRM` handler; `fuzz-timeout-campaign` proves campaign
+builds leave `SIGALRM` to libFuzzer; `fuzz-replay-mismatch` proves identity
+compare rejects a non-deterministic stub. `fuzz-provenance` checks
 `tests/fuzz/provenance.json`. libFuzzer campaign binaries are opt-in
 (`-Dfuzzing=enabled`) and are documented in [../docs/FUZZING.md](../docs/FUZZING.md);
-they are not meson tests and must not run for 24 CPU-hours on public PR CI.
+the 24 CPU-hour run is not a meson test and must not run on public PR CI.
+Clang CI runs `sh tests/fuzz-campaign.sh --smoke`.
 Six shared-lifecycle cases add failed Render/Begin recovery, active-target lifetime, reference
 ownership, invalid context arguments, and submission errors surviving a later buffer completion.
 `picture.c` calls the public picture entrypoints with an intercepted codec. The original target
@@ -188,11 +193,11 @@ when the codec is compiled in):
 
 | Configuration | Codecs | Expected tests |
 | --- | --- | --- |
-| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 134 (`meson test --list` with FFmpeg present, including six fuzz replay tests) |
-| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | no hevc-parser, vp9-\*, fuzz-hevc, fuzz-vp9, image-bounds; fuzz-h264/fuzz-va-api/fuzz-budgets/fuzz-provenance remain |
-| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | no codec-gated parser or fuzz-h264/hevc/vp9 tests; fuzz-va-api/fuzz-budgets/fuzz-provenance remain |
-| all codecs disabled (any headers) | none | 120 on 6.8 headers with FFmpeg (core plus image-bounds plus fuzz-va-api/fuzz-budgets/fuzz-provenance) |
-| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 129 (no vp9-\* or fuzz-vp9) |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 137 (`meson test --list` with FFmpeg present, including six fuzz replay tests plus timeout-mode and replay-mismatch) |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | no hevc-parser, vp9-\*, fuzz-hevc, fuzz-vp9, image-bounds; fuzz-h264/fuzz-va-api/fuzz-budgets/fuzz-provenance/fuzz-timeout-*/fuzz-replay-mismatch remain |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | no codec-gated parser or fuzz-h264/hevc/vp9 tests; fuzz-va-api/fuzz-budgets/fuzz-provenance/fuzz-timeout-*/fuzz-replay-mismatch remain |
+| all codecs disabled (any headers) | none | 123 on 6.8 headers with FFmpeg (core plus image-bounds plus fuzz-va-api/fuzz-budgets/fuzz-provenance/fuzz-timeout-*/fuzz-replay-mismatch) |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 132 (no vp9-\* or fuzz-vp9) |
 
 `deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
 auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all

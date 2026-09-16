@@ -61,9 +61,17 @@
     },
     {
       "path": "fuzz/seeds/hevc/ue-overflow",
-      "sha256": "010cfa4e7549a3b95392dc4e4079cff2a26aa2b682f3a672ab9de20f06bb0fb4",
+      "sha256": "0671e6d49865ef619d70dd1c7d79820c84c58f40767cfb494890843bbe8f9226",
       "origin": "in-tree-test-fixture",
-      "note": "known regression: 32 leading-zero exp-Golomb / pred_weight_table VLA",
+      "note": "direct v4l2r_bits_ue entry (magic F5 E1 02) for the 32-leading-zero exp-Golomb case from tests/hevc-parser.c; not the pred_weight_table VLA",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/hevc/pred-weight-vla",
+      "sha256": "098c6d55241296fef64ea14522f345bb04810fcf0229b3847928be1366ce17b6",
+      "origin": "in-tree-test-fixture",
+      "note": "direct pred_weight_table entry (magic F5 E1 01) with num_ref_idx_active_minus1=0x7fffffff; the slice header cannot reach this check because it rejects counts > 14 first. Original assert remains in tests/hevc-parser.c",
       "licence": "GPL-3.0-or-later",
       "redistributable": true
     },

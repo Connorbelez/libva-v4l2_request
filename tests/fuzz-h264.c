@@ -13,6 +13,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	const uint8_t *nal;
 	size_t nal_size;
 
+	fuzz_oracle_reset();
 	fuzz_begin_budget();
 	size = fuzz_cap_size(size);
 	memset(&codec, 0, sizeof(codec));
@@ -30,7 +31,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	}
 	slice.slice_data_size = (uint32_t)nal_size;
 	h264_parse_slice_header(&codec, &slice, nal, nal_size, &info);
-	(void)info;
+	if (info.valid)
+		fuzz_oracle_last.flags |= FUZZ_ORACLE_VALID;
+	fuzz_oracle_last.nal_unit_type = info.nal_unit_type;
+	fuzz_oracle_mix(info.valid);
+	fuzz_oracle_mix(info.nal_unit_type);
+	fuzz_oracle_mix(info.nal_ref_idc);
+	fuzz_oracle_mix(info.slice_type);
+	fuzz_oracle_mix(info.header_bit_size);
+	fuzz_oracle_mix(info.idr);
 	fuzz_end_budget();
 	return 0;
 }

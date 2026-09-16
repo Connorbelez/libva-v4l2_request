@@ -124,31 +124,50 @@ fuzz_va_wrap = ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll', '-Wl,--wrap=__poll_chk',
                 '-Wl,--wrap=open', '-Wl,--wrap=open64', '-Wl,--wrap=__open_2', '-Wl,--wrap=__open64_2',
                 '-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=realloc', '-Wl,--wrap=free']
 fuzz_seed_root = meson.current_source_dir() / 'fuzz' / 'seeds'
+fuzz_replay_c = ['-DFUZZ_REPLAY_BUILD']
+fuzz_campaign_def = ['-DFUZZ_CAMPAIGN_BUILD']
 
 if conf.get('HAVE_V4L2_CTRL_H264') == 1
-  fuzz_h264_replay = executable('fuzz-h264-replay', 'fuzz-h264.c', 'fuzz-replay.c', driver_sources,
+  fuzz_h264_replay = executable('fuzz-h264-replay', 'fuzz-h264.c', 'fuzz-replay.c', 'fuzz-oracle.c', driver_sources,
     include_directories: fuzz_inc,
+    c_args: fuzz_replay_c,
     dependencies: [libva_dep, libdrm_dep, threads_dep])
   test('fuzz-h264', fuzz_h264_replay, args: [fuzz_seed_root / 'h264'], timeout: 15)
 endif
 if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
-  fuzz_hevc_replay = executable('fuzz-hevc-replay', 'fuzz-hevc.c', 'fuzz-replay.c', driver_sources,
+  fuzz_hevc_replay = executable('fuzz-hevc-replay', 'fuzz-hevc.c', 'fuzz-replay.c', 'fuzz-oracle.c', driver_sources,
     include_directories: fuzz_inc,
+    c_args: fuzz_replay_c,
     dependencies: [libva_dep, libdrm_dep, threads_dep])
   test('fuzz-hevc', fuzz_hevc_replay, args: [fuzz_seed_root / 'hevc'], timeout: 15)
 endif
 if conf.get('HAVE_V4L2_CTRL_VP9') == 1
-  fuzz_vp9_replay = executable('fuzz-vp9-replay', 'fuzz-vp9.c', 'fuzz-replay.c', driver_sources,
+  fuzz_vp9_replay = executable('fuzz-vp9-replay', 'fuzz-vp9.c', 'fuzz-replay.c', 'fuzz-oracle.c', driver_sources,
     include_directories: fuzz_inc,
+    c_args: fuzz_replay_c,
     dependencies: [libva_dep, libdrm_dep, threads_dep])
   test('fuzz-vp9', fuzz_vp9_replay, args: [fuzz_seed_root / 'vp9'], timeout: 15)
 endif
-fuzz_va_api_replay = executable('fuzz-va-api-replay', 'fuzz-va-api.c', 'fuzz-replay.c', driver_sources,
+fuzz_va_api_replay = executable('fuzz-va-api-replay', 'fuzz-va-api.c', 'fuzz-replay.c', 'fuzz-oracle.c', driver_sources,
   include_directories: fuzz_inc,
+  c_args: fuzz_replay_c,
   dependencies: [libva_dep, libdrm_dep, threads_dep],
   link_args: fuzz_va_wrap)
 test('fuzz-va-api', fuzz_va_api_replay, args: [fuzz_seed_root / 'va-api'], timeout: 15)
 test('fuzz-budgets', fuzz_va_api_replay, args: ['--self-test'], timeout: 15)
+
+fuzz_timeout_replay = executable('fuzz-timeout-replay', 'fuzz-timeout-mode.c',
+  include_directories: fuzz_inc,
+  c_args: fuzz_replay_c)
+test('fuzz-timeout-replay', fuzz_timeout_replay, timeout: 5)
+fuzz_timeout_campaign = executable('fuzz-timeout-campaign', 'fuzz-timeout-mode.c',
+  include_directories: fuzz_inc,
+  c_args: fuzz_campaign_def)
+test('fuzz-timeout-campaign', fuzz_timeout_campaign, timeout: 5)
+fuzz_replay_mismatch = executable('fuzz-replay-mismatch', 'fuzz-replay-mismatch.c', 'fuzz-oracle.c',
+  include_directories: fuzz_inc,
+  c_args: fuzz_replay_c)
+test('fuzz-replay-mismatch', fuzz_replay_mismatch, timeout: 5)
 
 if get_option('fuzzing').enabled()
   # libFuzzer is a C++ runtime. Combine it with the project's sanitizers so
@@ -166,31 +185,31 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, unsigned long n) { (void)d; (void)n
     error('fuzzing was enabled with -Dfuzzing=enabled, but this compiler cannot link -fsanitize=fuzzer. Use clang, install compiler-rt (Debian/Ubuntu: libclang-rt-dev), and keep the replay binaries for gcc. See docs/FUZZING.md.')
   endif
   if conf.get('HAVE_V4L2_CTRL_H264') == 1
-    executable('fuzz-h264', 'fuzz-h264.c', driver_sources,
+    executable('fuzz-h264', 'fuzz-h264.c', 'fuzz-oracle.c', driver_sources,
       include_directories: fuzz_inc,
       dependencies: [libva_dep, libdrm_dep, threads_dep],
       override_options: ['b_lundef=false'],
-      c_args: fuzzer_lto, link_args: fuzzer_lto)
+      c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto)
   endif
   if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
-    executable('fuzz-hevc', 'fuzz-hevc.c', driver_sources,
+    executable('fuzz-hevc', 'fuzz-hevc.c', 'fuzz-oracle.c', driver_sources,
       include_directories: fuzz_inc,
       dependencies: [libva_dep, libdrm_dep, threads_dep],
       override_options: ['b_lundef=false'],
-      c_args: fuzzer_lto, link_args: fuzzer_lto)
+      c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto)
   endif
   if conf.get('HAVE_V4L2_CTRL_VP9') == 1
-    executable('fuzz-vp9', 'fuzz-vp9.c', driver_sources,
+    executable('fuzz-vp9', 'fuzz-vp9.c', 'fuzz-oracle.c', driver_sources,
       include_directories: fuzz_inc,
       dependencies: [libva_dep, libdrm_dep, threads_dep],
       override_options: ['b_lundef=false'],
-      c_args: fuzzer_lto, link_args: fuzzer_lto)
+      c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto)
   endif
-  executable('fuzz-va-api', 'fuzz-va-api.c', driver_sources,
+  executable('fuzz-va-api', 'fuzz-va-api.c', 'fuzz-oracle.c', driver_sources,
     include_directories: fuzz_inc,
     dependencies: [libva_dep, libdrm_dep, threads_dep],
     override_options: ['b_lundef=false'],
-    c_args: fuzzer_lto, link_args: fuzzer_lto + fuzz_va_wrap)
+    c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto + fuzz_va_wrap)
 endif
 
 

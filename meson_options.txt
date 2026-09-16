@@ -17,4 +17,4 @@ option('codec_av1', type: 'feature', value: 'auto',
        description: 'AV1 stateless decoding (Linux UAPI >= 6.5)')
 
 option('fuzzing', type: 'feature', value: 'disabled',
-       description: 'Build libFuzzer campaign binaries (clang -fsanitize=fuzzer); not meson tests')
+       description: 'Build libFuzzer campaign binaries (clang -fsanitize=fuzzer); 24 CPU-hour runs are not meson tests')
