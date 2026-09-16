@@ -1,0 +1,61 @@
+name: Describe a support gap
+description: Identify a missing codec, format, device or client capability.
+body:
+- type: markdown
+  attributes:
+    value: 'This is a public report. For a suspected vulnerability, stop here and follow [SECURITY.md](https://github.com/iconidentify/libva-v4l2_request/blob/avd-fixes/SECURITY.md).
+
+      Share only a minimal synthetic or redistributable example and relevant redacted excerpts. Do
+      not upload private media, credentials, personal paths/URLs, core dumps or unrelated process
+      logs. Do not rerun a known decoder wedge. Routine reports stay in these forks.'
+- type: textarea
+  id: capability
+  attributes:
+    label: Requested capability
+    description: Specify codec/profile, bit depth/chroma, dimensions or client/device combination
+      and the expected user outcome.
+  validations:
+    required: true
+- type: textarea
+  id: environment
+  attributes:
+    label: Source and environment
+    description: Give source commit/package version, device/SoC, OS/kernel, client/version and driver
+      selection where relevant. Distinguish installed from loaded module identity. Write unknown or
+      not applicable instead of guessing.
+  validations:
+    required: true
+- type: textarea
+  id: known-status
+  attributes:
+    label: Known status and evidence
+    description: Link the support matrix or existing gap. Distinguish unsupported, untested, rejected
+      and wrong output. Write unknown if there is no evidence; testing is not required to request
+      support.
+  validations:
+    required: true
+- type: textarea
+  id: dependencies
+  attributes:
+    label: Dependencies and available resources
+    description: List known kernel/API/client dependencies, related tickets and any available hardware
+      or sample provenance. Unknown is acceptable. A resource offer is not a hardware lease or installation
+      consent.
+  validations:
+    required: false
+- type: textarea
+  id: attribution
+  attributes:
+    label: AI assistance and imported work
+    description: If applicable, describe AI assistance and credit imported material with its source
+      and licence.
+  validations:
+    required: false
+- type: checkboxes
+  id: privacy
+  attributes:
+    label: Before submitting
+    description: Review the public text and attachments.
+    options:
+    - label: I have removed sensitive data and this is not a private vulnerability report.
+      required: true
