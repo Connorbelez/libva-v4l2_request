@@ -121,7 +121,12 @@ def md5_file(path: Path) -> str:
     MD5 only detects a changed upstream file here; the recorded corpus identity is
     SHA-256 in every manifest pin and lock record.
     """
-    digest = hashlib.md5(usedforsecurity=False)
+    try:
+        digest = hashlib.md5(usedforsecurity=False)
+    except TypeError:
+        # Python 3.8 in the oldest CI tier predates this keyword. MD5 here
+        # verifies the upstream transport checksum; cache identity is SHA-256.
+        digest = hashlib.md5()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
