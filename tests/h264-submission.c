@@ -185,7 +185,14 @@ static void unsupported_fmo(void)
 {
     VAPictureParameterBufferH264 pic = {0};
     pic.seq_fields.bits.frame_mbs_only_flag = 1;
+    /* libva deprecates the slice-group fields because FMO is unsupported, and
+     * that deprecated field is exactly the signal this case has to exercise,
+     * so the warning is suppressed for this one assignment the same way
+     * codec_h264.c suppresses it around h264_has_slice_groups(). */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     pic.num_slice_groups_minus1 = 1; /* slice groups declared by the client */
+#pragma GCC diagnostic pop
     struct v4l2r_buffer buf = {.type = VAPictureParameterBufferType,
         .data = &pic, .element_size = sizeof(pic), .nb_elements = 1};
     assert(h264_render_buffer(&ctx, &buf) == VA_STATUS_ERROR_UNIMPLEMENTED);
