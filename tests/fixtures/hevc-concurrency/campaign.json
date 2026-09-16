@@ -1,0 +1,802 @@
+{
+  "driver_commit": "826d1758c5e5533b3b5490ed444a56ab01c25e3a",
+  "machine": "Apple M1 T8103",
+  "journal_since": "2026-09-16 00:00:00",
+  "kernel_patch_0006": "patch 0006 applied in omarchy-m1-video; next-request slice-count race distinguished",
+  "schedules": {
+    "pair-bd": {
+      "seed": "39-pair-bd",
+      "software": {
+        "SLIST_B_Sony_9": {
+          "expected": "312b4ebb3e885587d5e12b78aa95977a",
+          "actual": "312b4ebb3e885587d5e12b78aa95977a",
+          "frames": 65,
+          "match": true
+        },
+        "SLIST_D_Sony_9": {
+          "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+          "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+          "frames": 65,
+          "match": true
+        }
+      },
+      "runs": [
+        {
+          "index": 0,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            }
+          ]
+        }
+      ],
+      "ok": true,
+      "n": 5
+    },
+    "pair-br": {
+      "seed": "39-pair-br",
+      "software": {
+        "RAP_B_Bossen_2": {
+          "expected": "f38befcc280f2fd0d23f48f807f843c2",
+          "actual": "f38befcc280f2fd0d23f48f807f843c2",
+          "frames": 80,
+          "match": true
+        },
+        "SLIST_B_Sony_9": {
+          "expected": "312b4ebb3e885587d5e12b78aa95977a",
+          "actual": "312b4ebb3e885587d5e12b78aa95977a",
+          "frames": 65,
+          "match": true
+        }
+      },
+      "runs": [
+        {
+          "index": 0,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        }
+      ],
+      "ok": true,
+      "n": 5
+    },
+    "pair-dr": {
+      "seed": "39-pair-dr",
+      "software": {
+        "RAP_B_Bossen_2": {
+          "expected": "f38befcc280f2fd0d23f48f807f843c2",
+          "actual": "f38befcc280f2fd0d23f48f807f843c2",
+          "frames": 80,
+          "match": true
+        },
+        "SLIST_D_Sony_9": {
+          "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+          "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+          "frames": 65,
+          "match": true
+        }
+      },
+      "runs": [
+        {
+          "index": 0,
+          "ok": true,
+          "vectors": [
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "vectors": [
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "vectors": [
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "vectors": [
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "vectors": [
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            }
+          ]
+        }
+      ],
+      "ok": true,
+      "n": 5
+    },
+    "four-named": {
+      "seed": "39-four-named",
+      "software": {
+        "RAP_A_docomo_6": {
+          "expected": "8a536a80ed42b37b1ac5810bc046f82a",
+          "actual": "8a536a80ed42b37b1ac5810bc046f82a",
+          "frames": 86,
+          "match": true
+        },
+        "RAP_B_Bossen_2": {
+          "expected": "f38befcc280f2fd0d23f48f807f843c2",
+          "actual": "f38befcc280f2fd0d23f48f807f843c2",
+          "frames": 80,
+          "match": true
+        },
+        "SLIST_B_Sony_9": {
+          "expected": "312b4ebb3e885587d5e12b78aa95977a",
+          "actual": "312b4ebb3e885587d5e12b78aa95977a",
+          "frames": 65,
+          "match": true
+        },
+        "SLIST_D_Sony_9": {
+          "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+          "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+          "frames": 65,
+          "match": true
+        }
+      },
+      "runs": [
+        {
+          "index": 0,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2",
+            "RAP_A_docomo_6"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            },
+            {
+              "vector": "RAP_A_docomo_6",
+              "match": true,
+              "actual": "8a536a80ed42b37b1ac5810bc046f82a",
+              "expected": "8a536a80ed42b37b1ac5810bc046f82a",
+              "frames": 86
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2",
+            "RAP_A_docomo_6"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            },
+            {
+              "vector": "RAP_A_docomo_6",
+              "match": true,
+              "actual": "8a536a80ed42b37b1ac5810bc046f82a",
+              "expected": "8a536a80ed42b37b1ac5810bc046f82a",
+              "frames": 86
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2",
+            "RAP_A_docomo_6"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            },
+            {
+              "vector": "RAP_A_docomo_6",
+              "match": true,
+              "actual": "8a536a80ed42b37b1ac5810bc046f82a",
+              "expected": "8a536a80ed42b37b1ac5810bc046f82a",
+              "frames": 86
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2",
+            "RAP_A_docomo_6"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            },
+            {
+              "vector": "RAP_A_docomo_6",
+              "match": true,
+              "actual": "8a536a80ed42b37b1ac5810bc046f82a",
+              "expected": "8a536a80ed42b37b1ac5810bc046f82a",
+              "frames": 86
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_D_Sony_9",
+            "RAP_B_Bossen_2",
+            "RAP_A_docomo_6"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_D_Sony_9",
+              "match": true,
+              "actual": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "expected": "8d38ce43b17627ff1f86e526bfb7ffc4",
+              "frames": 65
+            },
+            {
+              "vector": "RAP_B_Bossen_2",
+              "match": true,
+              "actual": "f38befcc280f2fd0d23f48f807f843c2",
+              "expected": "f38befcc280f2fd0d23f48f807f843c2",
+              "frames": 80
+            },
+            {
+              "vector": "RAP_A_docomo_6",
+              "match": true,
+              "actual": "8a536a80ed42b37b1ac5810bc046f82a",
+              "expected": "8a536a80ed42b37b1ac5810bc046f82a",
+              "frames": 86
+            }
+          ]
+        }
+      ],
+      "ok": true,
+      "n": 5
+    },
+    "four-slist-b": {
+      "seed": "39-four-slist-b",
+      "software": {
+        "SLIST_B_Sony_9": {
+          "expected": "312b4ebb3e885587d5e12b78aa95977a",
+          "actual": "312b4ebb3e885587d5e12b78aa95977a",
+          "frames": 65,
+          "match": true
+        }
+      },
+      "runs": [
+        {
+          "index": 0,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "ok": true,
+          "vectors": [
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9",
+            "SLIST_B_Sony_9"
+          ],
+          "slots": [
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            },
+            {
+              "vector": "SLIST_B_Sony_9",
+              "match": true,
+              "actual": "312b4ebb3e885587d5e12b78aa95977a",
+              "expected": "312b4ebb3e885587d5e12b78aa95977a",
+              "frames": 65
+            }
+          ]
+        }
+      ],
+      "ok": true,
+      "n": 3
+    }
+  },
+  "total_runs": 23,
+  "total_ok": 23,
+  "mismatches": 0
+}

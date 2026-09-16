@@ -98,7 +98,7 @@ Parent: [iconidentify/libva-v4l2_request#12](https://github.com/iconidentify/lib
 
 - [iconidentify/libva-v4l2_request#38](https://github.com/iconidentify/libva-v4l2_request/issues/38) — Isolate the HEVC RPS_E reference corruption with frame and command evidence (P0, M1). Record: [RPS_E.md](RPS_E.md).
 - [iconidentify/libva-v4l2_request#42](https://github.com/iconidentify/libva-v4l2_request/issues/42) — Correct HEVC long-term reference handling for RPS_E without regressions (P0, M1).
-- [iconidentify/libva-v4l2_request#39](https://github.com/iconidentify/libva-v4l2_request/issues/39) — Make intermittent multi-process HEVC corruption reproducible (P0, M1).
+- [iconidentify/libva-v4l2_request#39](https://github.com/iconidentify/libva-v4l2_request/issues/39) — Make intermittent multi-process HEVC corruption reproducible (P0, M1). Record: [HEVC_CONCURRENCY.md](HEVC_CONCURRENCY.md).
 - [iconidentify/libva-v4l2_request#43](https://github.com/iconidentify/libva-v4l2_request/issues/43) — Fix the isolated HEVC concurrency defect and lock in its regression (P0, M1).
 - [iconidentify/omarchy-m1-video#15](https://github.com/iconidentify/omarchy-m1-video/issues/15) — Preserve delayed HEVC parameter sets and all pictures in the FFmpeg client path (P1, M2).
 - [iconidentify/libva-v4l2_request#28](https://github.com/iconidentify/libva-v4l2_request/issues/28) — Specify and enforce HEVC range-extension and bit-depth capability boundaries (P2, M4).
