@@ -158,6 +158,92 @@ To try the driver without installing it:
 LIBVA_DRIVERS_PATH=$PWD/build/src LIBVA_DRIVER_NAME=v4l2_request mpv --hwdec=vaapi-copy video.mp4
 ```
 
+### Installing
+
+`meson install` copies only the driver module, `v4l2_request_drv_video.so`, into libva's
+driver directory. It does not touch the kernel, install kernel patches, or reboot anything;
+hardware/kernel setup on Apple Silicon is a separate step handled by
+[omarchy-m1-video](https://github.com/iconidentify/omarchy-m1-video).
+
+```sh
+meson setup build --prefix=/usr
+meson compile -C build
+sudo meson install -C build
+```
+
+- **Where it installs**: by default the driver directory comes from libva's own pkg-config
+  `driverdir` variable (`pkg-config --variable=driverdir libva`; typically `/usr/lib/dri` or
+  an arch-tripled `.../dri`). Override it at `meson setup` time with `-Ddriverdir=<path>`
+  when packaging for a nonstandard prefix.
+- **Uninstalling**: `sudo ninja -C build uninstall` removes exactly the files `meson install`
+  put down, including now-empty parent directories it created; nothing else under the
+  prefix is touched.
+- **Disposable-root testing**: verify a clean install/uninstall without touching the host
+  using `DESTDIR`:
+
+  ```sh
+  meson setup build --prefix=/usr
+  meson compile -C build
+  root=$(mktemp -d)
+  DESTDIR="$root" meson install -C build
+  DESTDIR="$root" ninja -C build uninstall   # root is removed, empty, afterwards
+  ```
+
+  `tests/install-smoke.sh` automates this for both the default and a custom `-Ddriverdir`,
+  and additionally checks that the installed module is stripped, carries no build/worktree
+  paths, and matches its libva ABI entrypoint (see [Verifying an
+  install](#verifying-an-install) below).
+- **Installed artifacts**: only the driver module has `install: true` in `src/meson.build`;
+  test binaries and the build directory are never installed. The project defaults to
+  `-Dstrip=true`, so the installed copy carries no DWARF debug info and therefore no
+  absolute source-tree path; pass `-Dstrip=false` (e.g. for a `-dbg` package) to keep
+  symbols. The unstripped build-tree copy under `build/src/` is unaffected, so
+  `LIBVA_DRIVERS_PATH=$PWD/build/src` development keeps full debug info.
+
+### Dependency bounds
+
+The floors below are enforced at configure time, not aspirational: `meson setup` fails
+naming the version it found versus the floor when a hard dependency is too old, and an
+explicitly `-Dcodec_<name>=enabled` codec fails configuration naming the missing kernel
+control instead of silently compiling out (see the `codec_checks` table in `meson.build`).
+
+| Dependency | Floor | Verified oldest combination | Notes |
+|---|---|---|---|
+| libva (`libva-dev`) | VA-API >= 1.7.0 (library release >= 2.7.0) | Ubuntu 20.04, libva 2.7, gcc 9 | `dependency('libva', version: '>= 1.7.0')`. DRM_PRIME_2 surface export needs 2.4; opt-in H.264 High 10 needs 2.18. |
+| libdrm (`libdrm-dev`) | any pkg-config `libdrm` | — | Presence only, no version floor enforced. |
+| Linux UAPI headers (`linux-libc-dev`) | >= 5.4 to configure at all; per-codec floors 5.11 (H.264) through 6.5 (AV1) | Ubuntu 20.04, headers 5.4 (all stateless codecs compiled out) | Auto-detected from the installed UAPI *headers*, not the running kernel; each codec's exact floor is documented in `meson.build` and `meson_options.txt`. |
+| Meson, Ninja, a C11 compiler | — | GCC 9 and Clang, both exercised in CI | `c_std=gnu11`. |
+
+These floors and the oldest-verified rows are exercised on every PR by the
+[`checks.yml`](.github/workflows/checks.yml) CI matrix (its "current dependencies",
+"oldest verified dependencies (libva 2.14, kernel UAPI 5.15)" and "oldest kernel UAPI (5.4
+headers, all stateless codecs compiled out)" jobs); that workflow is the authoritative
+source for exact pinned package versions per distribution tier.
+
+### Verifying an install
+
+`vainfo --display drm` against an installed driver should report the vendor string
+`v4l2-request (omarchy-m1-video 1.3.r11)` (or the fork's current version). A different or
+missing string means `LIBVA_DRIVERS_PATH`/`driverdir` picked up a different module. If
+`vainfo` instead fails to find or load the driver, the two most likely causes are:
+
+- **ABI entrypoint mismatch**: libva looks up a version-specific symbol,
+  `__vaDriverInit_<VA_MAJOR>_<VA_MINOR>`, generated from the libva headers this module was
+  *built* against. Compare that to what the *runtime* libva expects:
+
+  ```sh
+  nm -D build/src/v4l2_request_drv_video.so | grep vaDriverInit   # symbol this build exports
+  pkg-config --modversion libva                                   # VA-API version in use now
+  ```
+
+  If the major.minor differ, the running libva never looks up the symbol this build exports
+  and silently skips the module; rebuild against the `libva-dev` headers matching the
+  deployed libva.
+- **Wrong driver directory**: confirm the installed path matches what libva actually
+  searches, `pkg-config --variable=driverdir libva` (or the `-Ddriverdir` used at build
+  time), and that `LIBVA_DRIVER_NAME=v4l2_request` is set so libva picks
+  `v4l2_request_drv_video.so` there.
+
 ### H.264 High 10 with FFmpeg or mpv
 
 High 10 is disabled by default because FFmpeg 9.0.1 passes a bit-depth bias in its VA-API

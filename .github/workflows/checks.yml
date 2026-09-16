@@ -55,6 +55,8 @@ jobs:
         run: |
           sh tests/frame-check.sh
           sh tests/shared-contexts.sh
+      - name: Disposable-root install/uninstall smoke test
+        run: sh tests/install-smoke.sh
 
   deps-oldest:
     name: oldest verified dependencies (libva 2.14, kernel UAPI 5.15)
