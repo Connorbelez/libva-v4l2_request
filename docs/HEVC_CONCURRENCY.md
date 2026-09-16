@@ -47,6 +47,7 @@ the since-stamp still abort.
 | Software refs | All four named vectors match Fluster MD5s |
 | Seed prefix | `39-<schedule>` |
 | Named MD5s | SLIST_B `312b4ebb3e885587d5e12b78aa95977a`; SLIST_D `8d38ce43b17627ff1f86e526bfb7ffc4`; RAP_B `f38befcc280f2fd0d23f48f807f843c2`; RAP_A `8a536a80ed42b37b1ac5810bc046f82a` |
+| Wall clock | 2026-09-16T00:05:13-0700 – 00:06:27-0700 (**74 s**), deadline 600 s; slot `elapsed_s` ≈ 0.4 s |
 | Result | **23/23 runs matched**, 0 pixel mismatches, 0 new AVD faults |
 
 | Schedule | Repeats | Processes | Result |
@@ -74,9 +75,10 @@ during these runs).
 ## H4 contract
 
 - A clean schedule does **not** close H3/H4.
-- Next experiment: longer four-process full `JCT-VC-HEVC_V1` (147 vectors),
-  or the same pairs with an extra unrelated decoder client, or more than five
-  repeats. Stop on the first wrong hash and keep that run's frame logs.
+- 23/23 on four named vectors in 74 s does **not** bound the historical 147-vector
+  four-process fault. Next experiment: longer four-process full `JCT-VC-HEVC_V1`
+  (147 vectors), or the same pairs with an extra unrelated decoder client, or
+  more than five repeats. Stop on the first wrong hash and keep that run's frame logs.
 - Do not land a “fix” without a captured mismatch and first differing frame.
 
 ## Tests not run

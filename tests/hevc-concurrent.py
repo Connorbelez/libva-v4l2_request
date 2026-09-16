@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -68,25 +69,51 @@ def worker(slot: int, name: str, bit: Path, expected: str, frame_check: Path,
     env["LIBVA_DRIVER_NAME"] = "v4l2_request"
     frames_path = out_dir / f"slot{slot}-{name}.frames"
     log_path = out_dir / f"slot{slot}-{name}.log"
-    barrier.wait(timeout=30)
     started = time.monotonic()
-    with frames_path.open("w") as stdout, log_path.open("w") as stderr:
-        proc = subprocess.run(
-            [str(frame_check), "vaapi", str(bit), "yuv420p"],
-            env=env, stdout=stdout, stderr=stderr, timeout=120,
-        )
-    elapsed = time.monotonic() - started
-    digest, frames = parse_md5(frames_path.read_text())
-    queue.put({
+    payload = {
         "slot": slot,
         "vector": name,
         "expected": expected,
-        "actual": digest,
-        "frames": frames,
-        "returncode": proc.returncode,
-        "match": digest == expected and proc.returncode == 0,
-        "elapsed_s": round(elapsed, 3),
-    })
+        "actual": None,
+        "frames": 0,
+        "returncode": None,
+        "match": False,
+        "elapsed_s": 0.0,
+        "error": None,
+    }
+    try:
+        barrier.wait(timeout=30)
+        with frames_path.open("w") as stdout, log_path.open("w") as stderr:
+            proc = subprocess.run(
+                [str(frame_check), "vaapi", str(bit), "yuv420p"],
+                env=env, stdout=stdout, stderr=stderr, timeout=120,
+            )
+        digest, frames = parse_md5(frames_path.read_text() if frames_path.is_file() else "")
+        payload.update({
+            "actual": digest,
+            "frames": frames,
+            "returncode": proc.returncode,
+            "match": digest == expected and proc.returncode == 0,
+            "elapsed_s": round(time.monotonic() - started, 3),
+        })
+    except Exception as exc:
+        payload["error"] = type(exc).__name__
+        payload["elapsed_s"] = round(time.monotonic() - started, 3)
+    finally:
+        queue.put(payload)
+
+
+def _stop_workers(procs: list[Process]) -> None:
+    for proc in procs:
+        if proc.is_alive():
+            try:
+                os.killpg(proc.pid, 15)
+            except (ProcessLookupError, PermissionError, OSError):
+                proc.terminate()
+        proc.join(timeout=5)
+        if proc.is_alive():
+            proc.kill()
+            proc.join(timeout=2)
 
 
 def run_schedule(names: list[str], resources: Path, frame_check: Path,
@@ -96,30 +123,37 @@ def run_schedule(names: list[str], resources: Path, frame_check: Path,
     barrier = Barrier(n)
     queue: Queue = Queue()
     procs = []
-    for slot, name in enumerate(names):
-        info = VECTORS[name]
-        bit = resources / info["rel"]
-        if not bit.is_file():
-            raise SystemExit(f"missing bitstream {bit}")
-        proc = Process(
-            target=worker,
-            args=(slot, name, bit, info["expected"], frame_check, driver, out_dir, barrier, queue),
-        )
-        procs.append(proc)
-        proc.start()
-    results = []
-    for _ in procs:
-        results.append(queue.get(timeout=180))
-    for proc in procs:
-        proc.join(timeout=10)
-        if proc.is_alive():
-            proc.terminate()
-    results.sort(key=lambda item: item["slot"])
-    return {
-        "vectors": names,
-        "ok": all(item["match"] for item in results),
-        "slots": results,
-    }
+    wall0 = time.monotonic()
+    try:
+        for slot, name in enumerate(names):
+            info = VECTORS[name]
+            bit = resources / info["rel"]
+            if not bit.is_file():
+                raise SystemExit(f"missing bitstream {bit}")
+            proc = Process(
+                target=worker,
+                args=(slot, name, bit, info["expected"], frame_check, driver, out_dir, barrier, queue),
+            )
+            procs.append(proc)
+            proc.start()
+        results = []
+        for _ in procs:
+            try:
+                results.append(queue.get(timeout=180))
+            except Exception as exc:
+                _stop_workers(procs)
+                raise SystemExit(f"worker queue failed: {exc}") from exc
+        _stop_workers(procs)
+        results.sort(key=lambda item: item["slot"])
+        return {
+            "vectors": names,
+            "ok": all(item["match"] for item in results),
+            "wall_s": round(time.monotonic() - wall0, 3),
+            "slots": results,
+        }
+    except BaseException:
+        _stop_workers(procs)
+        raise
 
 
 def software_check(names: list[str], resources: Path, frame_check: Path, out_dir: Path) -> dict:
@@ -162,7 +196,11 @@ def main() -> int:
         if set(SCHEDULES["four-named"]) != set(VECTORS):
             print("four-named does not cover VECTORS", file=sys.stderr)
             return 1
-        print("hevc-concurrent self-test ok: four named vectors, five schedules")
+        digest, frames = parse_md5("frame 0 16x16 yuv420p " + "a" * 32 + "\nMD5=" + "b" * 32 + "\n")
+        if frames != 1 or digest != "b" * 32:
+            print("parse_md5 failed", file=sys.stderr)
+            return 1
+        print("hevc-concurrent self-test ok: four named vectors, five schedules, parse_md5")
         return 0
     if not os.environ.get(LEASE_ENV) and not args.software_only:
         print("ungarded hardware run refused; wrap with tests/hwguard.py", file=sys.stderr)
@@ -194,23 +232,38 @@ def main() -> int:
         print("software references match")
         return 0
     mismatch = False
+    campaign_t0 = time.monotonic()
+
+    def persist() -> None:
+        record["wall_s"] = round(time.monotonic() - campaign_t0, 3)
+        path = args.output / "summary.json"
+        path.write_text(json.dumps(record, indent=2) + "\n")
+        fd = os.open(path, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+    def handle_stop(signum, frame) -> None:
+        del signum, frame
+        persist()
+        raise SystemExit(2)
+
+    signal.signal(signal.SIGTERM, handle_stop)
+    signal.signal(signal.SIGINT, handle_stop)
     try:
         for n in range(args.repeat):
             run_dir = args.output / f"run-{n:02d}"
             result = run_schedule(names, args.resources, args.frame_check, args.driver, run_dir)
             result["repeat_index"] = n
             record["runs"].append(result)
+            persist()
             print(f"run {n} {args.schedule} ok={result['ok']}", flush=True)
             if not result["ok"]:
                 mismatch = True
                 break
     finally:
-        (args.output / "summary.json").write_text(json.dumps(record, indent=2) + "\n")
-        fd = os.open(args.output / "summary.json", os.O_RDONLY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        persist()
     return 1 if mismatch else 0
 
 

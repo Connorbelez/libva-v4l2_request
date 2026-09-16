@@ -798,5 +798,10 @@
   },
   "total_runs": 23,
   "total_ok": 23,
-  "mismatches": 0
+  "mismatches": 0,
+  "started": "2026-09-16T00:05:13-0700",
+  "ended": "2026-09-16T00:06:27-0700",
+  "wall_clock_s": 74,
+  "deadline_s": 600,
+  "note": "wall clock includes one false foreign-client abort and rerun of pair-br; successful slot elapsed_s is ~0.4s each"
 }

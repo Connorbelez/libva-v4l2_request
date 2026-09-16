@@ -33,10 +33,15 @@ def main() -> int:
         if not cond:
             errors.append(message)
 
-    check(data["total_runs"] == 23, "campaign run count drifted")
+    summed = sum(block["n"] for block in data["schedules"].values())
+    check(data["total_runs"] == summed == 23, "campaign run count drifted")
     check(data["total_ok"] == 23, "campaign is not all-match")
     check(data["mismatches"] == 0, "campaign recorded a mismatch without a captured first-diff")
     check("0006" in data["kernel_patch_0006"], "0006 distinction missing")
+    check(data.get("wall_clock_s", 0) > 0, "campaign missing wall_clock_s")
+    check(data.get("deadline_s") == 600, "campaign missing 600s deadline")
+    check("74" in docs and "600" in docs, "docs missing published duration")
+    check("slice-count" in data["kernel_patch_0006"], "0006 control-race wording missing")
     for name, digest in EXPECTED.items():
         check(digest in docs, f"docs missing {name} digest")
     for sched, block in data["schedules"].items():

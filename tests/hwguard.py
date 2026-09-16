@@ -797,7 +797,7 @@ def run_self_test() -> int:
 
     for script in (
         "hwdownload.sh", "early-export.sh", "h264-high10.sh", "vp9-matrix.sh",
-        "frame-check.sh", "shared-contexts.sh",
+        "frame-check.sh", "shared-contexts.sh", "hevc-concurrent.py",
     ):
         text = (root / "tests" / script).read_text()
         check("require-hw-guard.sh" in text or "LIBVA_HW_GUARD_LEASE" in text,
@@ -805,6 +805,21 @@ def run_self_test() -> int:
 
     conf = (root / "tests" / "conformance.py").read_text()
     check("LIBVA_HW_GUARD_LEASE" in conf, "conformance.py --driver is not guard-gated")
+    ung = subprocess.run(
+        [sys.executable, str(root / "tests" / "hevc-concurrent.py"),
+         "--schedule", "pair-bd", "--resources", "/tmp",
+         "--frame-check", "/bin/true", "--output", "/tmp/hevc-conc-ungarded"],
+        capture_output=True, text=True,
+    )
+    check(ung.returncode == 2, "hevc-concurrent.py did not refuse unguarded hardware")
+
+    sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(8)"])
+    try:
+        check(is_owned_holder(sleeper.pid, sleeper.pid), "pid must own itself")
+        check(not is_owned_holder(1, sleeper.pid), "init must not count as the child")
+    finally:
+        sleeper.kill()
+        sleeper.wait(timeout=5)
 
     if errors:
         print(f"{len(errors)} hwguard self-test error(s):", file=sys.stderr)
