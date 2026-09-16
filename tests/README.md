@@ -16,6 +16,23 @@ It checks advertised VA profiles, the r11 raw suite totals, pinned pass sets, an
 fixtures that reject a `supported` row without provenance or a result artifact.
 It does not open a decoder.
 
+Compare a candidate run with the pinned r11 pass sets (no decoder):
+
+```sh
+python3 tests/compare-results.py --report docs/r11-pass-sets.json
+python3 tests/compare-results.py \
+  --baseline docs/r11-pass-sets.json \
+  --candidate /path/to/summary.json \
+  --suite hevc
+```
+
+`compare-results.py` reconstructs HEVC 144/147, AVC 73/135, FRExt 27/69 and VP9
+216/305 from the pinned record. It fails if one old pass is lost even when the
+fraction is unchanged, and it will not treat software fallback, timeouts, aborts
+or malformed JSON as a green hardware result. `conformance.py` writes
+`summary.json` in the result directory for this command. The Meson
+`conformance-result` test is the schema/comparator self-check.
+
 The cases cover failed decode/export, CAPTURE/reference/GPU-reader/request timeouts,
 invalid poll events, deferred flush failures, surviving surfaces and derived images after context destruction,
 errors during teardown, grown OUTPUT indices, bitstream size overflow, odd-width NV12/P010
@@ -27,7 +44,8 @@ rejection, High 10 quantizer modes and fake-device capability checks. Three H.26
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
-35 sanitizer Meson cases plus the `support-matrix` contract check (36 tests).
+35 sanitizer Meson cases plus the `support-matrix` and `conformance-result`
+contract checks (37 tests).
 The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.

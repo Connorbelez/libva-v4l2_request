@@ -185,12 +185,16 @@ From a fresh checkout, without a decoder:
 
 ```sh
 python3 tests/support-matrix.py
+python3 tests/compare-results.py --report docs/r11-pass-sets.json
+python3 tests/compare-results.py --baseline docs/r11-pass-sets.json \
+  --candidate /path/to/summary.json --suite hevc
 ```
 
-Meson registers the same check as the `support-matrix` test. The validator
+Meson registers `support-matrix` and `conformance-result`. The matrix validator
 rejects a `supported` row that lacks hardware provenance or a linked result
 artifact, rejects suite records that hide raw denominators, and requires a
-matrix row for every advertised VA profile.
+matrix row for every advertised VA profile. `python3 tests/compare-results.py
+--self-test` is the result-schema comparator check.
 
 ## Updating the contract
 

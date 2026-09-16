@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/iconidentify/libva-v4l2_request/docs/conformance-result.schema.json",
+  "title": "libva-v4l2_request conformance suite result",
+  "description": "One Fluster suite run. Hardware and software modes are distinct. A hardware pass requires VA-API frames; software fallback, timeouts, aborts and malformed records cannot be green hardware results. Raw passed/total cannot be replaced by an eligible-subset percentage.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "suite",
+    "mode",
+    "complete",
+    "passed",
+    "total",
+    "vectors"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "kind": { "type": "string", "const": "conformance-suite-result" },
+    "suite": { "type": "string", "minLength": 1 },
+    "suite_key": { "type": "string" },
+    "mode": { "type": "string", "enum": ["hardware", "software"] },
+    "complete": { "type": "boolean" },
+    "abort": {
+      "type": ["object", "null"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["timeout", "malformed", "foreign_client", "user", "decode_fault"]
+        },
+        "vector": { "type": "string" }
+      }
+    },
+    "passed": { "type": "integer", "minimum": 0 },
+    "total": { "type": "integer", "minimum": 1 },
+    "passing_frames": { "type": "integer", "minimum": 0 },
+    "high10": { "type": "string" },
+    "profile_mismatch": { "type": "boolean" },
+    "subset": {
+      "type": ["object", "null"],
+      "properties": {
+        "rationale": { "type": "string" },
+        "selected": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "provenance": { "type": "object" },
+    "command": { "type": "object" },
+    "vectors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/vector" }
+    }
+  },
+  "$defs": {
+    "vector": {
+      "type": "object",
+      "required": ["name", "success", "category"],
+      "properties": {
+        "name": { "type": "string" },
+        "success": { "type": "boolean" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "hardware_pass",
+            "software_pass",
+            "software_fallback",
+            "checksum_mismatch",
+            "decode_error",
+            "timeout",
+            "missing",
+            "incomplete"
+          ]
+        },
+        "expected_md5": { "type": ["string", "null"] },
+        "actual_md5": { "type": ["string", "null"] },
+        "frames": { "type": "integer", "minimum": 0 },
+        "native_sizes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "frame_summaries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["index", "width", "height", "md5"],
+            "properties": {
+              "index": { "type": "integer", "minimum": 0 },
+              "width": { "type": "integer" },
+              "height": { "type": "integer" },
+              "format": { "type": "string" },
+              "md5": { "type": "string" }
+            }
+          }
+        },
+        "first_differing_frame": { "type": ["object", "null"] }
+      }
+    }
+  }
+}

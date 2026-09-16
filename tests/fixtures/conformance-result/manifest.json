@@ -1,0 +1,41 @@
+[
+  {
+    "file": "fail-malformed.json",
+    "expect": "load-error"
+  },
+  {
+    "file": "fail-swapped.json",
+    "expect": "compare-fail",
+    "against": "pass-tiny.json",
+    "error": "lost"
+  },
+  {
+    "file": "fail-truncated.json",
+    "expect": "compare-fail",
+    "against": "pass-tiny.json",
+    "error": "incomplete"
+  },
+  {
+    "file": "fail-software.json",
+    "expect": "compare-fail",
+    "against": "pass-tiny.json",
+    "error": "not hardware"
+  },
+  {
+    "file": "fail-fallback.json",
+    "expect": "compare-fail",
+    "against": "pass-tiny.json",
+    "error": "fallback"
+  },
+  {
+    "file": "fail-timeout.jsonl",
+    "expect": "compare-fail",
+    "against": "pass-tiny.json",
+    "error": "aborted"
+  },
+  {
+    "file": "pass-tiny.json",
+    "expect": "compare-pass",
+    "against": "pass-tiny.json"
+  }
+]
