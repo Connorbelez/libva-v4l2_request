@@ -31,12 +31,14 @@ static struct {
 } fds[LIMIT];
 static struct { void *ptr; size_t size; } maps[LIMIT], heaps[LIMIT];
 static unsigned int fd_count, op, fail_at, injected, queues;
-static bool armed, packed, single_plane, hold, dequeue_blocked;
+static bool armed, packed, single_plane, hold, sliced, dequeue_blocked, fast_clock;
+static bool pitch_retry, fail_rollback;
+static uint64_t model_ns;
 static unsigned long fail_ioctl;
 static int fail_type = -1, fail_errno = EIO;
 static unsigned int fail_ioctl_nth, ioctl_matches;
 static int capture_flags, capture_bad_index = -1, output_bad_index = -1;
-static int poll_error, poll_timeouts;
+static int poll_error, poll_error_count, poll_timeouts;
 static short poll_events;
 static const char *operations[LIMIT];
 static struct VADriverContext va;
@@ -50,6 +52,15 @@ void *__real_realloc(void *ptr, size_t size);
 void __real_free(void *ptr);
 void *__real_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset);
 int __real_munmap(void *addr, size_t len);
+int __real_clock_gettime(clockid_t clock, struct timespec *ts);
+int __wrap_clock_gettime(clockid_t clock, struct timespec *ts)
+{
+    if (!fast_clock || clock != CLOCK_MONOTONIC) return __real_clock_gettime(clock, ts);
+    model_ns += 10000000;
+    ts->tv_sec = (time_t)(model_ns / 1000000000);
+    ts->tv_nsec = (long)(model_ns % 1000000000);
+    return 0;
+}
 
 static bool fault(const char *name)
 {
@@ -175,7 +186,8 @@ static void format_fill(struct v4l2_format *f)
     if (V4L2_TYPE_IS_MULTIPLANAR(f->type)) {
         if (!f->fmt.pix_mp.width) f->fmt.pix_mp.width = 64;
         if (!f->fmt.pix_mp.height) f->fmt.pix_mp.height = 64;
-        if (!f->fmt.pix_mp.pixelformat) f->fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+        if (!f->fmt.pix_mp.pixelformat)
+            f->fmt.pix_mp.pixelformat = packed ? V4L2_PIX_FMT_NV16 : V4L2_PIX_FMT_NV12;
         f->fmt.pix_mp.num_planes = 1;
         f->fmt.pix_mp.plane_fmt[0].bytesperline = 64;
         if (!f->fmt.pix_mp.plane_fmt[0].sizeimage)
@@ -209,6 +221,9 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
     OP(VIDIOC_S_CTRL); OP(VIDIOC_S_SELECTION);
 #undef OP
     if (fault(name)) return -1;
+    if (armed && fail_rollback && injected && request == MEDIA_REQUEST_IOC_REINIT) {
+        injected++; errno = EBUSY; return -1;
+    }
     if (armed && request == fail_ioctl && (fail_type < 0 || type == fail_type) &&
         ++ioctl_matches == fail_ioctl_nth) {
         injected++; errno = fail_errno; return -1;
@@ -222,9 +237,7 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
         struct v4l2_fmtdesc *f = arg;
         if (f->index) { errno = EINVAL; return -1; }
         f->pixelformat = V4L2_TYPE_IS_OUTPUT(f->type) ? V4L2_PIX_FMT_H264 : V4L2_PIX_FMT_NV12;
-#ifdef V4L2_PIX_FMT_NV15
-        if (packed && !V4L2_TYPE_IS_OUTPUT(f->type)) f->pixelformat = V4L2_PIX_FMT_NV15;
-#endif
+        if (packed && !V4L2_TYPE_IS_OUTPUT(f->type)) f->pixelformat = V4L2_PIX_FMT_NV16;
         return 0;
     }
     if (request == VIDIOC_ENUM_FRAMESIZES) {
@@ -237,7 +250,11 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
         unsigned int side = V4L2_TYPE_IS_OUTPUT(f->type);
         if (request == VIDIOC_G_FMT && fds[i].formats[side].type)
             *f = fds[i].formats[side];
-        format_fill(f); fds[i].formats[side] = *f; return 0;
+        format_fill(f);
+        if (pitch_retry && fds[i].kind == CONVERTER &&
+            f->fmt.pix_mp.width == 64)
+            f->fmt.pix_mp.plane_fmt[0].bytesperline = 32;
+        fds[i].formats[side] = *f; return 0;
     }
     if (request == VIDIOC_CREATE_BUFS) {
         struct v4l2_create_buffers *b = arg;
@@ -254,7 +271,9 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
         struct v4l2_buffer *b = arg;
         struct v4l2_format *f = &fds[i].formats[V4L2_TYPE_IS_OUTPUT(b->type)];
         if (V4L2_TYPE_IS_MULTIPLANAR(b->type)) {
-            b->length = 1; b->m.planes[0].length = f->fmt.pix_mp.plane_fmt[0].sizeimage;
+            b->length = f->fmt.pix_mp.num_planes;
+            for (unsigned int p = 0; p < b->length; p++)
+                b->m.planes[p].length = f->fmt.pix_mp.plane_fmt[p].sizeimage;
         } else b->length = f->fmt.pix.sizeimage;
         return 0;
     }
@@ -331,7 +350,11 @@ int __wrap_poll(struct pollfd *p, nfds_t n, int timeout)
     (void)timeout;
     assert(n == 1); fd_slot(p[0].fd);
     if (fault("poll")) return -1;
-    if (poll_error) { errno = poll_error; poll_error = 0; return -1; }
+    if (poll_error) {
+        errno = poll_error;
+        if (!poll_error_count || !--poll_error_count) poll_error = 0;
+        return -1;
+    }
     if (poll_timeouts) { poll_timeouts--; return 0; }
     unsigned int i = fd_slot(p[0].fd);
     if (fds[i].kind == VIDEO && !fds[i].output_ready && !fds[i].capture_ready) return 0;
@@ -351,15 +374,30 @@ static VAStatus codec_init(struct v4l2r_context *ctx)
 }
 static VAStatus codec_end(struct v4l2r_context *ctx)
 {
+    if (sliced) return VA_STATUS_SUCCESS;
     unsigned char data[64] = {0};
     VAStatus status = v4l2r_append_output(ctx, data, sizeof(data));
     if (status != VA_STATUS_SUCCESS) return status;
     struct v4l2_ext_control control = {.id = 1, .value = 1};
     return v4l2r_decode(ctx, &control, 1, true, true);
 }
+static VAStatus codec_render(struct v4l2r_context *ctx, struct v4l2r_buffer *buffer)
+{
+    unsigned char flags = *(unsigned char *)buffer->data;
+    VAStatus status;
+    if (!(flags & 1)) {
+        status = v4l2r_picture_next_output(ctx);
+        if (status != VA_STATUS_SUCCESS) return status;
+    }
+    unsigned char data[64] = {0};
+    status = v4l2r_append_output(ctx, data, sizeof(data));
+    if (status != VA_STATUS_SUCCESS) return status;
+    struct v4l2_ext_control control = {.id = 1, .value = 1};
+    return v4l2r_decode(ctx, &control, 1, flags & 1, flags & 2);
+}
 static const struct v4l2r_codec codec = {
     .name = "model", .pixelformat = V4L2_PIX_FMT_H264, .priv_size = 16,
-    .init = codec_init, .end_picture = codec_end,
+    .init = codec_init, .end_picture = codec_end, .render_buffer = codec_render,
 };
 static void setup(void)
 {
@@ -378,8 +416,9 @@ static void setup(void)
     drv->decoders[0].pixelformats[0] = V4L2_PIX_FMT_H264;
     strcpy(drv->converter.video_path, "model-converter");
     drv->converter_probed = drv->has_converter = true;
-    drv->converter.nb_pixelformats = 1;
+    drv->converter.nb_pixelformats = 2;
     drv->converter.pixelformats[0] = V4L2_PIX_FMT_NV12;
+    drv->converter.pixelformats[1] = V4L2_PIX_FMT_NV16;
     cfg = v4l2r_handles_alloc(&drv->configs, sizeof(struct v4l2r_config));
     assert(cfg != VA_INVALID_ID);
     V4L2R_CONFIG(drv, cfg)->codec = &codec;
@@ -425,17 +464,205 @@ static void failed_surface(VASurfaceID sid)
     assert(table.vaExportSurfaceHandle(&va, sid, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc) != VA_STATUS_SUCCESS);
     VAImage image;
     assert(table.vaDeriveImage(&va, sid, &image) != VA_STATUS_SUCCESS);
+    VAImageFormat format = {.fourcc = VA_FOURCC_NV12};
+    assert(v4l2r_CreateImage(&va, &format, 64, 64, &image) == VA_STATUS_SUCCESS);
+    assert(table.vaGetImage(&va, sid, 0, 0, 64, 64, image.image_id) != VA_STATUS_SUCCESS);
+    assert(v4l2r_DestroyImage(&va, image.image_id) == VA_STATUS_SUCCESS);
+}
+/* Run the successful operation trace, then fail each acquisition/operation
+ * exactly once in a fresh fixture. No later success can erase a frame failure;
+ * cached maps/exports remain owned and must all be released by Terminate. */
+static unsigned int sweep_run(const char *name, unsigned int point)
+{
+    armed = false; fail_ioctl = 0; fail_at = 0; op = injected = 0;
+    single_plane = strstr(name, "single") != NULL;
+    packed = !strcmp(name, "decode-convert");
+    pitch_retry = !strcmp(name, "vpp-stride");
+    setup();
+    VASurfaceID sid = surface();
+    VAContextID id = VA_INVALID_ID;
+    struct v4l2r_context *ctx = NULL;
+    VAImage image = {0};
+    bool creating = !strncmp(name, "create", 6);
+    bool create_vpp = !strcmp(name, "create-vpp") || !strcmp(name, "create-grown");
+    bool exporting = !strcmp(name, "export") || !strcmp(name, "export-single") || !strcmp(name, "export-probes");
+    bool vpp = !strcmp(name, "vpp") || pitch_retry;
+    bool view = !strcmp(name, "view") || !strcmp(name, "view-dmabuf");
+    bool pair = strstr(name, "pair") != NULL;
+    bool attach_pair = !strcmp(name, "attach-pair");
+    bool preserve = !strncmp(name, "preserve", 8);
+    if (!strcmp(name, "export-probes")) {
+        drv->decoders[0].nb_pixelformats = 2;
+        drv->decoders[0].pixelformats[1] = V4L2_PIX_FMT_VP8;
+    }
+    if (vpp || create_vpp) {
+        V4L2R_CONFIG(drv, cfg)->codec = NULL;
+        V4L2R_CONFIG(drv, cfg)->profile = VAProfileNone;
+    }
+    if (!strcmp(name, "create-grown"))
+        for (unsigned int i = 0; i < 32; i++) (void)context();
+    if (!creating && !exporting) { id = context(); ctx = V4L2R_CONTEXT(drv, id); }
+    if (!strcmp(name, "decode-early") || !strcmp(name, "view-dmabuf"))
+        assert(v4l2r_surface_alloc_backing(drv, V4L2R_SURFACE(drv, sid)) == VA_STATUS_SUCCESS);
+    if (view || preserve || (pair && !attach_pair) || !strncmp(name, "convert-", 8)) {
+        assert(picture(id, sid) == VA_STATUS_SUCCESS);
+        assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
+    }
+    if (pair) {
+        /* Synthetic two-memory-plane ownership fixture. It exercises partial
+         * descriptor/map acquisition, not a claim about a hardware layout. */
+        if (attach_pair) {
+            assert(v4l2r_surface_alloc_backing(drv, V4L2R_SURFACE(drv, sid)) == VA_STATUS_SUCCESS);
+            struct v4l2r_surface_backing *b = V4L2R_SURFACE(drv, sid)->backing;
+            b->nb_planes = 2; b->plane_size[1] = b->plane_size[0];
+            b->dmabuf_fd[1] = new_fd(DMABUF);
+            ctx->capture_format = (struct v4l2_format){.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE};
+            format_fill(&ctx->capture_format);
+            ctx->capture_format.fmt.pix_mp.num_planes = 2;
+            ctx->capture_format.fmt.pix_mp.plane_fmt[1] = ctx->capture_format.fmt.pix_mp.plane_fmt[0];
+            ctx->streaming = true;
+        } else {
+            ctx->captures[0].nb_planes = 2;
+            ctx->captures[0].plane_size[1] = ctx->captures[0].plane_size[0];
+        }
+    }
+    if (!strcmp(name, "convert-kick") || !strcmp(name, "convert-wait"))
+        assert(v4l2r_convert_setup(ctx) == VA_STATUS_SUCCESS);
+    if (!strcmp(name, "convert-wait")) v4l2r_convert_kick(ctx, 0);
+    VASurfaceID src = VA_INVALID_ID;
+    if (vpp) {
+        src = surface();
+        assert(v4l2r_surface_alloc_backing(drv, V4L2R_SURFACE(drv, src)) == VA_STATUS_SUCCESS);
+        assert(v4l2r_surface_alloc_backing(drv, V4L2R_SURFACE(drv, sid)) == VA_STATUS_SUCCESS);
+        assert(table.vaBeginPicture(&va, id, sid) == VA_STATUS_SUCCESS);
+        VAProcPipelineParameterBuffer params = {.surface = src};
+        VABufferID buf;
+        assert(v4l2r_CreateBuffer(&va, id, VAProcPipelineParameterBufferType,
+            sizeof(params), 1, &params, &buf) == VA_STATUS_SUCCESS);
+        assert(table.vaRenderPicture(&va, id, &buf, 1) == VA_STATUS_SUCCESS);
+    }
+    if (view) {
+        VAImageFormat format = {.fourcc = VA_FOURCC_NV12};
+        assert(v4l2r_CreateImage(&va, &format, 64, 64, &image) == VA_STATUS_SUCCESS);
+    }
+    fprintf(stderr, "SWEEP %s operation %u\n", name, point);
+    op = injected = 0; fail_at = point; armed = true;
+    VAStatus status;
+    VADRMPRIMESurfaceDescriptor desc;
+    if (creating) {
+        status = table.vaCreateContext(&va, cfg, 64, 64, 0, NULL, 0, &id);
+    } else if (exporting) {
+        status = table.vaExportSurfaceHandle(&va, sid, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc);
+    } else if (view) {
+        status = table.vaGetImage(&va, sid, 0, 0, 64, 64, image.image_id);
+    } else if (!strcmp(name, "grow")) {
+        struct v4l2r_output_buffer *out = &ctx->output[0];
+        out->bytesused = 4; memcpy(out->addr, "keep", 4);
+        void *original = out->addr;
+        status = v4l2r_output_buffer_grow(ctx, out, (size_t)out->size * 2) < 0 ?
+            VA_STATUS_ERROR_ALLOCATION_FAILED : VA_STATUS_SUCCESS;
+        assert(!memcmp(out->addr, "keep", 4));
+        if (status != VA_STATUS_SUCCESS) assert(out->addr == original);
+    } else if (preserve) {
+        status = table.vaDestroyContext(&va, id); id = VA_INVALID_ID;
+    } else if (attach_pair) {
+        status = v4l2r_context_bind_surface(ctx, V4L2R_SURFACE(drv, sid));
+    } else if (!strcmp(name, "view-pair")) {
+        struct v4l2r_frame_view frame;
+        status = v4l2r_surface_capture_view(V4L2R_SURFACE(drv, sid), true, &frame);
+    } else if (!strcmp(name, "export-pair")) {
+        status = table.vaExportSurfaceHandle(&va, sid, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc);
+    } else if (!strcmp(name, "convert-setup")) {
+        status = v4l2r_convert_setup(ctx);
+    } else if (!strcmp(name, "convert-kick")) {
+        v4l2r_convert_kick(ctx, 0);
+        status = table.vaSyncSurface(&va, sid);
+    } else if (!strcmp(name, "convert-wait")) {
+        status = table.vaSyncSurface(&va, sid);
+    } else if (vpp) {
+        status = table.vaEndPicture(&va, id);
+    } else {
+        status = picture(id, sid);
+        if (status == VA_STATUS_SUCCESS) status = table.vaSyncSurface(&va, sid);
+    }
+    unsigned int count = op;
+    armed = false; fail_at = 0;
+    assert(point ? injected == 1 : status == VA_STATUS_SUCCESS);
+    if (point) fprintf(stderr, "INJECTED %s: %s, status %#x\n", name, operations[point], status);
+    if ((exporting || !strcmp(name, "export-pair")) && status == VA_STATUS_SUCCESS)
+        for (unsigned int i = 0; i < desc.num_objects; i++) assert(!close(desc.objects[i].fd));
+    if (view) {
+        assert(table.vaGetImage(&va, sid, 0, 0, 64, 64, image.image_id) == VA_STATUS_SUCCESS);
+    } else if (exporting) {
+        assert(table.vaExportSurfaceHandle(&va, sid, VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc) == VA_STATUS_SUCCESS);
+        for (unsigned int i = 0; i < desc.num_objects; i++) assert(!close(desc.objects[i].fd));
+    } else if (!strcmp(name, "convert-setup") && status != VA_STATUS_SUCCESS) {
+        assert(!ctx->conv);
+        assert(v4l2r_convert_setup(ctx) == VA_STATUS_SUCCESS);
+    } else if ((!strcmp(name, "convert-kick") || !strcmp(name, "convert-wait") || vpp) &&
+               status != VA_STATUS_SUCCESS) {
+        failed_surface(sid);
+    }
+    if (attach_pair) {
+        assert(v4l2r_context_bind_surface(ctx, V4L2R_SURFACE(drv, sid)) == VA_STATUS_SUCCESS);
+    } else if (!strcmp(name, "view-pair")) {
+        struct v4l2r_frame_view frame;
+        assert(v4l2r_surface_capture_view(V4L2R_SURFACE(drv, sid), true, &frame) == VA_STATUS_SUCCESS);
+    }
+    if (preserve && point && (!strcmp(operations[point], "calloc") ||
+                             !strcmp(operations[point], "VIDIOC_EXPBUF")))
+        failed_surface(sid);
+    if (vpp) {
+        /* A rejected VPP job tears down its instance and can retry. */
+        assert(table.vaBeginPicture(&va, id, sid) == VA_STATUS_SUCCESS);
+        VAProcPipelineParameterBuffer params = {.surface = src};
+        VABufferID buf;
+        assert(v4l2r_CreateBuffer(&va, id, VAProcPipelineParameterBufferType,
+            sizeof(params), 1, &params, &buf) == VA_STATUS_SUCCESS);
+        assert(table.vaRenderPicture(&va, id, &buf, 1) == VA_STATUS_SUCCESS);
+        assert(table.vaEndPicture(&va, id) == VA_STATUS_SUCCESS);
+        assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
+        V4L2R_CONFIG(drv, cfg)->codec = &codec;
+    }
+    if (packed && status != VA_STATUS_SUCCESS) {
+        VASurfaceID retry = surface();
+        if (picture(id, retry) == VA_STATUS_SUCCESS)
+            assert(table.vaSyncSurface(&va, retry) == VA_STATUS_SUCCESS);
+    }
+    if (create_vpp) V4L2R_CONFIG(drv, cfg)->codec = &codec;
+    /* Recovery on a new model device cannot inherit the old queues. */
+    VAContextID next = context(); VASurfaceID target = surface();
+    assert(picture(next, target) == VA_STATUS_SUCCESS);
+    assert(table.vaSyncSurface(&va, target) == VA_STATUS_SUCCESS);
+    teardown(); return count;
+}
+static void sweep(const char *name)
+{
+    unsigned int count = sweep_run(name, 0);
+    for (unsigned int n = 1; n <= count; n++) sweep_run(name, n);
+    printf("SWEEP %s: %u operation-index failures; recovery and resource balance verified\n", name, count);
 }
 int main(int argc, char **argv)
 {
     struct rlimit core = {0, 0}; assert(!setrlimit(RLIMIT_CORE, &core));
-    assert(argc == 2); setup();
+    assert(argc == 2);
     const char *test = argv[1];
+    if (!strncmp(test, "sweep-", 6)) { sweep(test + 6); return 0; }
+    hold = sliced = !strncmp(test, "partial-", 8);
+    setup();
     VAContextID id = context(); VASurfaceID sid = surface();
     struct v4l2r_context *ctx = V4L2R_CONTEXT(drv, id);
     if (!strcmp(test, "control")) {
         assert(picture(id, sid) == VA_STATUS_SUCCESS);
         assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
+    } else if (!strcmp(test, "rollback-error")) {
+        fail_rollback = true;
+        inject(VIDIOC_QBUF, 0, 1, EIO);
+        assert(picture(id, sid) != VA_STATUS_SUCCESS && injected == 2);
+        armed = false;
+        unsigned int before = queues;
+        assert(picture(id, surface()) != VA_STATUS_SUCCESS && queues == before);
+        failed_surface(sid);
     } else if (!strcmp(test, "capture-queue") || !strcmp(test, "request-queue")) {
         inject(!strcmp(test, "capture-queue") ? VIDIOC_QBUF : MEDIA_REQUEST_IOC_QUEUE,
                !strcmp(test, "capture-queue") ? 0 : -1, 1, EIO);
@@ -449,6 +676,8 @@ int main(int argc, char **argv)
                 assert(picture(id, next) == VA_STATUS_SUCCESS);
                 assert(table.vaSyncSurface(&va, next) == VA_STATUS_SUCCESS);
             }
+            assert(picture(id, sid) == VA_STATUS_SUCCESS);
+            assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
         } else {
             unsigned int before = queues;
             /* CAPTURE already belongs to the queue: don't allow a later
@@ -457,6 +686,45 @@ int main(int argc, char **argv)
         }
         assert(table.vaDestroyContext(&va, id) == VA_STATUS_SUCCESS);
         id = context(); assert(picture(id, surface()) == VA_STATUS_SUCCESS);
+    } else if (!strncmp(test, "partial-", 8)) {
+        assert(table.vaBeginPicture(&va, id, sid) == VA_STATUS_SUCCESS);
+        unsigned char first = 1, last = 2;
+        VABufferID one, two;
+        assert(v4l2r_CreateBuffer(&va, id, VAPictureParameterBufferType, 1, 1, &first, &one) == VA_STATUS_SUCCESS);
+        assert(v4l2r_CreateBuffer(&va, id, VAPictureParameterBufferType, 1, 1, &last, &two) == VA_STATUS_SUCCESS);
+        assert(table.vaRenderPicture(&va, id, &one, 1) == VA_STATUS_SUCCESS);
+        assert(ctx->queued_capture);
+        if (!strcmp(test, "partial-client")) two = VA_INVALID_ID;
+        else if (!strcmp(test, "partial-controls")) inject(VIDIOC_S_EXT_CTRLS, -1, 1, EIO);
+        else if (!strcmp(test, "partial-output")) inject(VIDIOC_QBUF, 1, 1, EIO);
+        else inject(MEDIA_REQUEST_IOC_QUEUE, -1, 1, EIO);
+        VAStatus status = table.vaRenderPicture(&va, id, &two, 1);
+        assert(status != VA_STATUS_SUCCESS);
+        assert(table.vaEndPicture(&va, id) == status);
+        armed = false;
+        unsigned int before = queues;
+        assert(picture(id, surface()) != VA_STATUS_SUCCESS && queues == before);
+        failed_surface(sid);
+        /* Destroying the failed context releases every held request. */
+        assert(table.vaDestroyContext(&va, id) == VA_STATUS_SUCCESS);
+        sliced = false; id = context();
+        assert(picture(id, surface()) == VA_STATUS_SUCCESS);
+    } else if (!strcmp(test, "dequeue-eintr") || !strcmp(test, "dequeue-eagain")) {
+        assert(picture(id, sid) == VA_STATUS_SUCCESS);
+        inject(VIDIOC_DQBUF, 0, 1, !strcmp(test, "dequeue-eintr") ? EINTR : EAGAIN);
+        assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS && injected == 1);
+    } else if (!strcmp(test, "dequeue-timeout") || !strcmp(test, "dequeue-stale-ready")) {
+        assert(picture(id, sid) == VA_STATUS_SUCCESS);
+        dequeue_blocked = true;
+        if (!strcmp(test, "dequeue-timeout")) poll_timeouts = 1;
+        else fast_clock = true;
+        failed_surface(sid);
+        assert(model_ns < UINT64_C(3000000000));
+        dequeue_blocked = fast_clock = false;
+    } else if (!strcmp(test, "dequeue-index")) {
+        assert(picture(id, sid) == VA_STATUS_SUCCESS);
+        capture_bad_index = 63;
+        failed_surface(sid);
     } else if (!strcmp(test, "dequeue-error")) {
         assert(picture(id, sid) == VA_STATUS_SUCCESS);
         inject(VIDIOC_DQBUF, 0, 1, EIO);
@@ -464,15 +732,41 @@ int main(int argc, char **argv)
     } else if (!strcmp(test, "poll-interrupted")) {
         poll_error = EINTR;
         assert(v4l2r_poll_one(ctx->media_fd, POLLIN, 10) == 0);
-    } else if (!strcmp(test, "converter-error-flag") || !strcmp(test, "converter-source-error")) {
+    } else if (!strcmp(test, "poll-interrupt-deadline")) {
+        poll_error = EINTR; poll_error_count = 500; fast_clock = true;
+        assert(v4l2r_poll_one(ctx->media_fd, POLLIN, 2000) == -ETIMEDOUT);
+        assert(poll_error_count > 0 && model_ns < UINT64_C(2100000000));
+        fast_clock = false; poll_error = poll_error_count = 0;
+    } else if (!strcmp(test, "converter-error-flag") || !strcmp(test, "converter-source-error") ||
+               !strcmp(test, "converter-index") || !strcmp(test, "converter-source-index") ||
+               !strcmp(test, "converter-stale-ready") || !strcmp(test, "converter-eintr") ||
+               !strcmp(test, "converter-eagain") || !strcmp(test, "converter-source-eagain")) {
         assert(picture(id, sid) == VA_STATUS_SUCCESS);
         assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);
         assert(v4l2r_convert_setup(ctx) == VA_STATUS_SUCCESS);
         v4l2r_convert_kick(ctx, 0);
         assert(V4L2R_SURFACE(drv, sid)->convert_pending);
+        bool transient = false;
         if (!strcmp(test, "converter-error-flag")) capture_flags = V4L2_BUF_FLAG_ERROR;
-        else inject(VIDIOC_DQBUF, 1, 1, EIO);
-        failed_surface(sid);
+        else if (!strcmp(test, "converter-index")) capture_bad_index = V4L2R_CONVERT_SLOTS;
+        else if (!strcmp(test, "converter-source-index")) output_bad_index = V4L2R_CONVERT_SLOTS;
+        else if (!strcmp(test, "converter-stale-ready")) dequeue_blocked = fast_clock = true;
+        else if (!strcmp(test, "converter-source-error")) inject(VIDIOC_DQBUF, 1, 1, EIO);
+        else {
+            transient = true;
+            inject(VIDIOC_DQBUF, !strcmp(test, "converter-source-eagain") ? 1 : 0, 1,
+                   !strcmp(test, "converter-eintr") ? EINTR : EAGAIN);
+        }
+        if (transient) {
+            assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS && injected == 1);
+            assert(!V4L2R_SURFACE(drv, sid)->convert_pending);
+        } else {
+            failed_surface(sid);
+            assert(ctx->conv->failed && ctx->conv->fd == -1 && !ctx->conv->busy);
+            assert(table.vaDestroySurfaces(&va, &sid, 1) == VA_STATUS_SUCCESS);
+        }
+        assert(model_ns < UINT64_C(3000000000));
+        dequeue_blocked = fast_clock = false;
     } else if (!strcmp(test, "converter-export-error")) {
         assert(picture(id, sid) == VA_STATUS_SUCCESS);
         assert(table.vaSyncSurface(&va, sid) == VA_STATUS_SUCCESS);

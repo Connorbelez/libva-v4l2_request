@@ -880,6 +880,9 @@ VAStatus v4l2r_context_bind_surface(struct v4l2r_context *ctx,
 				   V4L2R_DIAG_KERNEL, "output-streamon", ret,
 				   "failed to start OUTPUT streaming: %s",
 				   strerror(-ret));
+			/* A converter may already own buffers. Re-running setup
+			 * would replace that live instance and lose its resources. */
+			v4l2r_context_fail(ctx);
 			return VA_STATUS_ERROR_OPERATION_FAILED;
 		}
 		ctx->output_streaming = true;
@@ -1004,6 +1007,11 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 	pthread_mutex_init(&ctx->mutex, NULL);
 	for (unsigned int i = 0; i < V4L2R_OUTPUT_BUFFERS; i++)
 		ctx->output[i].request_fd = -1;
+	/* A failed QUERYBUF can leave a hole before the next kernel index.
+	 * Untouched slots must never appear to own descriptor zero. */
+	for (unsigned int i = 0; i < V4L2R_MAX_CAPTURE_BUFFERS; i++)
+		for (unsigned int p = 0; p < VIDEO_MAX_PLANES; p++)
+			ctx->captures[i].dmabuf_fd[p] = -1;
 
 	/* Video processing contexts drive the format converter instead of a
 	 * decoder: no codec, no decoder device, no queues. */
@@ -1435,8 +1443,16 @@ VAStatus v4l2r_EndPicture(VADriverContextP va_ctx, VAContextID context_id)
 	if (status == VA_STATUS_SUCCESS)
 		status = ctx->vpp ? v4l2r_vpp_end_picture(ctx) :
 			 ctx->codec->end_picture(ctx);
-	if (status != VA_STATUS_SUCCESS && ctx->pic.target)
+	if (status != VA_STATUS_SUCCESS && ctx->pic.target) {
 		ctx->pic.target->decode_status = status;
+		/* Render may reject the next slice without calling the queue
+		 * engine. Earlier slices can still own a held CAPTURE buffer. */
+		int index = ctx->pic.target->capture_index;
+		pthread_mutex_lock(&ctx->mutex);
+		if (index >= 0 && (ctx->queued_capture & (UINT64_C(1) << index)))
+			v4l2r_context_fail(ctx);
+		pthread_mutex_unlock(&ctx->mutex);
+	}
 
 	ctx->in_picture = false;
 	ctx->pic = (struct v4l2r_picture){0};

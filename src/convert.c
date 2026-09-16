@@ -971,6 +971,11 @@ VAStatus v4l2r_vpp_end_picture(struct v4l2r_context *ctx)
 	}
 
 	status = vpp_run(vpp, &src_view, &dst_view);
+	if (status == VA_STATUS_SUCCESS) {
+		/* A valid retry replaces the failed destination's contents. */
+		dst->decode_status = VA_STATUS_SUCCESS;
+		dst->status = VASurfaceReady;
+	}
 
 done:
 	if (status != VA_STATUS_SUCCESS) {

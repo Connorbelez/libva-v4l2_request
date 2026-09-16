@@ -7,11 +7,27 @@ failure_cleanup = executable('failure-cleanup', 'failure-cleanup.c', driver_sour
               '-Wl,--wrap=fcntl', '-Wl,--wrap=mmap', '-Wl,--wrap=munmap',
               '-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=realloc', '-Wl,--wrap=free',
               '-Wl,--wrap=open64', '-Wl,--wrap=__open_2', '-Wl,--wrap=__open64_2',
-              '-Wl,--wrap=fcntl64', '-Wl,--wrap=mmap64'])
+              '-Wl,--wrap=fcntl64', '-Wl,--wrap=mmap64', '-Wl,--wrap=clock_gettime'])
 foreach case : ['control', 'capture-queue', 'request-queue', 'dequeue-error', 'poll-interrupted',
-                'converter-error-flag', 'converter-source-error', 'converter-export-error']
+                'converter-error-flag', 'converter-source-error', 'converter-export-error',
+                'sweep-create', 'sweep-create-single', 'sweep-decode', 'sweep-decode-early',
+                'sweep-export', 'sweep-export-single', 'sweep-view', 'sweep-view-dmabuf',
+                'sweep-grow', 'sweep-preserve', 'sweep-convert-setup', 'sweep-convert-kick',
+                'sweep-convert-wait', 'sweep-vpp', 'sweep-create-vpp', 'sweep-create-grown',
+                'sweep-decode-convert', 'dequeue-eintr', 'dequeue-eagain',
+                'dequeue-timeout', 'dequeue-stale-ready', 'sweep-view-pair',
+                'sweep-export-pair', 'sweep-attach-pair', 'sweep-preserve-pair',
+                'dequeue-index', 'converter-index', 'converter-source-index',
+                'converter-stale-ready', 'converter-eintr', 'converter-eagain',
+                'converter-source-eagain', 'sweep-export-probes', 'sweep-vpp-stride',
+                'rollback-error', 'poll-interrupt-deadline']
   test('failure-' + case, failure_cleanup, args: [case], timeout: 15)
 endforeach
+if conf.get('HAVE_V4L2_M2M_HOLD_CAPTURE_BUF') == 1
+  foreach case : ['client', 'controls', 'output', 'request']
+    test('failure-partial-' + case, failure_cleanup, args: ['partial-' + case], timeout: 15)
+  endforeach
+endif
 
 regression = executable('regression', 'regression.c', driver_sources,
   c_args: ['-UNDEBUG'],
