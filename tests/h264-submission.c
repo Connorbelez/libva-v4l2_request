@@ -177,10 +177,10 @@ static void unsupported_fmo(void)
     begin();
     VAPictureParameterBufferH264 pic = {0};
     pic.seq_fields.bits.frame_mbs_only_flag = 1;
-    /* Deliberately exercise the deprecated input that the driver rejects. */
+    /* libva deprecates the FMO fields; intentionally exercise that input. */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    pic.num_slice_groups_minus1 = 1;
+    pic.num_slice_groups_minus1 = 1; /* slice groups declared by the client */
 #pragma GCC diagnostic pop
     struct v4l2r_buffer buf = {.type = VAPictureParameterBufferType,
         .data = &pic, .element_size = sizeof(pic), .nb_elements = 1};
