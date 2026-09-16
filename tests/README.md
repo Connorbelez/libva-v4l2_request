@@ -90,6 +90,30 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
+The `concurrent-stress` Meson cases (issue #36) close that gap offline: they call the
+real public entrypoints from multiple threads against an in-memory model decoder
+(no device, no real sleeping — the model completes queued work after a seeded number
+of model-time ticks, so waits genuinely overlap). `threads-1/2/4` decode mixed-codec
+frames, read them back through GetImage, exported dma-bufs and derived images, and
+destroy each context while later streams continue; `teardown-1/2/4` destroy one
+context mid-decode and require every published frame to complete byte-exact while
+the other streams verify all of theirs; `failure-4` has a separate misbehaving client
+(bogus ids, foreign surfaces, double destroys, live context churn) that owns its own
+context while every valid stream completes exactly. The model device is the decode
+oracle: slice bytes are hashed when a request is queued and the completion writes a
+pattern derived from that hash into the target CAPTURE plane, so lost frames,
+cross-stream pixels and stale buffer reuse all fail an exact byte comparison. The
+decoder only reuses a surface after the reader verified its previous frame, matching
+a real decoder surface pool. Per-stream MD5s, seeds, ioctl/poll/completion counts are
+printed for the evidence record; the mid-decode teardown victim verifies an
+interleaving-dependent count (at least half its frames) — every other count and hash
+is exact. `concurrent-process.py` drives the same single-stream worker in 1/2/4
+separate processes behind a start barrier (per-process isolation; one real decoder
+is the separate guarded hardware gate), and `concurrent-tsan.sh` re-runs the
+schedules under ThreadSanitizer in a fresh sanitizer build, skipping with exit 77
+and the printed reason where the toolchain or sandbox cannot run TSan. Schedules,
+seeds and recorded hashes: [../docs/CONCURRENCY_STRESS.md](../docs/CONCURRENCY_STRESS.md).
+
 CI also runs `sh tests/install-smoke.sh` (issue #34): it builds and installs the driver
 twice into disposable `DESTDIR` roots — once at the default, libva pkg-config-derived
 driverdir, once with a custom `-Ddriverdir` — and checks that exactly one file (the driver
@@ -175,17 +199,20 @@ libva's pkg-config Version is the VA API version (libva 2.20 reports 1.20.0), so
 `libva >= 1.7.0` build floor means library release 2.7 — the oldest combination verified
 to build and pass the offline suite (Ubuntu 20.04: libva 2.7, gcc 9, 5.4 headers).
 
-Executed CI configurations and their expected Meson test sets (counts from the r11
-suite plus the CI checks, corpus checks and P010 probe regression; codec-gated tests register only
-when the codec is compiled in):
+Executed CI configurations and their expected Meson test sets (codec-gated tests
+register only when the codec is compiled in). The counts are re-measured from the
+registered set at this revision — they include the r11 regression suite, the
+lifecycle, failure-cleanup, diagnostics, corpus and CI checks, and the 12
+concurrent-stress cases (7 threaded schedules, 4 process checks, 1 ThreadSanitizer
+pass; the numbers in earlier revisions predated several of those additions):
 
 | Configuration | Codecs | Expected tests |
 | --- | --- | --- |
-| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 53 (full suite) |
-| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 46 (no hevc-parser, vp9-\*, image-bounds) |
-| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 41 (regression minus image-bounds, picture, python checks) |
-| all codecs disabled (any headers) | none | 42 on 6.8 headers (core plus image-bounds) |
-| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 49 (core plus codec tests of every compiled-in codec except vp9-\*) |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 139 (full suite) |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 132 (no hevc-parser, vp9-\*, image-bounds) |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 123 (no codec, image-bounds, picture or surface-probe cases; python checks run) |
+| all codecs disabled (any headers) | none | 128 on 6.8 headers (core plus image-bounds) |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 135 (core plus codec tests of every compiled-in codec except vp9-\*) |
 
 `deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
 auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all
