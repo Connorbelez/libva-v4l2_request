@@ -1,0 +1,3 @@
+{"event": "start", "suite": "JCT-VC-HEVC_V1", "decoder": "vaapi", "driver": "/home/chrisk/build/src"}
+{"event": "result", "vector": "KEEP_A", "success": true, "expected": "aa", "actual": "aa", "frames": 1}
+{"event": "timeout", "vector": "FAIL_B"}

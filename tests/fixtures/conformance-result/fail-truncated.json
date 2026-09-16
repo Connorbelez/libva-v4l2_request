@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "conformance-suite-result",
+  "suite": "JCT-VC-HEVC_V1",
+  "suite_key": "hevc",
+  "mode": "hardware",
+  "complete": false,
+  "abort": {
+    "kind": "timeout",
+    "vector": "FAIL_B"
+  },
+  "passed": 1,
+  "total": 2,
+  "passing_frames": 1,
+  "high10": "off",
+  "profile_mismatch": false,
+  "subset": null,
+  "provenance": {
+    "driver_version": "1.3.r11",
+    "machine": "fixture"
+  },
+  "command": {
+    "redacted": true,
+    "argv": [
+      "frame-check",
+      "vaapi",
+      "<redacted>",
+      "yuv420p"
+    ]
+  },
+  "vectors": [
+    {
+      "name": "KEEP_A",
+      "success": true,
+      "category": "hardware_pass",
+      "expected_md5": "aa",
+      "actual_md5": "aa",
+      "frames": 1,
+      "native_sizes": [
+        "16x16"
+      ]
+    }
+  ]
+}
