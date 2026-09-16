@@ -1,0 +1,2590 @@
+{
+  "issue": "https://github.com/iconidentify/libva-v4l2_request/issues/41",
+  "pr": "https://github.com/iconidentify/libva-v4l2_request/pull/71",
+  "date": "2026-09-16",
+  "issue_complete": false,
+  "hardware_campaign_complete": false,
+  "remaining": [
+    "Fresh uninterrupted 60-minute soak",
+    "Exact selected-build codec comparison",
+    "Updated interruption-wrapper hardware check",
+    "Merge"
+  ],
+  "code_head": "83eb6d0faa1222a4b33d1181d61b13645d945c91",
+  "production_src_tree": "00b8890d0ed3aa3182dc7bec73d38cf543e6d848",
+  "production_source_changed": false,
+  "review": "Maintainer implementation and self-review; not an independent review.",
+  "machine": {
+    "uname": {
+      "command": [
+        "uname",
+        "-a"
+      ],
+      "status": 0,
+      "stdout": "Linux m1 7.1.13-3-1-ARCH #1 SMP PREEMPT_DYNAMIC Sun, 13 Sep 2026 17:52:27 +0000 aarch64 GNU/Linux"
+    },
+    "packages": {
+      "command": [
+        "pacman",
+        "-Q",
+        "linux-asahi",
+        "linux-asahi-headers",
+        "libva",
+        "libdrm",
+        "ffmpeg",
+        "libva-v4l2_request-avd"
+      ],
+      "status": 0,
+      "stdout": "linux-asahi 7.1.13.asahi3-1\nlinux-asahi-headers 7.1.13.asahi3-1\nlibva 2.24.1-1\nlibdrm 2.4.134-1\nffmpeg 2:9.0.1-4\nlibva-v4l2_request-avd 1.3.r11-2"
+    },
+    "compatible": "apple,j293 apple,t8103 apple,arm-platform ",
+    "loaded_module_binary_identity": "unavailable; no reload performed; on-disk selection is not loaded identity",
+    "selected_module": {
+      "command": [
+        "modinfo",
+        "-n",
+        "apple_avd"
+      ],
+      "status": 0,
+      "stdout": "/lib/modules/7.1.13-3-1-ARCH/updates/apple-avd.ko"
+    },
+    "selected_module_sha256": "e50540e1d0fc48c7e0bf9b21ff028758bdb35f94aa7070af00de88e61e5c70e9"
+  },
+  "driver_builds": {
+    "35": {
+      "unstripped_sha256": "c0b544ef405e88cf229bffc5960cdce890454c867305623110c338f562f8528f",
+      "stripped_sha256": "b1122988283571d292cec9937a06e4279f54c34ebccad655008ad614cc53a0cd",
+      "options": {
+        "auto_features": "auto",
+        "backend": "ninja",
+        "genvslite": "vs2022",
+        "buildtype": "debugoptimized",
+        "debug": true,
+        "default_library": "shared",
+        "default_both_libraries": "shared",
+        "install_umask": 18,
+        "layout": "mirror",
+        "optimization": "2",
+        "prefer_static": false,
+        "strip": false,
+        "unity": "off",
+        "unity_size": 4,
+        "warning_level": "2",
+        "werror": false,
+        "wrap_mode": "default",
+        "force_fallback_for": [],
+        "vsenv": false,
+        "os2_emxomf": false,
+        "pkgconfig.relocatable": false,
+        "python.bytecompile": 0,
+        "python.install_env": "prefix",
+        "python.platlibdir": "",
+        "python.purelibdir": "",
+        "python.allow_limited_api": true,
+        "python.build_config": "",
+        "pkg_config_path": [],
+        "cmake_prefix_path": [],
+        "backend_max_links": 0,
+        "b_staticpic": true,
+        "b_sanitize": [],
+        "b_ndebug": "false",
+        "b_pie": false,
+        "b_colorout": "always",
+        "b_lundef": true,
+        "b_lto": false,
+        "b_pch": true,
+        "b_coverage": false,
+        "b_thinlto_cache_dir": "",
+        "b_pgo": "off",
+        "b_lto_threads": 0,
+        "b_asneeded": true,
+        "b_thinlto_cache": false,
+        "c_args": [],
+        "c_link_args": [],
+        "c_std": "gnu11",
+        "prefix": "/usr/local",
+        "bindir": "bin",
+        "datadir": "share",
+        "includedir": "include",
+        "infodir": "share/info",
+        "libdir": "lib",
+        "licensedir": "",
+        "libexecdir": "libexec",
+        "localedir": "share/locale",
+        "localstatedir": "/var/local",
+        "mandir": "share/man",
+        "sbindir": "sbin",
+        "sharedstatedir": "/var/local/lib",
+        "sysconfdir": "etc",
+        "driverdir": "",
+        "codec_h264": "auto",
+        "codec_hevc": "auto",
+        "codec_mpeg2": "auto",
+        "codec_vp8": "auto",
+        "codec_vp9": "auto",
+        "codec_av1": "auto",
+        "errorlogs": true,
+        "stdsplit": true
+      }
+    },
+    "41": {
+      "unstripped_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+      "stripped_sha256": "74ef03ff42630207c92077175c232f0878103ef7b3064ab05990b218482d1abb",
+      "options": {
+        "auto_features": "auto",
+        "backend": "ninja",
+        "genvslite": "vs2022",
+        "buildtype": "release",
+        "debug": false,
+        "default_library": "shared",
+        "default_both_libraries": "shared",
+        "install_umask": 18,
+        "layout": "mirror",
+        "optimization": "3",
+        "prefer_static": false,
+        "strip": true,
+        "unity": "off",
+        "unity_size": 4,
+        "warning_level": "2",
+        "werror": false,
+        "wrap_mode": "default",
+        "force_fallback_for": [],
+        "vsenv": false,
+        "os2_emxomf": false,
+        "pkgconfig.relocatable": false,
+        "python.bytecompile": 0,
+        "python.install_env": "prefix",
+        "python.platlibdir": "",
+        "python.purelibdir": "",
+        "python.allow_limited_api": true,
+        "python.build_config": "",
+        "pkg_config_path": [],
+        "cmake_prefix_path": [],
+        "backend_max_links": 0,
+        "b_sanitize": [],
+        "b_colorout": "always",
+        "b_pie": false,
+        "b_pgo": "off",
+        "b_asneeded": true,
+        "b_lto_threads": 0,
+        "b_thinlto_cache_dir": "",
+        "b_thinlto_cache": false,
+        "b_ndebug": "false",
+        "b_coverage": false,
+        "b_staticpic": true,
+        "b_lundef": true,
+        "b_lto": false,
+        "b_pch": true,
+        "c_args": [],
+        "c_link_args": [],
+        "c_std": "gnu11",
+        "prefix": "/usr/local",
+        "bindir": "bin",
+        "datadir": "share",
+        "includedir": "include",
+        "infodir": "share/info",
+        "libdir": "lib",
+        "licensedir": "",
+        "libexecdir": "libexec",
+        "localedir": "share/locale",
+        "localstatedir": "/var/local",
+        "mandir": "share/man",
+        "sbindir": "sbin",
+        "sharedstatedir": "/var/local/lib",
+        "sysconfdir": "etc",
+        "driverdir": "",
+        "codec_h264": "auto",
+        "codec_hevc": "auto",
+        "codec_mpeg2": "auto",
+        "codec_vp8": "auto",
+        "codec_vp9": "auto",
+        "codec_av1": "auto",
+        "errorlogs": true,
+        "stdsplit": true
+      }
+    }
+  },
+  "hardware_code_equivalence": {
+    "recorded_campaign_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8",
+    "current_code_head": "83eb6d0faa1222a4b33d1181d61b13645d945c91",
+    "unchanged_functions": [
+      "run",
+      "digest",
+      "allocator_violations",
+      "lines",
+      "campaign",
+      "main"
+    ],
+    "changed_functions": [
+      "prepare"
+    ],
+    "change_scope": "prepare honors CC; no run/measurement code or C workload change",
+    "interruption_wrapper": "Original hardware check on 6ac9a4f; shutdown-only fix in 83eb6d0 is offline-tested, hardware rerun pending."
+  },
+  "code_head_ci": {
+    "headRefOid": "83eb6d0faa1222a4b33d1181d61b13645d945c91",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:48Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961972267",
+        "name": "build-test gcc x86_64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:45Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961954897",
+        "name": "build-test gcc x86_64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:23:21Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961972200",
+        "name": "build-test clang x86_64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:23:20Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961955058",
+        "name": "build-test clang x86_64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:36Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961972159",
+        "name": "build-test gcc aarch64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:32Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:42Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961954856",
+        "name": "build-test gcc aarch64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:29Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:41Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961972432",
+        "name": "build-test clang aarch64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:32Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:32Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961955197",
+        "name": "build-test clang aarch64 (current dependencies)",
+        "startedAt": "2026-09-16T20:20:29Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:21:56Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961972136",
+        "name": "oldest verified dependencies (libva 2.14, kernel UAPI 5.15)",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:16Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961955085",
+        "name": "oldest verified dependencies (libva 2.14, kernel UAPI 5.15)",
+        "startedAt": "2026-09-16T20:20:28Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:21:53Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961972076",
+        "name": "oldest kernel UAPI (5.4 headers, all stateless codecs compiled out)",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:21:38Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961954933",
+        "name": "oldest kernel UAPI (5.4 headers, all stateless codecs compiled out)",
+        "startedAt": "2026-09-16T20:20:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:21:17Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961971944",
+        "name": "configure-time codec option diagnostics (kernel UAPI 5.15)",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:21:03Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961954893",
+        "name": "configure-time codec option diagnostics (kernel UAPI 5.15)",
+        "startedAt": "2026-09-16T20:20:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:21:03Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961971943",
+        "name": "codec feature options (all disabled and mixed)",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:21:07Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961954901",
+        "name": "codec feature options (all disabled and mixed)",
+        "startedAt": "2026-09-16T20:20:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:13Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961972285",
+        "name": "bounded static analysis and warning-free builds",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:22:12Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961955104",
+        "name": "bounded static analysis and warning-free builds",
+        "startedAt": "2026-09-16T20:20:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:20:39Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104961971678",
+        "name": "corpus",
+        "startedAt": "2026-09-16T20:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:20:36Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104961954609",
+        "name": "corpus",
+        "startedAt": "2026-09-16T20:20:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:23:29Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145960574/job/104963003381",
+        "name": "userspace",
+        "startedAt": "2026-09-16T20:23:25Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-09-16T20:23:28Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/iconidentify/libva-v4l2_request/actions/runs/35145955925/job/104962997852",
+        "name": "userspace",
+        "startedAt": "2026-09-16T20:23:23Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      }
+    ]
+  },
+  "inputs": {
+    "inputs": [
+      {
+        "name": "h264.mkv",
+        "format": "yuv420p",
+        "sha256": "a757c79b3f4229c471b823ce6afdea86df73e8ebc9965307e840f9e6469d6d36",
+        "frames": [
+          "frame 0 640x360 yuv420p b2889702d8dd3be845fc9a6562a6e055",
+          "frame 1 640x360 yuv420p 12896e1794238c8ca1c77df0339cae6a",
+          "frame 2 640x360 yuv420p b2f2db8c87fd3fff848a1a0cf4911451",
+          "frame 3 640x360 yuv420p 6fa7f8b5236d1c3a10acd1c5ced06626",
+          "frame 4 640x360 yuv420p f2b262d9b0f643dd6d152f63ccbafb14",
+          "frame 5 640x360 yuv420p 9da72d2a757625bfd75d7f7b1a8b0d09",
+          "frame 6 640x360 yuv420p 24820e5cd52ac91efeb351f4d77ca0da",
+          "frame 7 640x360 yuv420p 486a34fd8da0334571079f5ca9e546ec",
+          "frame 8 640x360 yuv420p 8fd5f4e5ee9acd386f66e0e8d104d607",
+          "frame 9 640x360 yuv420p d7a16e92d6c9bf50f2d47f34969babd4",
+          "frame 10 640x360 yuv420p 16a783d4c7df3598cde97368d347b699",
+          "frame 11 640x360 yuv420p 38cded9e6dcc649113004284107f629b",
+          "frame 12 640x360 yuv420p e7e35e66e39ee1ab301875ec69c05bc1",
+          "frame 13 640x360 yuv420p b08260c8d4d2785c822a5101c13477c1",
+          "frame 14 640x360 yuv420p a8f39a1cfb330426115c3a1b7775cd94",
+          "frame 15 640x360 yuv420p 2db01643ba9f2fd954e2d1a0ec7cf5fd",
+          "frame 16 640x360 yuv420p d5a1736597c968e625712267845db3bd",
+          "frame 17 640x360 yuv420p 09aac6c60a8b42eb9249410d3426690f",
+          "frame 18 640x360 yuv420p 2c240ce8ca1602cd98255cd812b963a6",
+          "frame 19 640x360 yuv420p 3b21290bdd9f733aeb11c54a70b5fca7",
+          "frame 20 640x360 yuv420p 27b0fe4d3c2edefc42414a6833fe6bc1",
+          "frame 21 640x360 yuv420p c302771368f956dc742cfe06038d8291",
+          "frame 22 640x360 yuv420p 34325219a0fdd614dcd032b0cd9523ef",
+          "frame 23 640x360 yuv420p 5dc9ec20e17d2c841f9b7b81241bf2a2"
+        ],
+        "md5": "fae1f882f94819e9283e2f2173408628"
+      },
+      {
+        "name": "hevc.mkv",
+        "format": "yuv420p",
+        "sha256": "b6e5d13528784a7917487507b613106e53735a67fd1073a7742e920c574e2213",
+        "frames": [
+          "frame 0 640x360 yuv420p 658994653693d7a842f6814f92b08fee",
+          "frame 1 640x360 yuv420p 42d0dce787d819c57e305e721a34e659",
+          "frame 2 640x360 yuv420p a39102714dc63851cef9e7e97249b620",
+          "frame 3 640x360 yuv420p b4d04f19354f7a7a0b94ecc3712223f2",
+          "frame 4 640x360 yuv420p b8ba4b0cea573f8582c35b2cb0475d10",
+          "frame 5 640x360 yuv420p db230bad24f29be8afc1620e6ad90ba8",
+          "frame 6 640x360 yuv420p bfc9e9575d25c64b30c3326925044385",
+          "frame 7 640x360 yuv420p d530ffa62da330e29de5603d15efdc7c",
+          "frame 8 640x360 yuv420p 394826ef27f54c478cb9fadd56911c06",
+          "frame 9 640x360 yuv420p 006a4c1cec810a2a36cbcbe63c056d94",
+          "frame 10 640x360 yuv420p b3a5ebed5a10546ede19278cfa2e793d",
+          "frame 11 640x360 yuv420p 68f6f041fb1ae2549a2c8fe12267ada9",
+          "frame 12 640x360 yuv420p a82d2e363c77349632946aebd031bee0",
+          "frame 13 640x360 yuv420p e598ac8f089cca222dcea2b167824ffc",
+          "frame 14 640x360 yuv420p 0d9eea26263e1c7edf168f4165b13d67",
+          "frame 15 640x360 yuv420p ab8b947b6cb3d4d1c1d1ae3acde38e6c",
+          "frame 16 640x360 yuv420p ab6ade23968ef8175477a21c3a527cff",
+          "frame 17 640x360 yuv420p a93a7060cd16c70fc5649ca697aa9e05",
+          "frame 18 640x360 yuv420p 1dd1f514291ff97a38ad9a5aada3695c",
+          "frame 19 640x360 yuv420p e727b7498d939b7a0fc04bc4e84c3c9f",
+          "frame 20 640x360 yuv420p d5f01e6d838a414e2dfeb614cbbe9712",
+          "frame 21 640x360 yuv420p a9003b5d8c1939e4c8dff68e8f0edb22",
+          "frame 22 640x360 yuv420p bc26e08efbe99bdf72d97169185af78a",
+          "frame 23 640x360 yuv420p c4a68d935ad4a0fd22616db9a5e98783"
+        ],
+        "md5": "72387f9c80e521574ecfd4f8325ac1bf"
+      },
+      {
+        "name": "vp9-8.webm",
+        "format": "yuv420p",
+        "sha256": "046041b4cf52ce18ea15f9af5d313c48012b8f2bcd58531e287f0a18e52afc8c",
+        "frames": [
+          "frame 0 640x360 yuv420p f32402aad256d9456d53d5e4de392b15",
+          "frame 1 640x360 yuv420p 5d4d2e8d3820bbe7c8100d3e75d3b595",
+          "frame 2 640x360 yuv420p cf0136c1d52062c57af9d05ca1168c62",
+          "frame 3 640x360 yuv420p 617ba9259b5ade98dae94cfca8b252e9",
+          "frame 4 640x360 yuv420p 288ffb9263ccf580e87e7398eab84264",
+          "frame 5 640x360 yuv420p e10dcb0f97691b4eb23215e27ea70074",
+          "frame 6 640x360 yuv420p f07956c17e8c7936e3259122ab045750",
+          "frame 7 640x360 yuv420p c9cc31e9374278d49f9d52fe7ac3c574",
+          "frame 8 640x360 yuv420p b2f2e6f1e8f47f954b2ce6ab1cad757f",
+          "frame 9 640x360 yuv420p dbd3c7e2bb99205478c15e2bed27dbe0",
+          "frame 10 640x360 yuv420p be461344716990f5f11670cffb661f12",
+          "frame 11 640x360 yuv420p 5f6916840594b0ce6f8691a22a713f6b",
+          "frame 12 640x360 yuv420p 0fee48d422d6a5ef9f1e21940f09ccd0",
+          "frame 13 640x360 yuv420p 9bf17969a3dcc2ce5a154d4ce5f3f627",
+          "frame 14 640x360 yuv420p fb8fac05e652db9ffd8561fccfbdf052",
+          "frame 15 640x360 yuv420p fe51dc81190a086a4ffb278d54a73d92",
+          "frame 16 640x360 yuv420p 9b0e84ed66d1734b697b8ca8f27e9729",
+          "frame 17 640x360 yuv420p e38d061c8e17217c9ad23e8e3a8f300d",
+          "frame 18 640x360 yuv420p cf25324ad0227627d3da6a5af74fa69e",
+          "frame 19 640x360 yuv420p e36f1db98c4abe86f3bdf04f4288d87e",
+          "frame 20 640x360 yuv420p 25af4afb539c7c42bba2860f92282cad",
+          "frame 21 640x360 yuv420p 6bd0b078474f4afb2f6ff03f338239e9",
+          "frame 22 640x360 yuv420p 1221a2d6001efd5022be5d99b8a68a0b",
+          "frame 23 640x360 yuv420p b542eb8c0d19964b827eba078ae1cb63"
+        ],
+        "md5": "950a98cc0ab640cc795abf3a577cbff5"
+      },
+      {
+        "name": "vp9-10.webm",
+        "format": "yuv420p10le",
+        "sha256": "cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463",
+        "frames": [
+          "frame 0 640x360 yuv420p10le 5788ab6bc2a8a63882b903533e4d97e1",
+          "frame 1 640x360 yuv420p10le d18ecdd53bf7b3d6ac0cb559e358bf31",
+          "frame 2 640x360 yuv420p10le cebd871a68141242019732ff2da616c4",
+          "frame 3 640x360 yuv420p10le 5ea06c606885678b608fd8670e786c8a",
+          "frame 4 640x360 yuv420p10le 7263d24aaa38127aa86f8686399c27d3",
+          "frame 5 640x360 yuv420p10le c78a941730cf04301c2b85723e63371a",
+          "frame 6 640x360 yuv420p10le b4c0ad4dcd4fa95712a0f4952652d91e",
+          "frame 7 640x360 yuv420p10le 3407c32bc5895149c1658e3e6c541a8e",
+          "frame 8 640x360 yuv420p10le e35723385b06fcd07028b36bca82fb9d",
+          "frame 9 640x360 yuv420p10le d07c13a18c064523f5db9a72062834cb",
+          "frame 10 640x360 yuv420p10le a7071ad63f514d71a279361f68772803",
+          "frame 11 640x360 yuv420p10le 3f6a3de5d9e14460202f97bdb8b2060f",
+          "frame 12 640x360 yuv420p10le cac1327d2c89342224e9a96906c7fea7",
+          "frame 13 640x360 yuv420p10le 07157723e77f5cf87eeda99944b55f74",
+          "frame 14 640x360 yuv420p10le e9c419233ca621b12dba2435306a77a0",
+          "frame 15 640x360 yuv420p10le 8fefcec60d74fa2d21554d83fd2eb15a",
+          "frame 16 640x360 yuv420p10le 8a7545dd2a95aaed8eae3dc77b4bfb2c",
+          "frame 17 640x360 yuv420p10le b0790b586b8504c9ca02578c7c6d497d",
+          "frame 18 640x360 yuv420p10le ed9919e979b0f0d74f482bac73f0edb1",
+          "frame 19 640x360 yuv420p10le 817fbdacd27b534c4b9fb2fcd7ee5ccf",
+          "frame 20 640x360 yuv420p10le 2dfe14a47953f0e76c6fbae52e58cba1",
+          "frame 21 640x360 yuv420p10le 52b3547a406b924e4799083b2d89d005",
+          "frame 22 640x360 yuv420p10le a1890c36b5df36d238b036ef6f64f8c6",
+          "frame 23 640x360 yuv420p10le 1ed9ece23c5c497ac44f70e5c2f635ac"
+        ],
+        "md5": "b948098e83fb6d9e4a65e2b2311fb73f"
+      }
+    ],
+    "commands": [
+      [
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=640x360:rate=24,format=yuv420p",
+        "-frames:v",
+        "24",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-bf",
+        "2",
+        "-g",
+        "12",
+        "-pix_fmt",
+        "+yuv420p",
+        "h264.mkv"
+      ],
+      [
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=640x360:rate=25,format=yuv420p",
+        "-frames:v",
+        "24",
+        "-c:v",
+        "libx265",
+        "-preset",
+        "ultrafast",
+        "-x265-params",
+        "log-level=error:pools=2",
+        "-g",
+        "12",
+        "-pix_fmt",
+        "+yuv420p",
+        "hevc.mkv"
+      ],
+      [
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=640x360:rate=26,format=yuv420p",
+        "-frames:v",
+        "24",
+        "-c:v",
+        "libvpx-vp9",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "5",
+        "-threads",
+        "2",
+        "-lag-in-frames",
+        "8",
+        "-g",
+        "12",
+        "-pix_fmt",
+        "+yuv420p",
+        "vp9-8.webm"
+      ],
+      [
+        "copy",
+        "tests/fixtures/resource/vp9-10.webm",
+        "vp9-10.webm"
+      ]
+    ],
+    "reference_source_sha256": "1b5110c2d5e97e489c46838baa925881da84a8cf677dee70a2f8e589ac5c2e0c",
+    "workload_source_sha256": "36c101981a855607972cad7cdb5d5b77ad227c97a81cd97fac507ba495c73afb",
+    "ffmpeg": "ffmpeg version n9.0.1 Copyright (c) 2000-2026 the FFmpeg developers",
+    "compiler": "cc (GCC) 16.1.1 20260430",
+    "workload_sha256": "d6507f7a42c078b53b7c0362d9166b4125509992629b0f6d4ec8a2f387a6bdec",
+    "early_export_sha256": "603b23917c589927d9cfbbc853a297228fae66217787108e8484801ed91fcff2"
+  },
+  "acceptance_campaigns": {
+    "final-normal-1000": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "normal",
+        "requested_cycles": 1000,
+        "requested_seconds": 0,
+        "source_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "allocator_bytes": {
+          "allocated": {
+            "final": 345904,
+            "initial": 336784,
+            "maximum": 346544,
+            "minimum": 336784
+          },
+          "arena": {
+            "final": 2605056,
+            "initial": 2605056,
+            "maximum": 2605056,
+            "minimum": 2605056
+          },
+          "free": {
+            "final": 2259152,
+            "initial": 2268272,
+            "maximum": 2268272,
+            "minimum": 2258512
+          },
+          "mmap": {
+            "final": 0,
+            "initial": 0,
+            "maximum": 0,
+            "minimum": 0
+          },
+          "releasable": {
+            "final": 1071328,
+            "initial": 1071328,
+            "maximum": 1071328,
+            "minimum": 647168
+          }
+        },
+        "cycles": 1000,
+        "decoded_frames": 48960,
+        "dmabuf_status": "none-observed",
+        "elapsed_seconds": 205.55423193899333,
+        "growth": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 0
+        },
+        "held_image_checks": 1020,
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "normal",
+        "monotonic_growth": {
+          "dmabuf_bytes": false,
+          "dmabuf_objects": false,
+          "dmabuf_references": false,
+          "fds": false,
+          "mapped_bytes": false,
+          "maps": false,
+          "vmrss_kib": false
+        },
+        "passed": true,
+        "returncode": 0,
+        "sample_span_seconds": 205.551897976,
+        "samples": 1001,
+        "type": "summary",
+        "violations": [],
+        "warmup_cycles": 20
+      },
+      "initial_display": {
+        "dmabuf": {
+          "references": 0,
+          "status": "none-observed",
+          "unique_bytes": 0,
+          "unique_objects": 0
+        },
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fd_count": 4,
+        "map_count": 496,
+        "mapped_bytes": 166199296,
+        "monotonic_ns": 86699633299276,
+        "pid": 653649,
+        "process_start_time": "8669959",
+        "process_state": "S",
+        "rssanon_kib": 7440,
+        "rssfile_kib": 20448,
+        "rssshmem_kib": 0,
+        "timestamp_ns": 1789588982298877232,
+        "type": "initial",
+        "vmhwm_kib": 27888,
+        "vmrss_kib": 27888
+      },
+      "checkpoints": [
+        {
+          "allocator": {
+            "allocated": 336784,
+            "arena": 2605056,
+            "free": 2268272,
+            "mmap": 0,
+            "releasable": 1071328
+          },
+          "cycle": 0,
+          "decoded_frames": 960,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 496,
+          "mapped_bytes": 168296448,
+          "monotonic_ns": 86703716069093,
+          "pid": 653649,
+          "process_start_time": "8669959",
+          "process_state": "S",
+          "rssanon_kib": 9808,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789588986381647007,
+          "type": "sample",
+          "vmhwm_kib": 50848,
+          "vmrss_kib": 40288
+        },
+        {
+          "allocator": {
+            "allocated": 345744,
+            "arena": 2605056,
+            "free": 2259312,
+            "mmap": 0,
+            "releasable": 1071328
+          },
+          "cycle": 100,
+          "decoded_frames": 5760,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 496,
+          "mapped_bytes": 168296448,
+          "monotonic_ns": 86724286360133,
+          "pid": 653649,
+          "process_start_time": "8669959",
+          "process_state": "S",
+          "rssanon_kib": 9808,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789589006951938089,
+          "type": "sample",
+          "vmhwm_kib": 51648,
+          "vmrss_kib": 40288
+        },
+        {
+          "allocator": {
+            "allocated": 345968,
+            "arena": 2605056,
+            "free": 2259088,
+            "mmap": 0,
+            "releasable": 1071328
+          },
+          "cycle": 500,
+          "decoded_frames": 24960,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 496,
+          "mapped_bytes": 168296448,
+          "monotonic_ns": 86806538454152,
+          "pid": 653649,
+          "process_start_time": "8669959",
+          "process_state": "S",
+          "rssanon_kib": 9808,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789589089204032191,
+          "type": "sample",
+          "vmhwm_kib": 52400,
+          "vmrss_kib": 40288
+        },
+        {
+          "allocator": {
+            "allocated": 345904,
+            "arena": 2605056,
+            "free": 2259152,
+            "mmap": 0,
+            "releasable": 1071328
+          },
+          "cycle": 1000,
+          "decoded_frames": 48960,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 496,
+          "mapped_bytes": 168296448,
+          "monotonic_ns": 86909267967069,
+          "pid": 653649,
+          "process_start_time": "8669959",
+          "process_state": "S",
+          "rssanon_kib": 9808,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789589191933545025,
+          "type": "sample",
+          "vmhwm_kib": 52432,
+          "vmrss_kib": 40288
+        }
+      ],
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "f2213896-dc8a-44d4-a666-88ab92ba6881",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8"
+          },
+          "time": "2026-09-16T13:03:02-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "f2213896-dc8a-44d4-a666-88ab92ba6881",
+          "time": "2026-09-16T13:03:02-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "f2213896-dc8a-44d4-a666-88ab92ba6881",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T13:06:32-0700"
+        }
+      ],
+      "raw_replay": {
+        "matched_frame_records": 48960,
+        "held_image_records": 1020,
+        "early_export_identity_records": 0
+      },
+      "allocator_plateau_windows": [
+        {
+          "cycle_from": 0,
+          "cycle_to": 100,
+          "allocated_min": 336784,
+          "allocated_max": 346016
+        },
+        {
+          "cycle_from": 100,
+          "cycle_to": 500,
+          "allocated_min": 345104,
+          "allocated_max": 346448
+        },
+        {
+          "cycle_from": 500,
+          "cycle_to": 1000,
+          "allocated_min": 345280,
+          "allocated_max": 346544
+        },
+        {
+          "cycle_from": 1000,
+          "cycle_to": 1000,
+          "allocated_min": 345904,
+          "allocated_max": 345904
+        }
+      ]
+    },
+    "final-early-1000": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "requested_cycles": 1000,
+        "requested_seconds": 0,
+        "source_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "allocator_bytes": {
+          "allocated": {
+            "final": 344592,
+            "initial": 335456,
+            "maximum": 345504,
+            "minimum": 335456
+          },
+          "arena": {
+            "final": 3620864,
+            "initial": 3620864,
+            "maximum": 3620864,
+            "minimum": 3620864
+          },
+          "free": {
+            "final": 3276272,
+            "initial": 3285408,
+            "maximum": 3285408,
+            "minimum": 3275360
+          },
+          "mmap": {
+            "final": 0,
+            "initial": 0,
+            "maximum": 0,
+            "minimum": 0
+          },
+          "releasable": {
+            "final": 1739088,
+            "initial": 1739088,
+            "maximum": 1739088,
+            "minimum": 1739088
+          }
+        },
+        "cycles": 1000,
+        "decoded_frames": 48960,
+        "dmabuf_status": "none-observed",
+        "elapsed_seconds": 232.32713207999768,
+        "growth": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 0
+        },
+        "held_image_checks": 1020,
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "monotonic_growth": {
+          "dmabuf_bytes": false,
+          "dmabuf_objects": false,
+          "dmabuf_references": false,
+          "fds": false,
+          "mapped_bytes": false,
+          "maps": false,
+          "vmrss_kib": false
+        },
+        "passed": true,
+        "returncode": 0,
+        "sample_span_seconds": 232.305145058,
+        "samples": 1001,
+        "type": "summary",
+        "violations": [],
+        "warmup_cycles": 20
+      },
+      "initial_display": {
+        "dmabuf": {
+          "references": 0,
+          "status": "none-observed",
+          "unique_bytes": 0,
+          "unique_objects": 0
+        },
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fd_count": 4,
+        "map_count": 500,
+        "mapped_bytes": 167362560,
+        "monotonic_ns": 86909640732960,
+        "pid": 655691,
+        "process_start_time": "8690960",
+        "process_state": "S",
+        "rssanon_kib": 7472,
+        "rssfile_kib": 20448,
+        "rssshmem_kib": 0,
+        "timestamp_ns": 1789589192306310249,
+        "type": "initial",
+        "vmhwm_kib": 27920,
+        "vmrss_kib": 27920
+      },
+      "checkpoints": [
+        {
+          "allocator": {
+            "allocated": 335456,
+            "arena": 3620864,
+            "free": 3285408,
+            "mmap": 0,
+            "releasable": 1739088
+          },
+          "cycle": 0,
+          "decoded_frames": 960,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 500,
+          "mapped_bytes": 169459712,
+          "monotonic_ns": 86913897949205,
+          "pid": 655691,
+          "process_start_time": "8690960",
+          "process_state": "S",
+          "rssanon_kib": 10832,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789589196563525203,
+          "type": "sample",
+          "vmhwm_kib": 50512,
+          "vmrss_kib": 41312
+        },
+        {
+          "allocator": {
+            "allocated": 343360,
+            "arena": 3620864,
+            "free": 3277504,
+            "mmap": 0,
+            "releasable": 1739088
+          },
+          "cycle": 100,
+          "decoded_frames": 5760,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 500,
+          "mapped_bytes": 169459712,
+          "monotonic_ns": 86940783753528,
+          "pid": 655691,
+          "process_start_time": "8690960",
+          "process_state": "S",
+          "rssanon_kib": 10832,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789589223449330567,
+          "type": "sample",
+          "vmhwm_kib": 51328,
+          "vmrss_kib": 41312
+        },
+        {
+          "allocator": {
+            "allocated": 344640,
+            "arena": 3620864,
+            "free": 3276224,
+            "mmap": 0,
+            "releasable": 1739088
+          },
+          "cycle": 500,
+          "decoded_frames": 24960,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 500,
+          "mapped_bytes": 169459712,
+          "monotonic_ns": 87039055807852,
+          "pid": 655691,
+          "process_start_time": "8690960",
+          "process_state": "S",
+          "rssanon_kib": 10832,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789589321721385558,
+          "type": "sample",
+          "vmhwm_kib": 52944,
+          "vmrss_kib": 41312
+        },
+        {
+          "allocator": {
+            "allocated": 344592,
+            "arena": 3620864,
+            "free": 3276272,
+            "mmap": 0,
+            "releasable": 1739088
+          },
+          "cycle": 1000,
+          "decoded_frames": 48960,
+          "dmabuf": {
+            "references": 0,
+            "status": "none-observed",
+            "unique_bytes": 0,
+            "unique_objects": 0
+          },
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fd_count": 4,
+          "map_count": 500,
+          "mapped_bytes": 169459712,
+          "monotonic_ns": 87146203094263,
+          "pid": 655691,
+          "process_start_time": "8690960",
+          "process_state": "S",
+          "rssanon_kib": 10832,
+          "rssfile_kib": 30480,
+          "rssshmem_kib": 0,
+          "timestamp_ns": 1789589428868672344,
+          "type": "sample",
+          "vmhwm_kib": 52944,
+          "vmrss_kib": 41312
+        }
+      ],
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "bec9c4a4-2875-4f9b-8582-c934ea278ee7",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "9fe7136ad7920d81f5db2b10bd5c0a0e3c575fdf"
+          },
+          "time": "2026-09-16T13:06:32-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "bec9c4a4-2875-4f9b-8582-c934ea278ee7",
+          "time": "2026-09-16T13:06:32-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "bec9c4a4-2875-4f9b-8582-c934ea278ee7",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T13:10:29-0700"
+        }
+      ],
+      "raw_replay": {
+        "matched_frame_records": 48960,
+        "held_image_records": 1020,
+        "early_export_identity_records": 48960
+      },
+      "allocator_plateau_windows": [
+        {
+          "cycle_from": 0,
+          "cycle_to": 100,
+          "allocated_min": 335456,
+          "allocated_max": 343456
+        },
+        {
+          "cycle_from": 100,
+          "cycle_to": 500,
+          "allocated_min": 343168,
+          "allocated_max": 345504
+        },
+        {
+          "cycle_from": 500,
+          "cycle_to": 1000,
+          "allocated_min": 344240,
+          "allocated_max": 345504
+        },
+        {
+          "cycle_from": 1000,
+          "cycle_to": 1000,
+          "allocated_min": 344592,
+          "allocated_max": 344592
+        }
+      ]
+    }
+  },
+  "interrupted_client": {
+    "interrupted": {
+      "summary": {
+        "cycles": 2,
+        "error": "missing early-export identity/layout checks",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "heap_allocated_bytes": 65536,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "passed": false,
+        "type": "summary"
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "c395f968-028f-44c8-be80-70d627e21591",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8"
+          },
+          "time": "2026-09-16T13:02:57-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "c395f968-028f-44c8-be80-70d627e21591",
+          "time": "2026-09-16T13:02:57-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "c395f968-028f-44c8-be80-70d627e21591",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T13:03:02-0700"
+        }
+      ],
+      "log": "{\"interrupted_client\": \"SIGKILL via bound pidfd\", \"campaign_expected_failure\": true, \"coordinator_returncode\": 1, \"last_complete_cycle\": 2, \"kernel_health_and_final_idle\": \"owned by outer hwguard\"}\n{\"status\": \"ok\", \"returncode\": 0, \"timed_out\": false, \"wedged\": false, \"abort_reason\": null, \"busy\": false, \"owner\": null}\n"
+    }
+  },
+  "exact_codec_pass_sets": {},
+  "codec_guard": "NOT RUN: queued after successful soak; selected O3 build differs from previous O2 codec qualification.",
+  "historical_fault_boundary": {
+    "journal_since": "2026-09-16 10:53:48 -0700",
+    "reason": "Known Sep 15 faults remain in the boot journal. This boundary begins the earlier successful #35 qualification; its guards ended idle at 10:54:04 and 10:57:47 PDT. No later fault was found; no module reload/reset was used to bypass preflight."
+  },
+  "offline": {
+    "asan_ubsan": {
+      "passed": 128,
+      "failed": 0
+    },
+    "software_frame_check": "native-size/resolution/crop match; truncation rejected",
+    "software_shared_contexts": {
+      "streams": 4,
+      "frames": 168
+    },
+    "wrapper_stop_regression": "Old wrapper fails; responsive and SIGTERM-ignoring coordinator fixtures pass after fix."
+  },
+  "calibration": {
+    "normal-smoke": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "64ff51eabbeb70957886eee01f1b265f95dcbd22fc133a178b7007062dbfe2c5",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 65536
+        },
+        "mode": "normal",
+        "requested_cycles": 20,
+        "requested_seconds": 0,
+        "source_commit": "963a031b31a254bad1177e0795ba1f9c8ec08dd4",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "cycles": 1,
+        "error": "fds growth 1 exceeds 0; dmabuf_references growth 1 exceeds 0; dmabuf_objects growth 1 exceeds 0; dmabuf_bytes growth 819200 exceeds 0",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 65536
+        },
+        "mode": "normal",
+        "passed": false,
+        "type": "summary"
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "10e46535-0652-485e-a970-96154c1abf97",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "963a031b31a254bad1177e0795ba1f9c8ec08dd4"
+          },
+          "time": "2026-09-16T12:40:48-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "10e46535-0652-485e-a970-96154c1abf97",
+          "time": "2026-09-16T12:40:48-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "10e46535-0652-485e-a970-96154c1abf97",
+          "status": "child-error",
+          "returncode": 1,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T12:40:52-0700"
+        }
+      ]
+    },
+    "normal-fixed-smoke": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "5ffd31db5ef58febd3c8f9bbc60bad756418cf4357b5ab1d214effcd53c52c08",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 65536
+        },
+        "mode": "normal",
+        "requested_cycles": 20,
+        "requested_seconds": 0,
+        "source_commit": "963a031b31a254bad1177e0795ba1f9c8ec08dd4",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "cycles": 20,
+        "decoded_frames": 1920,
+        "dmabuf_status": "none-observed",
+        "elapsed_seconds": 4.084566645004088,
+        "growth": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 0
+        },
+        "held_image_checks": 40,
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 65536
+        },
+        "mode": "normal",
+        "monotonic_growth": {
+          "dmabuf_bytes": false,
+          "dmabuf_objects": false,
+          "dmabuf_references": false,
+          "fds": false,
+          "mapped_bytes": false,
+          "maps": false,
+          "vmrss_kib": false
+        },
+        "passed": true,
+        "returncode": 0,
+        "samples": 21,
+        "type": "summary",
+        "violations": [],
+        "warmup_cycles": 20
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "ec4411bf-811e-4380-90e8-517c7aad6749",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "963a031b31a254bad1177e0795ba1f9c8ec08dd4"
+          },
+          "time": "2026-09-16T12:41:46-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "ec4411bf-811e-4380-90e8-517c7aad6749",
+          "time": "2026-09-16T12:41:46-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "ec4411bf-811e-4380-90e8-517c7aad6749",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T12:41:54-0700"
+        }
+      ]
+    },
+    "early-smoke": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "5ffd31db5ef58febd3c8f9bbc60bad756418cf4357b5ab1d214effcd53c52c08",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "requested_cycles": 20,
+        "requested_seconds": 0,
+        "source_commit": "963a031b31a254bad1177e0795ba1f9c8ec08dd4",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "cycles": 20,
+        "decoded_frames": 1920,
+        "dmabuf_status": "none-observed",
+        "elapsed_seconds": 4.34822067899222,
+        "growth": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 0
+        },
+        "held_image_checks": 40,
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "monotonic_growth": {
+          "dmabuf_bytes": false,
+          "dmabuf_objects": false,
+          "dmabuf_references": false,
+          "fds": false,
+          "mapped_bytes": false,
+          "maps": false,
+          "vmrss_kib": false
+        },
+        "passed": true,
+        "returncode": 0,
+        "samples": 21,
+        "type": "summary",
+        "violations": [],
+        "warmup_cycles": 20
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "8ecb2416-66e0-4b0e-aa45-be6a7a1a08f7",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "963a031b31a254bad1177e0795ba1f9c8ec08dd4"
+          },
+          "time": "2026-09-16T12:44:14-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "8ecb2416-66e0-4b0e-aa45-be6a7a1a08f7",
+          "time": "2026-09-16T12:44:14-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "8ecb2416-66e0-4b0e-aa45-be6a7a1a08f7",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T12:44:23-0700"
+        }
+      ]
+    },
+    "normal-1000": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "3dfc9636ca9b899291001d6acb06a294c69ea04f68d1010d62eb464e7626d681",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "normal",
+        "requested_cycles": 1000,
+        "requested_seconds": 0,
+        "source_commit": "3b9173cd07591cf13f7c54aaa1cb2cfd073445cf",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "cycles": 1000,
+        "decoded_frames": 48960,
+        "dmabuf_status": "none-observed",
+        "elapsed_seconds": 204.55369614499796,
+        "growth": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 64
+        },
+        "held_image_checks": 1020,
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "normal",
+        "monotonic_growth": {
+          "dmabuf_bytes": false,
+          "dmabuf_objects": false,
+          "dmabuf_references": false,
+          "fds": false,
+          "mapped_bytes": false,
+          "maps": false,
+          "vmrss_kib": true
+        },
+        "passed": true,
+        "returncode": 0,
+        "sample_span_seconds": 204.547826946,
+        "samples": 1001,
+        "type": "summary",
+        "violations": [],
+        "warmup_cycles": 20
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "10e134ee-3e03-421c-84df-e6928f55283c",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "3b9173cd07591cf13f7c54aaa1cb2cfd073445cf"
+          },
+          "time": "2026-09-16T12:47:29-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "10e134ee-3e03-421c-84df-e6928f55283c",
+          "time": "2026-09-16T12:47:29-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "10e134ee-3e03-421c-84df-e6928f55283c",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T12:50:58-0700"
+        }
+      ]
+    },
+    "early-1000": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "3dfc9636ca9b899291001d6acb06a294c69ea04f68d1010d62eb464e7626d681",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "requested_cycles": 1000,
+        "requested_seconds": 0,
+        "source_commit": "3b9173cd07591cf13f7c54aaa1cb2cfd073445cf",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "cycles": 909,
+        "error": "mapped_bytes growth 2097152 exceeds 0",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "passed": false,
+        "type": "summary"
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "f763456d-a47f-4ecc-8c27-98669d2c3512",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "3b9173cd07591cf13f7c54aaa1cb2cfd073445cf"
+          },
+          "time": "2026-09-16T12:50:58-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "f763456d-a47f-4ecc-8c27-98669d2c3512",
+          "time": "2026-09-16T12:50:58-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "f763456d-a47f-4ecc-8c27-98669d2c3512",
+          "status": "child-error",
+          "returncode": 1,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T12:54:19-0700"
+        }
+      ]
+    },
+    "allocator-diagnostic": {
+      "metadata": {
+        "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+        "inputs_sha256": "244109a1fb3ee64b4b8fd8fac7527dc30d0e23226790bab06249af84aaab435e",
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "requested_cycles": 1000,
+        "requested_seconds": 0,
+        "source_commit": "3f71b349441790b695591d3444ed021382a15e7c",
+        "type": "metadata",
+        "warmup_cycles": 20
+      },
+      "summary": {
+        "cycles": 1000,
+        "decoded_frames": 48960,
+        "dmabuf_status": "none-observed",
+        "elapsed_seconds": 214.7578383610089,
+        "growth": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 0,
+          "maps": 0,
+          "vmrss_kib": 0
+        },
+        "held_image_checks": 1020,
+        "limits": {
+          "dmabuf_bytes": 0,
+          "dmabuf_objects": 0,
+          "dmabuf_references": 0,
+          "fds": 0,
+          "mapped_bytes": 4194304,
+          "maps": 0,
+          "vmrss_kib": 4096
+        },
+        "mode": "early",
+        "monotonic_growth": {
+          "dmabuf_bytes": false,
+          "dmabuf_objects": false,
+          "dmabuf_references": false,
+          "fds": false,
+          "mapped_bytes": false,
+          "maps": false,
+          "vmrss_kib": false
+        },
+        "passed": true,
+        "returncode": 0,
+        "sample_span_seconds": 214.735403316,
+        "samples": 1001,
+        "type": "summary",
+        "violations": [],
+        "warmup_cycles": 20
+      },
+      "guard": [
+        {
+          "event": "preflight",
+          "run_id": "fe863d3f-f9a9-4cca-861a-d15ce6422df3",
+          "identity": "avd",
+          "idle": true,
+          "module_loaded": true,
+          "userspace": {
+            "libva_drivers_path": "<redacted>",
+            "libva_driver_name": "v4l2_request",
+            "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+            "source_commit": "3f71b349441790b695591d3444ed021382a15e7c"
+          },
+          "time": "2026-09-16T12:55:57-0700"
+        },
+        {
+          "event": "start",
+          "run_id": "fe863d3f-f9a9-4cca-861a-d15ce6422df3",
+          "time": "2026-09-16T12:55:57-0700"
+        },
+        {
+          "event": "final",
+          "run_id": "fe863d3f-f9a9-4cca-861a-d15ce6422df3",
+          "status": "ok",
+          "returncode": 0,
+          "timed_out": false,
+          "wedged": false,
+          "abort_reason": null,
+          "idle": true,
+          "holders": [],
+          "time": "2026-09-16T12:59:37-0700"
+        }
+      ]
+    }
+  },
+  "limits_and_not_run": [
+    "Fixed synthetic 640x360 workload, 24 frames per clip; normal and early-export lifecycles each decode/drain and seek/flush/redecode.",
+    "FD/dma-buf return to initial-display state; mapping and RSS comparisons begin after 20 warmup lifecycles. One initialized VA display survives all measured cycles.",
+    "All accepted final mapping/RSS curves are flat. Declared 4 MiB allocator-arena/mapped/RSS allowances and 64 KiB allocation allowance are workload-specific, not universal.",
+    "The failed early-export calibration at cycle 909 lacks allocator telemetry; its 2 MiB increase remains unexplained and failed. Later final runs are fresh evidence, not a reclassification.",
+    "The first smoke leaked a client-owned surface because its FFmpeg pool was freed before its derived image. Corrected fixture ordering; no production driver leak claimed.",
+    "Calibration source_commit fields identify their base checkouts; some fixture/allocator edits were uncommitted. Their manifests retain actual workload source/binary hashes. They are not final acceptance runs.",
+    "Selected on-disk kernel module identity is recorded; actual loaded module binary identity is unavailable.",
+    "dma-buf none-observed means no process descriptors at quiescent checkpoints; global kernel allocations and unsampled descendants are not measured.",
+    "No browser rendering, concurrent API calls, other resolutions, suspend/reboot, installation or new codec support is qualified.",
+    "Prior known codec failures remain failures; exact pass sets are compared without removing their raw full-suite denominators.",
+    "The exact selected O3 binary codec comparison is not run yet."
+  ],
+  "aborted_soak": {
+    "metadata": {
+      "driver_sha256": "696273b355e0dbd045fa80af6cd787118511424c79960d8c1c0e65db8becb769",
+      "inputs_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
+      "limits": {
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fds": 0,
+        "heap_allocated_bytes": 65536,
+        "mapped_bytes": 4194304,
+        "maps": 0,
+        "vmrss_kib": 4096
+      },
+      "mode": "early",
+      "requested_cycles": 1000000,
+      "requested_seconds": 3600,
+      "source_commit": "6ac9a4f351d7b94ac6b1f53f3acf0f4db52b7ea8",
+      "type": "metadata",
+      "warmup_cycles": 20
+    },
+    "summary": {
+      "cycles": 2822,
+      "error": "143",
+      "limits": {
+        "dmabuf_bytes": 0,
+        "dmabuf_objects": 0,
+        "dmabuf_references": 0,
+        "fds": 0,
+        "heap_allocated_bytes": 65536,
+        "mapped_bytes": 4194304,
+        "maps": 0,
+        "vmrss_kib": 4096
+      },
+      "mode": "early",
+      "passed": false,
+      "type": "summary"
+    },
+    "sample_span_seconds": 616.048414118,
+    "first": {
+      "allocator": {
+        "allocated": 335872,
+        "arena": 3227648,
+        "free": 2891776,
+        "mmap": 0,
+        "releasable": 1889168
+      },
+      "cycle": 0,
+      "decoded_frames": 960,
+      "dmabuf": {
+        "references": 0,
+        "status": "none-observed",
+        "unique_bytes": 0,
+        "unique_objects": 0
+      },
+      "dmabuf_bytes": 0,
+      "dmabuf_objects": 0,
+      "dmabuf_references": 0,
+      "fd_count": 4,
+      "map_count": 499,
+      "mapped_bytes": 169066496,
+      "monotonic_ns": 87150764960579,
+      "pid": 660101,
+      "process_start_time": "8714652",
+      "process_state": "S",
+      "rssanon_kib": 10448,
+      "rssfile_kib": 30464,
+      "rssshmem_kib": 0,
+      "timestamp_ns": 1789589433430538535,
+      "type": "sample",
+      "vmhwm_kib": 50496,
+      "vmrss_kib": 40912
+    },
+    "last": {
+      "allocator": {
+        "allocated": 345920,
+        "arena": 3227648,
+        "free": 2881728,
+        "mmap": 0,
+        "releasable": 1889168
+      },
+      "cycle": 2822,
+      "decoded_frames": 136416,
+      "dmabuf": {
+        "references": 0,
+        "status": "none-observed",
+        "unique_bytes": 0,
+        "unique_objects": 0
+      },
+      "dmabuf_bytes": 0,
+      "dmabuf_objects": 0,
+      "dmabuf_references": 0,
+      "fd_count": 4,
+      "map_count": 499,
+      "mapped_bytes": 169066496,
+      "monotonic_ns": 87766813374697,
+      "pid": 660101,
+      "process_start_time": "8714652",
+      "process_state": "S",
+      "rssanon_kib": 10448,
+      "rssfile_kib": 30464,
+      "rssshmem_kib": 0,
+      "timestamp_ns": 1789590049478952444,
+      "type": "sample",
+      "vmhwm_kib": 51424,
+      "vmrss_kib": 40912
+    },
+    "guard": [
+      {
+        "event": "preflight",
+        "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
+        "identity": "avd",
+        "idle": true,
+        "module_loaded": true,
+        "userspace": {
+          "libva_drivers_path": "<redacted>",
+          "libva_driver_name": "v4l2_request",
+          "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+          "source_commit": "9fe7136ad7920d81f5db2b10bd5c0a0e3c575fdf"
+        },
+        "time": "2026-09-16T13:10:29-0700"
+      },
+      {
+        "event": "start",
+        "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
+        "time": "2026-09-16T13:10:29-0700"
+      },
+      {
+        "event": "abort",
+        "reason": "foreign-client",
+        "holders": [
+          {
+            "pid": 595914,
+            "pgrp": 997,
+            "owner_root": null,
+            "cmd": "<redacted>"
+          }
+        ],
+        "time": "2026-09-16T13:20:49-0700"
+      },
+      {
+        "event": "final",
+        "run_id": "22ab2058-ee67-4ec6-b58b-e7968fa6fec1",
+        "status": "abort",
+        "returncode": 143,
+        "timed_out": false,
+        "wedged": false,
+        "abort_reason": "foreign-client",
+        "idle": false,
+        "holders": [
+          {
+            "pid": 595914,
+            "pgrp": 997,
+            "owner_root": null,
+            "cmd": "<redacted>"
+          }
+        ],
+        "time": "2026-09-16T13:20:49-0700"
+      }
+    ],
+    "later_idle_preflight": [
+      {
+        "event": "preflight",
+        "run_id": "850643e0-a99a-49a8-81b8-ef89b1d4f8b3",
+        "identity": "avd",
+        "idle": true,
+        "module_loaded": true,
+        "userspace": {
+          "libva_drivers_path": "",
+          "libva_driver_name": "v4l2_request",
+          "loaded_module_limit": "sysfs shows whether apple_avd is present; this guard cannot certify which module binary was loaded earlier or that every patch is active",
+          "source_commit": "83eb6d0faa1222a4b33d1181d61b13645d945c91"
+        },
+        "time": "2026-09-16T13:25:40-0700"
+      },
+      {
+        "event": "start",
+        "run_id": "850643e0-a99a-49a8-81b8-ef89b1d4f8b3",
+        "time": "2026-09-16T13:25:40-0700"
+      },
+      {
+        "event": "final",
+        "run_id": "850643e0-a99a-49a8-81b8-ef89b1d4f8b3",
+        "status": "ok",
+        "returncode": 0,
+        "timed_out": false,
+        "wedged": false,
+        "abort_reason": null,
+        "idle": true,
+        "holders": [],
+        "time": "2026-09-16T13:25:40-0700"
+      }
+    ]
+  },
+  "archive": {
+    "path": "resource-churn-2026-09-16/raw-evidence.tar.xz",
+    "sha256": "46bc9663ba953c6c1b9c59847b5a5bd44d5f7f3882881601e0301a0cc5164fa7",
+    "members": {
+      "allocator-diagnostic-guard.jsonl": {
+        "raw_sha256": "a060abc310be0b4f23dd53bfc26ab8a48b58814fbc2c6b72fa5f887e7bd9288e",
+        "public_sha256": "a060abc310be0b4f23dd53bfc26ab8a48b58814fbc2c6b72fa5f887e7bd9288e",
+        "size": 808
+      },
+      "allocator-diagnostic.jsonl": {
+        "raw_sha256": "32b0687f1305c19ceb7a3f4ce47b55df81088e089ad485e4bf0b2786f9bcf986",
+        "public_sha256": "32b0687f1305c19ceb7a3f4ce47b55df81088e089ad485e4bf0b2786f9bcf986",
+        "size": 625033
+      },
+      "allocator-diagnostic.log": {
+        "raw_sha256": "68338abf0e56b3cb8e54ddfc4e7a2bc906e2f5e1e4a29930f2f63a9ea10a3a0e",
+        "public_sha256": "68338abf0e56b3cb8e54ddfc4e7a2bc906e2f5e1e4a29930f2f63a9ea10a3a0e",
+        "size": 870
+      },
+      "allocator-diagnostic.stderr.log": {
+        "raw_sha256": "df6a0d33865790da4a969da27576b8ec860a7293271e4e367433410074d6170a",
+        "public_sha256": "df6a0d33865790da4a969da27576b8ec860a7293271e4e367433410074d6170a",
+        "size": 3029054
+      },
+      "allocator-diagnostic.workload.log": {
+        "raw_sha256": "42e859d20b7eeb0a3339d63cc62e2cb22fae4e915d9a4179dd05a6c1a3ec4a53",
+        "public_sha256": "42e859d20b7eeb0a3339d63cc62e2cb22fae4e915d9a4179dd05a6c1a3ec4a53",
+        "size": 3151692
+      },
+      "allocator-media/h264.mkv": {
+        "raw_sha256": "c6aed6997b3b1ef039b01c72d289f1e74fcff7aadde0bbcfe91670d29319ca11",
+        "public_sha256": "c6aed6997b3b1ef039b01c72d289f1e74fcff7aadde0bbcfe91670d29319ca11",
+        "size": 194603
+      },
+      "allocator-media/h264.mkv.reference": {
+        "raw_sha256": "9819c5eced991761047544ec4a3a8b5bdb63f1f1d211e67e5907dae21c659423",
+        "public_sha256": "9819c5eced991761047544ec4a3a8b5bdb63f1f1d211e67e5907dae21c659423",
+        "size": 1419
+      },
+      "allocator-media/hevc.mkv": {
+        "raw_sha256": "a6a8fffaf5e7866f7ce69d86db5c10876d610919fe42417cc374f5a3c09b61f7",
+        "public_sha256": "a6a8fffaf5e7866f7ce69d86db5c10876d610919fe42417cc374f5a3c09b61f7",
+        "size": 64811
+      },
+      "allocator-media/hevc.mkv.reference": {
+        "raw_sha256": "850d3a67c3b3155c623b90a9c20e5f49ad20b36c5361502ac8f87909a0fa63a8",
+        "public_sha256": "850d3a67c3b3155c623b90a9c20e5f49ad20b36c5361502ac8f87909a0fa63a8",
+        "size": 1419
+      },
+      "allocator-media/inputs.json": {
+        "raw_sha256": "244109a1fb3ee64b4b8fd8fac7527dc30d0e23226790bab06249af84aaab435e",
+        "public_sha256": "244109a1fb3ee64b4b8fd8fac7527dc30d0e23226790bab06249af84aaab435e",
+        "size": 9455
+      },
+      "allocator-media/vp9-10.webm": {
+        "raw_sha256": "cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463",
+        "public_sha256": "cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463",
+        "size": 107193
+      },
+      "allocator-media/vp9-10.webm.reference": {
+        "raw_sha256": "01f7874fc119727c42313ebd996c8315f0928dc7cf93f28b63b7202a8197bdfd",
+        "public_sha256": "01f7874fc119727c42313ebd996c8315f0928dc7cf93f28b63b7202a8197bdfd",
+        "size": 1515
+      },
+      "allocator-media/vp9-8.webm": {
+        "raw_sha256": "e2ce566a4f62ac643d5c76cabed35af67b53e1477dd3dae690807c26b54eed88",
+        "public_sha256": "e2ce566a4f62ac643d5c76cabed35af67b53e1477dd3dae690807c26b54eed88",
+        "size": 108748
+      },
+      "allocator-media/vp9-8.webm.reference": {
+        "raw_sha256": "3be0a45828cd8402ca35b52815ad9f6ac64fae1b35febc5f9cf0942e7dde4802",
+        "public_sha256": "3be0a45828cd8402ca35b52815ad9f6ac64fae1b35febc5f9cf0942e7dde4802",
+        "size": 1419
+      },
+      "ci-code-head.json": {
+        "raw_sha256": "c1d27bcc2844f759a0d4ca78fe20c693aeaaa1f4baa02405d5817508b60ed00a",
+        "public_sha256": "c1d27bcc2844f759a0d4ca78fe20c693aeaaa1f4baa02405d5817508b60ed00a",
+        "size": 7276
+      },
+      "driver-build-comparison.json": {
+        "raw_sha256": "252c84f59e3f43a7327b527b8e17cb12eb626cae2a95877a4092f037da7ae3a8",
+        "public_sha256": "252c84f59e3f43a7327b527b8e17cb12eb626cae2a95877a4092f037da7ae3a8",
+        "size": 4390
+      },
+      "early-1000-guard.jsonl": {
+        "raw_sha256": "cc4354619938de21c4b7cb9ec3ba71969d89f48d7abe24313b92391846b2f600",
+        "public_sha256": "cc4354619938de21c4b7cb9ec3ba71969d89f48d7abe24313b92391846b2f600",
+        "size": 817
+      },
+      "early-1000.jsonl": {
+        "raw_sha256": "4a3394fe071e4ad33f5194c5fefed92e2cd76f36395b0377e4e40dddd25c0bf4",
+        "public_sha256": "4a3394fe071e4ad33f5194c5fefed92e2cd76f36395b0377e4e40dddd25c0bf4",
+        "size": 473201
+      },
+      "early-1000.log": {
+        "raw_sha256": "f1da5b221e93fe69b7e54484bbc4a7093354bc8c004811af7ef66c21b115de81",
+        "public_sha256": "ff97b8270ab2281cf0ce81e7790b58ff367e5b91b4d1f5b270c2135244fed6e7",
+        "size": 552
+      },
+      "early-1000.stderr.log": {
+        "raw_sha256": "f9417ddaa594a456316d41d861e68ecf3902a8a4c9d119f382465c66fdfb06f2",
+        "public_sha256": "f9417ddaa594a456316d41d861e68ecf3902a8a4c9d119f382465c66fdfb06f2",
+        "size": 2757829
+      },
+      "early-1000.workload.log": {
+        "raw_sha256": "378434be6c1c2f4c8c6a232cb664c1b67ac7d5db5f9d6bc9f439bc90d1911361",
+        "public_sha256": "378434be6c1c2f4c8c6a232cb664c1b67ac7d5db5f9d6bc9f439bc90d1911361",
+        "size": 2798318
+      },
+      "early-smoke-guard.jsonl": {
+        "raw_sha256": "4bae4edb5aae7cb98a479fd4d6c507e0d1f7877edd6d2782f5329725a0f29bc2",
+        "public_sha256": "4bae4edb5aae7cb98a479fd4d6c507e0d1f7877edd6d2782f5329725a0f29bc2",
+        "size": 808
+      },
+      "early-smoke.jsonl": {
+        "raw_sha256": "fa11d4eb43d0340e005728ba8944040c1dec163a8829aa0b4ccc24faea502289",
+        "public_sha256": "fa11d4eb43d0340e005728ba8944040c1dec163a8829aa0b4ccc24faea502289",
+        "size": 12014
+      },
+      "early-smoke.log": {
+        "raw_sha256": "7b992889095acfde7ab36c9ac19b105834f243aa16bba30e7711d4cc2da8ed82",
+        "public_sha256": "7b992889095acfde7ab36c9ac19b105834f243aa16bba30e7711d4cc2da8ed82",
+        "size": 818
+      },
+      "early-smoke.stderr.log": {
+        "raw_sha256": "be66d0e9f73a43114d452e588281ccaf4b05f414ec1301ca301791a6eaf3e62e",
+        "public_sha256": "be66d0e9f73a43114d452e588281ccaf4b05f414ec1301ca301791a6eaf3e62e",
+        "size": 116243
+      },
+      "early-smoke.workload.log": {
+        "raw_sha256": "60d8d0b7c21af86a92d55163f9ebef0d647c70f6c0587e3eb4500fabca7ccce4",
+        "public_sha256": "60d8d0b7c21af86a92d55163f9ebef0d647c70f6c0587e3eb4500fabca7ccce4",
+        "size": 120057
+      },
+      "final-codec-suites.py": {
+        "raw_sha256": "c1bc90be52bd1c31d6f8887a29922663b6ed1429a9571e20634aa3cb2bf8dad7",
+        "public_sha256": "cb4d809e925e1aaa75e80b2a70070b3a07949987699ea88a8000693145d1bde0",
+        "size": 2503
+      },
+      "final-early-1000-guard.jsonl": {
+        "raw_sha256": "c5b88db33859496d6cfdad216df102325dfa16186b1f6bd1e33c7897be7d0c4c",
+        "public_sha256": "c5b88db33859496d6cfdad216df102325dfa16186b1f6bd1e33c7897be7d0c4c",
+        "size": 808
+      },
+      "final-early-1000.jsonl": {
+        "raw_sha256": "87a7fa2a794fd9a3f3cb15b30feae6af8d6edc05946f3c97c37c20c61dcf5752",
+        "public_sha256": "87a7fa2a794fd9a3f3cb15b30feae6af8d6edc05946f3c97c37c20c61dcf5752",
+        "size": 627543
+      },
+      "final-early-1000.log": {
+        "raw_sha256": "4be3a59a2a3d64ce7fb5d9b2fb017ef85ba7e71437fe2c051861c18c4f5b68a9",
+        "public_sha256": "4be3a59a2a3d64ce7fb5d9b2fb017ef85ba7e71437fe2c051861c18c4f5b68a9",
+        "size": 1347
+      },
+      "final-early-1000.stderr.log": {
+        "raw_sha256": "df6a0d33865790da4a969da27576b8ec860a7293271e4e367433410074d6170a",
+        "public_sha256": "df6a0d33865790da4a969da27576b8ec860a7293271e4e367433410074d6170a",
+        "size": 3029054
+      },
+      "final-early-1000.workload.log": {
+        "raw_sha256": "1abc5f4f0bb5dbcca05659fa74cd95287a9e841cd44858522885c5cb7f285828",
+        "public_sha256": "1abc5f4f0bb5dbcca05659fa74cd95287a9e841cd44858522885c5cb7f285828",
+        "size": 3152693
+      },
+      "final-media/h264.mkv": {
+        "raw_sha256": "a757c79b3f4229c471b823ce6afdea86df73e8ebc9965307e840f9e6469d6d36",
+        "public_sha256": "a757c79b3f4229c471b823ce6afdea86df73e8ebc9965307e840f9e6469d6d36",
+        "size": 194603
+      },
+      "final-media/h264.mkv.reference": {
+        "raw_sha256": "9819c5eced991761047544ec4a3a8b5bdb63f1f1d211e67e5907dae21c659423",
+        "public_sha256": "9819c5eced991761047544ec4a3a8b5bdb63f1f1d211e67e5907dae21c659423",
+        "size": 1419
+      },
+      "final-media/hevc.mkv": {
+        "raw_sha256": "b6e5d13528784a7917487507b613106e53735a67fd1073a7742e920c574e2213",
+        "public_sha256": "b6e5d13528784a7917487507b613106e53735a67fd1073a7742e920c574e2213",
+        "size": 64811
+      },
+      "final-media/hevc.mkv.reference": {
+        "raw_sha256": "850d3a67c3b3155c623b90a9c20e5f49ad20b36c5361502ac8f87909a0fa63a8",
+        "public_sha256": "850d3a67c3b3155c623b90a9c20e5f49ad20b36c5361502ac8f87909a0fa63a8",
+        "size": 1419
+      },
+      "final-media/inputs.json": {
+        "raw_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
+        "public_sha256": "1004fac7090469c37ab6a1b299ee99310f330166efadd00ae8b086db5f16aae1",
+        "size": 9455
+      },
+      "final-media/vp9-10.webm": {
+        "raw_sha256": "cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463",
+        "public_sha256": "cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463",
+        "size": 107193
+      },
+      "final-media/vp9-10.webm.reference": {
+        "raw_sha256": "01f7874fc119727c42313ebd996c8315f0928dc7cf93f28b63b7202a8197bdfd",
+        "public_sha256": "01f7874fc119727c42313ebd996c8315f0928dc7cf93f28b63b7202a8197bdfd",
+        "size": 1515
+      },
+      "final-media/vp9-8.webm": {
+        "raw_sha256": "046041b4cf52ce18ea15f9af5d313c48012b8f2bcd58531e287f0a18e52afc8c",
+        "public_sha256": "046041b4cf52ce18ea15f9af5d313c48012b8f2bcd58531e287f0a18e52afc8c",
+        "size": 108748
+      },
+      "final-media/vp9-8.webm.reference": {
+        "raw_sha256": "3be0a45828cd8402ca35b52815ad9f6ac64fae1b35febc5f9cf0942e7dde4802",
+        "public_sha256": "3be0a45828cd8402ca35b52815ad9f6ac64fae1b35febc5f9cf0942e7dde4802",
+        "size": 1419
+      },
+      "final-normal-1000-guard.jsonl": {
+        "raw_sha256": "819af05a9028151ebb19b5eb75df0a2131742ea86c2c8e00cb87ddd8d3996ad7",
+        "public_sha256": "819af05a9028151ebb19b5eb75df0a2131742ea86c2c8e00cb87ddd8d3996ad7",
+        "size": 808
+      },
+      "final-normal-1000.jsonl": {
+        "raw_sha256": "b72c536aee8453f9f621d9679cd839c7a76c516394d5165a3f150a363ee0662f",
+        "public_sha256": "b72c536aee8453f9f621d9679cd839c7a76c516394d5165a3f150a363ee0662f",
+        "size": 626523
+      },
+      "final-normal-1000.log": {
+        "raw_sha256": "e3da1ff26de5d3d0b66c9e761277670d095a984304227dc2e536e0360c00c671",
+        "public_sha256": "e3da1ff26de5d3d0b66c9e761277670d095a984304227dc2e536e0360c00c671",
+        "size": 1347
+      },
+      "final-normal-1000.stderr.log": {
+        "raw_sha256": "b38187630fd344fb8d8de608bb7deda71fc1131e76594ee009277fbbb696b99a",
+        "public_sha256": "b38187630fd344fb8d8de608bb7deda71fc1131e76594ee009277fbbb696b99a",
+        "size": 249440
+      },
+      "final-normal-1000.workload.log": {
+        "raw_sha256": "331287099ac9113440566688f473da1564ba0d9a27b901dc67121fa7d772cd82",
+        "public_sha256": "331287099ac9113440566688f473da1564ba0d9a27b901dc67121fa7d772cd82",
+        "size": 3152673
+      },
+      "final-offline-v2.log": {
+        "raw_sha256": "5e80552090d48cae440e73ebeac4ad8e8dbf20cb816a69f89f13cb241d4b1edd",
+        "public_sha256": "5e80552090d48cae440e73ebeac4ad8e8dbf20cb816a69f89f13cb241d4b1edd",
+        "size": 10838
+      },
+      "final-soak-guard.jsonl": {
+        "raw_sha256": "fa4d1ac991085a482d78fe48d9cb21adfc077fdbc451d4cea45ae5863f81222e",
+        "public_sha256": "fa4d1ac991085a482d78fe48d9cb21adfc077fdbc451d4cea45ae5863f81222e",
+        "size": 1062
+      },
+      "final-soak.jsonl": {
+        "raw_sha256": "0941f0eb4e951b2df231164f9749299b307d59d14259f5d18a99f3328f30dd25",
+        "public_sha256": "0941f0eb4e951b2df231164f9749299b307d59d14259f5d18a99f3328f30dd25",
+        "size": 1767914
+      },
+      "final-soak.log": {
+        "raw_sha256": "3410d8d3e87ab92a2674fcf544549db9c9e4bd78e960acb1ede9d50fd3a3964d",
+        "public_sha256": "3410d8d3e87ab92a2674fcf544549db9c9e4bd78e960acb1ede9d50fd3a3964d",
+        "size": 140
+      },
+      "final-soak.stderr.log": {
+        "raw_sha256": "631232586eb19bdeeefc3c88318cfbf6b39a6c4398ffa4b287cd105f71186ab9",
+        "public_sha256": "631232586eb19bdeeefc3c88318cfbf6b39a6c4398ffa4b287cd105f71186ab9",
+        "size": 8496419
+      },
+      "final-soak.workload.log": {
+        "raw_sha256": "92416983fe92377a54afbfb9ef2108b09a325a9702520f7ffbffaa098c1f93e4",
+        "public_sha256": "92416983fe92377a54afbfb9ef2108b09a325a9702520f7ffbffaa098c1f93e4",
+        "size": 8795502
+      },
+      "hardware-code-equivalence.json": {
+        "raw_sha256": "0f4a8c5004ac4d2d52ae82a83aeddf51d8e6e1d1a68df8035267e5cd24ebe153",
+        "public_sha256": "0f4a8c5004ac4d2d52ae82a83aeddf51d8e6e1d1a68df8035267e5cd24ebe153",
+        "size": 535
+      },
+      "hardware-final.sh": {
+        "raw_sha256": "a730cc0299a667c43db532f51f9c86de6833654eaac4179727d603a6d37408cb",
+        "public_sha256": "103a31799a9d00006ba9c5485b86bcbaa23b199814de8a7429886868e101281b",
+        "size": 1402
+      },
+      "hardware-identity.json": {
+        "raw_sha256": "9a278b4904ec822083647cf939bb7d45dac62415c72f6616b984af8f4fc76beb",
+        "public_sha256": "9a278b4904ec822083647cf939bb7d45dac62415c72f6616b984af8f4fc76beb",
+        "size": 1040
+      },
+      "interrupt-wrapper-before.log": {
+        "raw_sha256": "07cc9c6c9bb643216aa0878acb5386f2ba60e533837766a66972a586c50d5f79",
+        "public_sha256": "07cc9c6c9bb643216aa0878acb5386f2ba60e533837766a66972a586c50d5f79",
+        "size": 381
+      },
+      "interrupt-wrapper-fix.log": {
+        "raw_sha256": "5a21fb71d178adc25be617cf7f7a126988e8cf8c4b35f2d80c6c1b1a8f48773f",
+        "public_sha256": "5a21fb71d178adc25be617cf7f7a126988e8cf8c4b35f2d80c6c1b1a8f48773f",
+        "size": 1306
+      },
+      "interrupted-guard.jsonl": {
+        "raw_sha256": "6c43799c0c7be365e578f98f3b5f3da76ea26020bfdf3afcc8223127b33a3949",
+        "public_sha256": "6c43799c0c7be365e578f98f3b5f3da76ea26020bfdf3afcc8223127b33a3949",
+        "size": 808
+      },
+      "interrupted.coordinator.log": {
+        "raw_sha256": "f92d61f7be26d454296574a028bf7ab0c55d47b2d7901036c24cb0ceefe8e1de",
+        "public_sha256": "fecfccea0dd0b22a561e0a108de9b207940ce23de6b42c2cc5b31c11c622123c",
+        "size": 476
+      },
+      "interrupted.jsonl": {
+        "raw_sha256": "753a244ce1f2b980679b5646772f38f0ca17de735affeaf654d16389ba39e59b",
+        "public_sha256": "753a244ce1f2b980679b5646772f38f0ca17de735affeaf654d16389ba39e59b",
+        "size": 3144
+      },
+      "interrupted.log": {
+        "raw_sha256": "880fe1d7c83c1b34323964c4e9da6344a4f19a67ddbd6a139c184df86c3c08a5",
+        "public_sha256": "880fe1d7c83c1b34323964c4e9da6344a4f19a67ddbd6a139c184df86c3c08a5",
+        "size": 321
+      },
+      "interrupted.stderr.log": {
+        "raw_sha256": "639c5ed701458b5eef0e3aa724ab85f3f916df88fd4c8acab666306413126377",
+        "public_sha256": "639c5ed701458b5eef0e3aa724ab85f3f916df88fd4c8acab666306413126377",
+        "size": 63983
+      },
+      "interrupted.workload.log": {
+        "raw_sha256": "ad4f6b26b8abb9ac65351bd48bd80325a69cabe3ecd9831e7f6564fdc063fc19",
+        "public_sha256": "ad4f6b26b8abb9ac65351bd48bd80325a69cabe3ecd9831e7f6564fdc063fc19",
+        "size": 66282
+      },
+      "make-evidence.py": {
+        "raw_sha256": "c7a88f23fbce7b1a1bd897018325a1f54dff7eb45803a309811586343ac77d03",
+        "public_sha256": "3e6c12083f74bdc0471d9c44284d39227733eb46d7227030af62de4c56555187",
+        "size": 14417
+      },
+      "media/h264.mkv": {
+        "raw_sha256": "120e975fde9c78d4057ceed45d545f1830868d221d84a3ec654550b2c2e4f477",
+        "public_sha256": "120e975fde9c78d4057ceed45d545f1830868d221d84a3ec654550b2c2e4f477",
+        "size": 194603
+      },
+      "media/h264.mkv.reference": {
+        "raw_sha256": "9819c5eced991761047544ec4a3a8b5bdb63f1f1d211e67e5907dae21c659423",
+        "public_sha256": "9819c5eced991761047544ec4a3a8b5bdb63f1f1d211e67e5907dae21c659423",
+        "size": 1419
+      },
+      "media/hevc.mkv": {
+        "raw_sha256": "1b190e45fb399d293cc037ec51b1740044366443957300498ff6155d831ec199",
+        "public_sha256": "1b190e45fb399d293cc037ec51b1740044366443957300498ff6155d831ec199",
+        "size": 64811
+      },
+      "media/hevc.mkv.reference": {
+        "raw_sha256": "850d3a67c3b3155c623b90a9c20e5f49ad20b36c5361502ac8f87909a0fa63a8",
+        "public_sha256": "850d3a67c3b3155c623b90a9c20e5f49ad20b36c5361502ac8f87909a0fa63a8",
+        "size": 1419
+      },
+      "media/inputs.json": {
+        "raw_sha256": "3dfc9636ca9b899291001d6acb06a294c69ea04f68d1010d62eb464e7626d681",
+        "public_sha256": "3dfc9636ca9b899291001d6acb06a294c69ea04f68d1010d62eb464e7626d681",
+        "size": 9822
+      },
+      "media/vp9-10.webm": {
+        "raw_sha256": "cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463",
+        "public_sha256": "cfc1d27ad161696e574020b910cd952725cf67d12e0913dedec7d202aae84463",
+        "size": 107193
+      },
+      "media/vp9-10.webm.reference": {
+        "raw_sha256": "01f7874fc119727c42313ebd996c8315f0928dc7cf93f28b63b7202a8197bdfd",
+        "public_sha256": "01f7874fc119727c42313ebd996c8315f0928dc7cf93f28b63b7202a8197bdfd",
+        "size": 1515
+      },
+      "media/vp9-8.webm": {
+        "raw_sha256": "540cfe954f827630fbe53075cd53708f0b6bcdfdadf677e2c7d2813b9f843b08",
+        "public_sha256": "540cfe954f827630fbe53075cd53708f0b6bcdfdadf677e2c7d2813b9f843b08",
+        "size": 108748
+      },
+      "media/vp9-8.webm.reference": {
+        "raw_sha256": "3be0a45828cd8402ca35b52815ad9f6ac64fae1b35febc5f9cf0942e7dde4802",
+        "public_sha256": "3be0a45828cd8402ca35b52815ad9f6ac64fae1b35febc5f9cf0942e7dde4802",
+        "size": 1419
+      },
+      "normal-1000-guard.jsonl": {
+        "raw_sha256": "5fda8a13e75605901e8dd40511eab24c6eeb53f047731be9229273857acb04a7",
+        "public_sha256": "5fda8a13e75605901e8dd40511eab24c6eeb53f047731be9229273857acb04a7",
+        "size": 808
+      },
+      "normal-1000.jsonl": {
+        "raw_sha256": "eb5b5ed7b23b0634dd222f8f509677c91470d500222c6c03e528a2b6c0a47689",
+        "public_sha256": "eb5b5ed7b23b0634dd222f8f509677c91470d500222c6c03e528a2b6c0a47689",
+        "size": 521921
+      },
+      "normal-1000.log": {
+        "raw_sha256": "d3e135ad3fc5a57ef3c22b51995ef77629cae78182117b605d41410efacb6cb6",
+        "public_sha256": "d3e135ad3fc5a57ef3c22b51995ef77629cae78182117b605d41410efacb6cb6",
+        "size": 866
+      },
+      "normal-1000.stderr.log": {
+        "raw_sha256": "b38187630fd344fb8d8de608bb7deda71fc1131e76594ee009277fbbb696b99a",
+        "public_sha256": "b38187630fd344fb8d8de608bb7deda71fc1131e76594ee009277fbbb696b99a",
+        "size": 249440
+      },
+      "normal-1000.workload.log": {
+        "raw_sha256": "fba8950e19b261d6e4c2cc7972543857173c7e0dbae0b581146895543a6f93db",
+        "public_sha256": "fba8950e19b261d6e4c2cc7972543857173c7e0dbae0b581146895543a6f93db",
+        "size": 3072613
+      },
+      "normal-fixed-smoke-guard.jsonl": {
+        "raw_sha256": "a6267b7e4833497c80716cbd8e9cfe64baa2382e9325f7fc3e464749a5571b2b",
+        "public_sha256": "a6267b7e4833497c80716cbd8e9cfe64baa2382e9325f7fc3e464749a5571b2b",
+        "size": 808
+      },
+      "normal-fixed-smoke.jsonl": {
+        "raw_sha256": "3e4043b95fadb872b33d925eacb1efdca4f8fbf4b005d1a4d26caed04f9a2647",
+        "public_sha256": "3e4043b95fadb872b33d925eacb1efdca4f8fbf4b005d1a4d26caed04f9a2647",
+        "size": 12040
+      },
+      "normal-fixed-smoke.log": {
+        "raw_sha256": "7368a9454f7ded21bf346e880a2ed532ee19c189fd494fa16927a1773f1d03c6",
+        "public_sha256": "7368a9454f7ded21bf346e880a2ed532ee19c189fd494fa16927a1773f1d03c6",
+        "size": 821
+      },
+      "normal-fixed-smoke.stderr.log": {
+        "raw_sha256": "d50edc90932d46f7a1a58ac99af474165e3239314087d52a6587d094acf34ecf",
+        "public_sha256": "d50edc90932d46f7a1a58ac99af474165e3239314087d52a6587d094acf34ecf",
+        "size": 9830
+      },
+      "normal-fixed-smoke.workload.log": {
+        "raw_sha256": "60d8d0b7c21af86a92d55163f9ebef0d647c70f6c0587e3eb4500fabca7ccce4",
+        "public_sha256": "60d8d0b7c21af86a92d55163f9ebef0d647c70f6c0587e3eb4500fabca7ccce4",
+        "size": 120057
+      },
+      "normal-smoke-guard.jsonl": {
+        "raw_sha256": "ab04e7de20e5f0e544373648e8a3ccf7896a779f634c007b367d51d4967fdd6d",
+        "public_sha256": "ab04e7de20e5f0e544373648e8a3ccf7896a779f634c007b367d51d4967fdd6d",
+        "size": 817
+      },
+      "normal-smoke.jsonl": {
+        "raw_sha256": "767f63a3749ecddde4641c98758c64d36326acd4cf2d808ce2284c69308f9dea",
+        "public_sha256": "767f63a3749ecddde4641c98758c64d36326acd4cf2d808ce2284c69308f9dea",
+        "size": 1886
+      },
+      "normal-smoke.log": {
+        "raw_sha256": "22294ce9f60f8110c315e74f11ed8be44ba387df34eb35221649bea1f7203224",
+        "public_sha256": "f98292f9a8fdf7f1d6a53f58d25d1c2d291801c81d60d8e18c5ada3bed4d40e6",
+        "size": 685
+      },
+      "normal-smoke.stderr.log": {
+        "raw_sha256": "bae2c35b8d241ee1e2e1cd668ed32042007752c3d4f9342b61d94c660408e193",
+        "public_sha256": "bae2c35b8d241ee1e2e1cd668ed32042007752c3d4f9342b61d94c660408e193",
+        "size": 7243
+      },
+      "normal-smoke.workload.log": {
+        "raw_sha256": "3b626acba042622aaf821cbefcf36996b27781f2a5b10242765e828b0c1f9bd1",
+        "public_sha256": "3b626acba042622aaf821cbefcf36996b27781f2a5b10242765e828b0c1f9bd1",
+        "size": 62846
+      },
+      "post-foreign-idle.jsonl": {
+        "raw_sha256": "a87c0030de16c825da48b2e9a8997c1cc4b63176ebf2d4eb0ca3056aa8f28d3f",
+        "public_sha256": "a87c0030de16c825da48b2e9a8997c1cc4b63176ebf2d4eb0ca3056aa8f28d3f",
+        "size": 798
+      },
+      "post-soak.sh": {
+        "raw_sha256": "d3db70f351779fca01a6049edd7f8c9f042bd6d75b41cc5d9cf186658bc4d8a6",
+        "public_sha256": "b3cf77a414e0b76b77cf919e6644ba871b35b9e16598e31bea8bd0a7bea838e6",
+        "size": 1525
+      }
+    },
+    "sanitization": "Only <workspace> workspace prefix replaced with <workspace> in public text; original and transformed hashes retained."
+  },
+  "source_hashes": {
+    "tests/resource-workload.c": "36c101981a855607972cad7cdb5d5b77ad227c97a81cd97fac507ba495c73afb",
+    "tests/resource-campaign.py": "9c2e5a10dcd69858d91c9287fec8e3c671c6c8633e65355155e172dc5438f290",
+    "tests/resource-interrupt.py": "ab196a19172285c1801ff5ece57e174109095189338667a8ada3a3ca9a4bad4e",
+    "tests/resource-campaign-check.py": "d133600ec886b487b70179c988e89f3b5ac39aab9067f0b0c95261a318a63dd1",
+    "tests/resource-churn.py": "65ccc04cef330897d946c96f72f5db8cd8fa5075001ed5ab21a4a852da999a8f",
+    "tests/frame-check.c": "1b5110c2d5e97e489c46838baa925881da84a8cf677dee70a2f8e589ac5c2e0c",
+    "tests/early-export.c": "6b5ac546ea3d258d73f5d4246bafec680fb9aa4352b5083b85b8fe56adb17599"
+  }
+}

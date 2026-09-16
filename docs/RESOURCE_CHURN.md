@@ -7,6 +7,13 @@ VA display remains alive. It does not prove that a kernel releases video buffers
 that firmware remains healthy, or that RSS has a universal platform-independent
 limit.
 
+The [2026-09-16 M1 evidence](resource-churn-2026-09-16/README.md) records passing
+normal and early-export 1,000-cycle campaigns with flat measured resources. Its
+one-hour soak was interrupted by another decoder client after approximately
+10.3 minutes and **does not satisfy the soak gate**. The raw failed run and
+calibration failures are retained alongside the passing evidence; #41 remains
+open pending an uninterrupted campaign and final integration.
+
 ## Offline ownership model
 
 `tests/failure-cleanup.c` wraps allocation, mapping, descriptor and fake V4L2
