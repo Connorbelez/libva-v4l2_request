@@ -746,7 +746,9 @@ static bool vp9_fill_frame(struct v4l2r_context *ctx)
 	 * timestamp as a reference to the hardware. */
 	if (pic->pic_fields.bits.frame_type && !pic->pic_fields.bits.intra_only &&
 	    (!frame->last_frame_ts || !frame->golden_frame_ts || !frame->alt_frame_ts)) {
-		v4l2r_log("VP9 inter picture has an unavailable reference in this decoder context\n");
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_REFERENCE,
+			   "vp9-references", 0,
+			   "VP9 inter picture has an unavailable reference in this decoder context");
 		return false;
 	}
 

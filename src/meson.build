@@ -1,5 +1,6 @@
 driver_sources = files(
   'driver.c',
+  'diag.c',
   'api.c',
   'handles.c',
   'context.c',

@@ -682,14 +682,26 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 	h264_parse_slice_header(codec, va_slice, slice_data,
 				va_slice->slice_data_size, &info);
 	if (!info.valid) {
-		v4l2r_log("invalid or unsupported H.264 slice header\n");
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_BITSTREAM,
+			   "h264-slice-header", 0,
+			   "invalid or unsupported H.264 slice header");
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	}
 	/* Validate before flushing a pending slice. Unavailable references are
 	 * allowed in the picture's DPB only when no active slice list uses them. */
-	if (!h264_slice_refs_valid(ctx, va_slice) ||
-	    info.slice_type != va_slice->slice_type % 5)
+	if (!h264_slice_refs_valid(ctx, va_slice)) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_REFERENCE,
+			   "h264-references", 0,
+			   "H.264 slice uses a missing, foreign or failed reference");
 		return VA_STATUS_ERROR_INVALID_BUFFER;
+	}
+	if (info.slice_type != va_slice->slice_type % 5) {
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_BITSTREAM,
+			   "h264-slice-header", 0,
+			   "H.264 slice type %u contradicts the slice header (%u)",
+			   va_slice->slice_type, info.slice_type);
+		return VA_STATUS_ERROR_INVALID_BUFFER;
+	}
 
 	/*
 	 * A NAL unit ends with its rbsp_stop_one_bit (or a cabac_zero_word's 0x03),
@@ -748,8 +760,10 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 				decode->flags |= V4L2_H264_DECODE_PARAM_FLAG_BFRAME;
 #endif
 		} else {
-			v4l2r_log("H.264 slice header parse failed, "
-				  "decode parameters will be incomplete\n");
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING,
+				   V4L2R_DIAG_BITSTREAM, "h264-slice-header", 0,
+				   "H.264 slice header parse failed, "
+				   "decode parameters will be incomplete");
 		}
 	}
 

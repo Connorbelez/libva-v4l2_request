@@ -85,8 +85,10 @@ VAStatus v4l2r_convert_setup(struct v4l2r_context *ctx)
 	    conv->output_format.fmt.pix_mp.height != height ||
 	    v4l2r_format_bytesperline(&conv->output_format) !=
 	    v4l2r_format_bytesperline(&ctx->capture_format)) {
-		v4l2r_log("converter source layout mismatch for %.4s %ux%u\n",
-			  (const char *)&src_pixelformat, width, height);
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_UNSUPPORTED,
+			   "converter-setup", 0,
+			   "converter source layout mismatch for %.4s %ux%u",
+			   (const char *)&src_pixelformat, width, height);
 		goto fail;
 	}
 
@@ -104,8 +106,9 @@ VAStatus v4l2r_convert_setup(struct v4l2r_context *ctx)
 	    conv->capture_format.fmt.pix_mp.width != width ||
 	    conv->capture_format.fmt.pix_mp.height != height ||
 	    conv->capture_format.fmt.pix_mp.num_planes != 1) {
-		v4l2r_log("converter cannot produce NV12 at %ux%u\n",
-			  width, height);
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_UNSUPPORTED,
+			   "converter-setup", 0,
+			   "converter cannot produce NV12 at %ux%u", width, height);
 		goto fail;
 	}
 
@@ -139,9 +142,10 @@ VAStatus v4l2r_convert_setup(struct v4l2r_context *ctx)
 
 	ctx->conv = conv;
 
-	v4l2r_log("converting %.4s to NV12 via %s [%s]\n",
-		  (const char *)&src_pixelformat, drv->converter.video_path,
-		  drv->converter.card);
+	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO, "converter-setup", 0,
+		   "converting %.4s to NV12 via %s [%s]",
+		   (const char *)&src_pixelformat, drv->converter.video_path,
+		   drv->converter.card);
 
 	return VA_STATUS_SUCCESS;
 
@@ -202,8 +206,9 @@ static int convert_reap(struct v4l2r_context *ctx, bool wait)
 			if (!wait || reaped)
 				break;
 
-			if (poll(&pollfd, 1, V4L2R_CONVERT_TIMEOUT_MS) <= 0)
-				return -EIO;
+			int ret = poll(&pollfd, 1, V4L2R_CONVERT_TIMEOUT_MS);
+			if (ret <= 0)
+				return ret < 0 ? -errno : -ETIMEDOUT;
 			continue;
 		}
 
@@ -230,8 +235,12 @@ static int convert_reap(struct v4l2r_context *ctx, bool wait)
 		if (ioctl(conv->fd, VIDIOC_DQBUF, &buffer) < 0) {
 			/* The slot's source stays queued, so reusing the slot
 			 * would fail anyway; disable the chain explicitly. */
-			v4l2r_log("failed to dequeue converter source: %s\n",
-				  strerror(errno));
+			int ret = -errno;
+
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+				   "converter-dequeue", ret,
+				   "failed to dequeue converter source: %s",
+				   strerror(-ret));
 			conv->failed = true;
 		}
 	}
@@ -262,8 +271,12 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 
 	/* All slots busy: wait one out. */
 	while (conv->busy & (1u << conv->next_slot)) {
-		if (convert_reap(ctx, true) < 0) {
-			v4l2r_log("format converter stalled\n");
+		int ret = convert_reap(ctx, true);
+
+		if (ret < 0) {
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   v4l2r_diag_errno_category(ret),
+				   "converter-wait", ret, "format converter stalled");
 			return;
 		}
 	}
@@ -273,7 +286,9 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 	if (v4l2r_surface_convert_backing(ctx->drv, surface) !=
 	    VA_STATUS_SUCCESS) {
 		if (!conv->failed)
-			v4l2r_log("no conversion backing for surface, output will be wrong\n");
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   V4L2R_DIAG_ALLOCATION, "converter-backing", 0,
+				   "no conversion backing for surface, output will be wrong");
 		conv->failed = true;
 		return;
 	}
@@ -297,8 +312,11 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 		.m.planes = planes,
 	};
 	if (ioctl(conv->fd, VIDIOC_QBUF, &buffer) < 0) {
-		v4l2r_log("failed to queue converter source: %s\n",
-			  strerror(errno));
+		int ret = -errno;
+
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+			   "converter-queue", ret,
+			   "failed to queue converter source: %s", strerror(-ret));
 		conv->failed = true;
 		return;
 	}
@@ -314,8 +332,12 @@ void v4l2r_convert_kick(struct v4l2r_context *ctx, int capture_index)
 		.m.planes = planes,
 	};
 	if (ioctl(conv->fd, VIDIOC_QBUF, &buffer) < 0) {
-		v4l2r_log("failed to queue converter destination: %s\n",
-			  strerror(errno));
+		int ret = -errno;
+
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+			   "converter-queue", ret,
+			   "failed to queue converter destination: %s",
+			   strerror(-ret));
 		conv->failed = true;
 		return;
 	}
@@ -365,8 +387,13 @@ VAStatus v4l2r_convert_wait(struct v4l2r_surface *surface)
 
 	pthread_mutex_lock(&ctx->mutex);
 	while (surface->convert_pending) {
-		if (convert_reap(ctx, true) < 0) {
-			v4l2r_log("failed waiting for format conversion\n");
+		int ret = convert_reap(ctx, true);
+
+		if (ret < 0) {
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
+				   v4l2r_diag_errno_category(ret),
+				   "converter-wait", ret,
+				   "failed waiting for format conversion");
 			surface->convert_pending = false;
 			status = VA_STATUS_ERROR_OPERATION_FAILED;
 			break;
@@ -690,9 +717,11 @@ static VAStatus vpp_configure(struct v4l2r_context *ctx,
 	    vpp_set_format(vpp->fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
 			   V4L2_PIX_FMT_NV12, dst->width, dst->height,
 			   dst->pitch, &vpp->capture_format) < 0) {
-		v4l2r_log("converter cannot process %.4s %ux%u to NV12 %ux%u\n",
-			  (const char *)&src->pixelformat, src->width,
-			  src->height, dst->width, dst->height);
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_UNSUPPORTED,
+			   "vpp-setup", 0,
+			   "converter cannot process %.4s %ux%u to NV12 %ux%u",
+			   (const char *)&src->pixelformat, src->width,
+			   src->height, dst->width, dst->height);
 		goto fail;
 	}
 
@@ -732,10 +761,11 @@ static VAStatus vpp_configure(struct v4l2r_context *ctx,
 	vpp->dst_height = dst->height;
 	vpp->dst_pitch = dst->pitch;
 
-	v4l2r_log("processing %.4s %ux%u to NV12 %ux%u via %s [%s]\n",
-		  (const char *)&src->pixelformat, src->width, src->height,
-		  dst->width, dst->height, drv->converter.video_path,
-		  drv->converter.card);
+	v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_INFO, V4L2R_DIAG_INFO, "vpp-setup", 0,
+		   "processing %.4s %ux%u to NV12 %ux%u via %s [%s]",
+		   (const char *)&src->pixelformat, src->width, src->height,
+		   dst->width, dst->height, drv->converter.video_path,
+		   drv->converter.card);
 
 	return VA_STATUS_SUCCESS;
 
@@ -891,7 +921,8 @@ VAStatus v4l2r_vpp_end_picture(struct v4l2r_context *ctx)
 
 done:
 	if (status != VA_STATUS_SUCCESS) {
-		v4l2r_log("video processing blit failed\n");
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR, V4L2R_DIAG_KERNEL,
+			   "vpp-blit", 0, "video processing blit failed");
 		/* Start from a clean converter instance next time. */
 		vpp_teardown(vpp);
 	}

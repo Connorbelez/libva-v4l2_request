@@ -1,0 +1,35 @@
+{
+  "schema": "libva-v4l2request.diag/1",
+  "levels": ["error", "warning", "info", "debug"],
+  "categories": ["info", "unsupported", "client", "bitstream", "reference",
+                 "allocation", "timeout", "kernel", "decoder", "device"],
+  "limits": {"msg_bytes": 256, "record_bytes": 1024, "summary_record_bytes": 4096},
+  "required": {
+    "schema": "string",
+    "run": "string",
+    "seq": "integer",
+    "t_ms": "integer",
+    "level": "string",
+    "category": "string",
+    "msg": "string"
+  },
+  "optional": {
+    "op": "string",
+    "errno": "string",
+    "ctx": "integer",
+    "va_context": "string",
+    "codec": "string",
+    "profile": "string",
+    "suppressed": "integer",
+    "version": "string",
+    "va_api": "string",
+    "h264_high10": "string",
+    "decoders": "array"
+  },
+  "patterns": {
+    "run": "^[0-9a-f]{16}$",
+    "va_context": "^0x[0-9a-f]{8}$",
+    "errno": "^(E[A-Z0-9]+|errno-[0-9]+)$",
+    "op": "^[a-z0-9]+(-[a-z0-9]+)*$"
+  }
+}

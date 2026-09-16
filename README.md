@@ -174,6 +174,16 @@ The offset is visible in FFmpeg's [PPS parser](https://github.com/FFmpeg/FFmpeg/
 and [VA parameter construction](https://github.com/FFmpeg/FFmpeg/blob/n8.0/libavcodec/vaapi_h264.c).
 This is a client compatibility setting, not a change to the VA-API or V4L2 parameter contract.
 
+### Diagnostics
+
+Driver messages go to standard error as `libva-v4l2request: ...` lines. Set
+`LIBVA_V4L2_DIAG=json` to get one JSON record per line with a stable failure category
+(`unsupported`, `client`, `bitstream`, `reference`, `allocation`, `timeout`, `kernel`,
+`decoder`, `device`), the failed operation, errno, a per-context identifier and the
+driver's detected capabilities. Paths and URLs are redacted and output is rate limited.
+See [docs/DIAGNOSTICS.md](docs/DIAGNOSTICS.md) for the schema and what to include in a
+report.
+
 ## Tests
 
 See [tests/README.md](tests/README.md) for the offline sanitizer suite and guarded hardware

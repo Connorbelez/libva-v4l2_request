@@ -43,9 +43,18 @@ unavailable references at random-access points, and failed-picture submission. H
 rejection, High 10 quantizer modes and fake-device capability checks. Three H.264 submission
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
-on the next picture. Submission is intercepted in-process; no device is opened. There are
-35 sanitizer Meson cases plus the `support-matrix`, `conformance-result`,
-`hwguard`, `rps-e-research` and HEVC concurrency research checks.
+on the next picture. Submission is intercepted in-process; no device is opened.
+Five `diag-*` cases cover the diagnostics in `docs/DIAGNOSTICS.md`: every failure category
+(unsupported profile, client call order, oversized bitstream, CAPTURE allocation failure,
+request timeout, rejected controls, decoder-flagged frame and invalid device poll) is forced
+through the fake device in both text and JSON mode with identical VA status, and the VP9 and
+H.264 reference cases check the `reference` category. They also check that reused VA context
+IDs keep distinct `ctx` serials, path/URL redaction and size limits, per-category rate
+limiting, and report a bounded synthetic logging overhead. `diag-schema` validates emitted
+JSON against `tests/fixtures/diagnostics/schema.json`, rejects malformed fixture records,
+and fails if the category lists in the code, fixture and documentation differ. There are
+40 sanitizer Meson cases plus the `support-matrix`, `conformance-result`,
+`diag-schema`, `hwguard`, `rps-e-research` and HEVC concurrency research checks.
 The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.

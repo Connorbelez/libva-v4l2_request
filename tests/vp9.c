@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* Private parser and submission checks; no decoder device is opened. */
 #include <assert.h>
+#include <stdlib.h>
 #include <sys/resource.h>
 #define v4l2r_codec_vp9 v4l2r_test_codec_vp9
 #define v4l2r_decode test_decode
@@ -192,6 +193,11 @@ static void persistent_state(void)
 
 static void references(void)
 {
+    char *log = NULL;
+    size_t log_size = 0;
+    FILE *sink = open_memstream(&log, &log_size);
+    v4l2r_diag_configure(&(struct v4l2r_diag_options) {
+        .mode = V4L2R_DIAG_MODE_JSON, .sink = sink });
     for (unsigned int missing = 0; missing < 3; missing++) {
         begin(); header(true, false, false, 0);
         pic.pic_fields.bits.last_ref_frame = 0;
@@ -223,6 +229,14 @@ static void references(void)
     for (unsigned int i = 0; i < 8; i++) pic.reference_frames[i] = VA_INVALID_SURFACE;
     assert(picture() == VA_STATUS_SUCCESS && render() == VA_STATUS_SUCCESS);
     assert(vp9_end_picture(&ctx) == VA_STATUS_SUCCESS && submitted == 1);
+    /* Each rejected inter picture is reported as a reference failure. */
+    v4l2r_diag_configure(NULL);
+    fclose(sink);
+    unsigned int records = 0;
+    for (const char *p = log; (p = strstr(p, "\"category\":\"reference\",\"op\":\"vp9-references\"")); p++)
+        records++;
+    assert(records == 6);
+    free(log);
 }
 
 static void parser_inputs(void)
