@@ -45,7 +45,7 @@ cases cover missing slice data at EndPicture, slice-count overflow, invalid/miss
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
 35 sanitizer Meson cases plus the `support-matrix`, `conformance-result`,
-`hwguard` and `rps-e-research` checks.
+`hwguard`, `rps-e-research` and HEVC concurrency research checks.
 The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.

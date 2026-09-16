@@ -102,17 +102,22 @@ def is_owned_holder(holder_pid: int, child_pid: int) -> bool:
     if holder_pid in (child_pid, os.getpid()):
         return True
     group = process_group(holder_pid)
-    if group is not None and group == child_pid:
+    if group is not None and group in (child_pid, process_group(child_pid) or -1):
         return True
-    try:
-        stat = Path(f"/proc/{holder_pid}/stat").read_text()
-        ppid = int(stat.rsplit(")", 1)[-1].split()[1])
-    except (OSError, IndexError, ValueError):
-        return False
-    if ppid in (child_pid, os.getpid()):
-        return True
-    parent_group = process_group(ppid)
-    return parent_group is not None and parent_group == child_pid
+    seen: set[int] = set()
+    pid = holder_pid
+    while pid and pid not in seen:
+        if pid in (child_pid, os.getpid()):
+            return True
+        if process_group(pid) == child_pid:
+            return True
+        seen.add(pid)
+        try:
+            stat = Path(f"/proc/{pid}/stat").read_text()
+            pid = int(stat.rsplit(")", 1)[-1].split()[1])
+        except (OSError, IndexError, ValueError):
+            return False
+    return False
 
 
 def infer_driver_path(cmd: list[str]) -> str | None:
@@ -185,6 +190,9 @@ def _read(path: Path) -> str | None:
 
 
 class LinuxBackend:
+    def __init__(self, preflight_since: str | None = None) -> None:
+        self.preflight_since = preflight_since
+
     def state(self) -> DecoderState:
         video = media = None
         sys_v4l = Path("/sys/class/video4linux")
@@ -232,7 +240,7 @@ class LinuxBackend:
             media_node=media,
             holders=holders,
             stuck_tasks=stuck,
-            faults=self.journal_since(),
+            faults=self.journal_since(self.preflight_since),
         )
 
     def journal_since(self, since: str | None = None) -> list[str]:
@@ -426,6 +434,7 @@ def run_guarded(
     verbose: bool = False,
     inject: str | None = None,
     env: dict[str, str] | None = None,
+    journal_since: str | None = None,
 ) -> RunStatus:
     run_id = str(uuid.uuid4())
     lock_dir = lock_dir or default_lock_dir()
@@ -439,7 +448,7 @@ def run_guarded(
         if inject == "preflight-fault":
             backend.inject_fault("apple_avd: firmware timeout H3")
     else:
-        backend = LinuxBackend()
+        backend = LinuxBackend(preflight_since=journal_since)
     lease = Lease(lock_dir, identity, run_id)
     busy = lease.acquire()
     if busy:
@@ -649,6 +658,9 @@ def run_self_test() -> int:
           "taint plus a real error must still count as a decoder fault")
     check(journalctl_cmd()[-1] == "-b", "boot journal query must use journalctl -b")
     check("--since" not in journalctl_cmd(), "boot journal query must not use --since")
+    since_cmd = journalctl_cmd("2026-09-16 00:00:00")
+    check("--since" in since_cmd and "2026-09-16 00:00:00" in since_cmd,
+          "journalctl_cmd(since) must pass --since")
     check(infer_driver_path(["sh", "tests/hwdownload.sh", "/tmp/build/src"]) == "/tmp/build/src",
           "driver path not inferred from hardware script argv")
 
@@ -785,7 +797,7 @@ def run_self_test() -> int:
 
     for script in (
         "hwdownload.sh", "early-export.sh", "h264-high10.sh", "vp9-matrix.sh",
-        "frame-check.sh", "shared-contexts.sh",
+        "frame-check.sh", "shared-contexts.sh", "hevc-concurrent.py",
     ):
         text = (root / "tests" / script).read_text()
         check("require-hw-guard.sh" in text or "LIBVA_HW_GUARD_LEASE" in text,
@@ -793,6 +805,21 @@ def run_self_test() -> int:
 
     conf = (root / "tests" / "conformance.py").read_text()
     check("LIBVA_HW_GUARD_LEASE" in conf, "conformance.py --driver is not guard-gated")
+    ung = subprocess.run(
+        [sys.executable, str(root / "tests" / "hevc-concurrent.py"),
+         "--schedule", "pair-bd", "--resources", "/tmp",
+         "--frame-check", "/bin/true", "--output", "/tmp/hevc-conc-ungarded"],
+        capture_output=True, text=True,
+    )
+    check(ung.returncode == 2, "hevc-concurrent.py did not refuse unguarded hardware")
+
+    sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(8)"])
+    try:
+        check(is_owned_holder(sleeper.pid, sleeper.pid), "pid must own itself")
+        check(not is_owned_holder(1, sleeper.pid), "init must not count as the child")
+    finally:
+        sleeper.kill()
+        sleeper.wait(timeout=5)
 
     if errors:
         print(f"{len(errors)} hwguard self-test error(s):", file=sys.stderr)
@@ -822,6 +849,10 @@ def main() -> int:
         "--inject",
         choices=("timeout", "avd-error", "foreign", "owned-holder", "stuck-child"),
     )
+    parser.add_argument(
+        "--journal-since",
+        help="preflight journalctl --since instead of -b (new faults during the run still abort)",
+    )
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
@@ -841,6 +872,7 @@ def main() -> int:
         log_path=args.log,
         verbose=args.verbose_log,
         inject=args.inject,
+        journal_since=args.journal_since,
     )
     payload = {
         "status": result.status,
