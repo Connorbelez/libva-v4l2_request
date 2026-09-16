@@ -339,3 +339,11 @@ makes the runner fail. The printed pixel format describes the hashed output,
 not the decoder. The hardware guard retains process-group ownership from its fd
 snapshot so reaped short-vector children are not mistaken for foreign clients;
 live foreign and unknown holders still abort.
+# Resource lifecycle qualification
+
+`resource-campaign.py` drives a single long-lived decoder process with quiescent
+in-process resource snapshots, software reference hashes, seek/drain, export and
+held-image/context teardown checks. See [the campaign contract](../docs/RESOURCE_CHURN.md#synchronized-real-device-campaign)
+for the 1,000-cycle and 60-minute guarded schedules, fixed bounds and evidence
+limitations. `python3 tests/resource-campaign-check.py` exercises its software
+and negative/interrupt paths without a device. Hardware modes require hwguard.

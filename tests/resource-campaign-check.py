@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Exercise real software decoding and fail-closed campaign/cleanup paths."""
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+
+HERE = Path(__file__).resolve().parent
+
+
+def main():
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        base = [sys.executable, str(HERE / 'resource-campaign.py')]
+        subprocess.run(base + ['prepare', '--directory', str(root)], check=True, timeout=90)
+        run = base + ['run', '--directory', str(root), '--cycles', '4']
+        good = root / 'good.jsonl'
+        subprocess.run(run + ['--output', str(good)], check=True, timeout=30)
+        records = [json.loads(line) for line in good.read_text().splitlines()]
+        assert records[-1]['passed'] and records[-1]['cycles'] == 4
+        assert records[-1]['decoded_frames'] == 24 * 2 * 24
+        assert [r['cycle'] for r in records if r['type'] == 'sample'] == list(range(5))
+        original = (root / 'inputs.json').read_text()
+        manifest = json.loads(original)
+        manifest['inputs'][0]['md5'] = '0' * 32
+        (root / 'inputs.json').write_text(json.dumps(manifest))
+        bad = subprocess.run(run + ['--output', str(root / 'bad-pixels.jsonl')], capture_output=True, text=True, timeout=30)
+        assert bad.returncode and 'pixels differ from independent reference' in bad.stderr
+        assert not json.loads((root / 'bad-pixels.jsonl').read_text().splitlines()[-1])['passed']
+        (root / 'inputs.json').write_text(original)
+        manifest = json.loads(original)
+        manifest['inputs'][0]['sha256'] = '0' * 64
+        (root / 'inputs.json').write_text(json.dumps(manifest))
+        bad = subprocess.run(run + ['--output', str(root / 'bad-input.jsonl')], capture_output=True, text=True, timeout=10)
+        assert bad.returncode and 'input checksum changed' in bad.stderr
+        assert not (root / 'bad-input.jsonl').exists()
+        (root / 'inputs.json').write_text(original)
+        env = os.environ.copy()
+        env.pop('LIBVA_HW_GUARD_LEASE', None)
+        bad = subprocess.run(run + ['--mode', 'normal', '--output', str(root / 'unguarded.jsonl')], env=env,
+                             capture_output=True, text=True, timeout=10)
+        assert bad.returncode and 'requires hwguard' in bad.stderr
+        assert not (root / 'unguarded.jsonl').exists()
+        output = root / 'interrupt.jsonl'
+        with (root / 'interrupt.log').open('w') as log:
+            process = subprocess.Popen(base + ['run', '--directory', str(root), '--cycles', '1000000', '--output', str(output)], stdout=log, stderr=log)
+            child = None
+            try:
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    if output.exists():
+                        for line in output.read_text().splitlines():
+                            try:
+                                record = json.loads(line)
+                            except json.JSONDecodeError:
+                                continue
+                            if record.get('type') == 'sample':
+                                child = record['pid']
+                                break
+                    if child is not None:
+                        break
+                    if process.poll() is not None:
+                        raise AssertionError('workload exited before interruption')
+                    time.sleep(0.02)
+                assert child is not None, 'no checkpoint before deadline'
+                process.send_signal(signal.SIGTERM)
+                assert process.wait(timeout=10) == 128 + signal.SIGTERM
+                assert not Path('/proc', str(child)).exists(), 'interrupted workload survived'
+                assert not json.loads(output.read_text().splitlines()[-1])['passed']
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=5)
+        print('PASS: resource pixels/checkpoints, bad reference/input, guard refusal, interrupted-child cleanup')
+
+
+if __name__ == '__main__':
+    main()

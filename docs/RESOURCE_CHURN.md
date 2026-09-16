@@ -128,3 +128,77 @@ recovery.
 Offline exact ownership is not hardware qualification. Process exit reclaim is
 not accepted as proof of in-process cleanup, and RSS alone is not proof that
 dma-bufs or kernel request descriptors were released.
+
+## Synchronized real-device campaign
+
+`resource-workload.c` keeps one initialized VA display alive across all cycles.
+Four generated, redistributable clips cover H.264, HEVC, VP9 8-bit and VP9 10-bit
+at 640x360, 24 frames each. Each lifecycle opens a decoder, decodes/drains the
+clip, seeks to its beginning, flushes and decodes/drains it again. Every output
+frame and aggregate digest must match a separate software decoder. Software
+fallback in hardware mode is fatal. Each decoded frame is synchronized and
+exported; caller-owned export FDs are closed.
+
+A derived image survives decoder destruction in every hardware lifecycle. The
+workload observes a successful `vaDestroyContext`, then requires the mapped image
+bytes to remain identical. It retains the FFmpeg surface pool until after
+`vaDestroyImage`, because destroying a surface with a live derived image is
+correctly rejected. An initial smoke fixture got this ordering wrong and leaked
+one client-owned surface per lifecycle; the checkpoint recorder detected it.
+That fixture failure is not a production driver leak.
+
+The C process pauses on a pipe before warmup and after every complete lifecycle
+following 20 warmup cycles (five per codec). Python samples that exact decoder
+PID while it is quiescent, verifies its process identity, writes and fsyncs the
+record, then allows the next cycle. The VA display is not terminated at these
+checkpoints. FD/dma-buf counts and bytes must equal the initial display state,
+so retained allocations cannot be hidden in the warmup baseline. Mapping count
+and bytes must not grow after warmup. The predeclared RSS allowance is 4 MiB for
+resident-page/allocator housekeeping within those fixed mappings; measured RSS
+trends still require explanation, and this allowance does not establish a
+universal bound for other streams/platforms.
+
+`early` additionally uses the existing early-export interposer and requires one
+successful dma-buf identity/layout check for every decoded frame. Both `normal`
+and `early` require 1,000 measured lifecycles, with raw checkpoints including
+100/500/1,000. A soak uses the same continuous mixed-codec work with a large finite
+cycle cap and a minimum 3,600-second measured interval. It stops at a complete
+lifecycle, not on a timer that could hide partial output. A guard provides an
+outer finite deadline and watches faults and foreign clients throughout.
+
+Example (prepare is entirely offline):
+
+```sh
+python3 tests/resource-campaign.py prepare --directory /absolute/campaign/media
+python3 tests/resource-campaign-check.py
+
+export LIBVA_DRIVERS_PATH=/absolute/selected-build/src
+export LIBVA_DRIVER_NAME=v4l2_request
+export V4L2R_SOURCE_COMMIT=$(git rev-parse HEAD)
+python3 tests/hwguard.py --identity avd --deadline 600 \
+  --log /absolute/campaign/normal-guard.jsonl -- \
+  python3 tests/resource-campaign.py run --mode normal --cycles 1000 \
+  --directory /absolute/campaign/media --output /absolute/campaign/normal.jsonl
+# Repeat with --mode early and fresh output/guard log paths.
+python3 tests/hwguard.py --identity avd --deadline 3900 \
+  --log /absolute/campaign/soak-guard.jsonl -- \
+  python3 tests/resource-campaign.py run --mode early --cycles 1000000 --seconds 3600 \
+  --directory /absolute/campaign/media --output /absolute/campaign/soak.jsonl
+```
+
+Output paths must be fresh. `inputs.json` retains generated input checksums,
+generation commands, independent per-frame references, helper identities and
+tool versions. Keep it and the actual clips with the JSONL, workload and stderr
+logs. Encoders/containers may produce different bytes across versions or runs;
+the recorded files, not a promise of byte-identical regeneration, identify the
+tested media. Recorder metadata identifies the selected driver binary. Guard
+logs distinguish selected userspace from the unknown loaded kernel-module hash.
+These measurements cover the decoder process, not global kernel memory or
+another application's allocations. A result does not qualify browser rendering,
+concurrent decoder calls, other dimensions or boot behavior.
+
+The offline campaign regression executes the real software workload, verifies
+checkpoints/pixels, rejects a wrong reference and changed input, refuses unguarded
+hardware, and interrupts a live client to verify bounded child cleanup. Meson
+registers it when FFmpeg development dependencies are available; it requires
+the libx264/libx265/libvpx encoders used by existing software frame checks.

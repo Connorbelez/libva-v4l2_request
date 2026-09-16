@@ -137,6 +137,12 @@ test('conformance-runner', python3, args: [files('conformance-runner.py')], time
 test('diag-schema', python3, args: [files('diag-schema.py'), diagnostics], timeout: 30)
 test('hwguard', python3, args: [files('hwguard.py'), '--self-test'], timeout: 60)
 test('resource-churn', python3, args: [files('resource-churn.py'), 'self-test'], timeout: 30)
+# The real FFmpeg workload is exercised only where its development libraries
+# and encoders are installed; the core driver build has no FFmpeg dependency.
+if find_program('ffmpeg', required: false).found() and dependency('libavformat', required: false).found() and dependency('libavcodec', required: false).found() and dependency('libavutil', required: false).found() and dependency('libswscale', required: false).found()
+  test('resource-campaign', python3,
+    args: files('resource-campaign-check.py'), timeout: 120)
+endif
 test('rps-e-research', python3, args: files('rps-e-research.py'), timeout: 15)
 test('hevc-concurrent', python3, args: [files('hevc-concurrent.py'), '--self-test'], timeout: 15)
 test('hevc-concurrency-research', python3, args: files('hevc-concurrency-research.py'), timeout: 15)
