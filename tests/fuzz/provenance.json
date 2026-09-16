@@ -1,0 +1,159 @@
+{
+  "schema_version": "1",
+  "licence": "GPL-3.0-or-later",
+  "note": "Synthetic in-tree seeds only. Third-party Fluster/ITU/WebM media is not redistributed; see docs/CORPUS.md and docs/FUZZING.md.",
+  "seeds": [
+    {
+      "path": "fuzz/seeds/h264/valid-idr",
+      "sha256": "1713b2e154270049c6c0f4709394339309ec5f37827c4861db8b38bc2c338787",
+      "origin": "in-tree-test-fixture",
+      "note": "tests/h264-parser.c IDR I-slice 0x65 b8 40 80",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/h264/truncated-1",
+      "sha256": "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea",
+      "origin": "in-tree-test-fixture",
+      "note": "truncated NAL from tests/h264-parser.c",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/h264/truncated-3",
+      "sha256": "e7dd48d0f4cfa641674d41d44cf31091003a07f2c15c92f4f6d4357a3809baaf",
+      "origin": "in-tree-test-fixture",
+      "note": "truncated NAL from tests/h264-parser.c",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/h264/sps-as-slice",
+      "sha256": "28571077f2d509e49d0863760e76b53fa48a8eb06fc92002b0603ad861045a76",
+      "origin": "in-tree-test-fixture",
+      "note": "SPS NAL rejected as slice data",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/h264/forbidden-bit",
+      "sha256": "9f0a64ce021f087341543c0b3416dd9a9cf949d108db7c55bc9fdf08f0716370",
+      "origin": "in-tree-test-fixture",
+      "note": "forbidden_zero_bit set",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/hevc/valid-idr",
+      "sha256": "4555a1451fde47e7a4687a0054384a30cd3199a6738014ceb15c4930ec0d9cd0",
+      "origin": "generated-locally",
+      "note": "IDR slice header from tests/hevc-parser.c idr_header()",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/hevc/vps-as-slice",
+      "sha256": "c31425b44a7ed682a3356bf6820141e1584a15c43b6d6793f552e5d4621586f7",
+      "origin": "in-tree-test-fixture",
+      "note": "VPS NAL rejected as slice data",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/hevc/ue-overflow",
+      "sha256": "010cfa4e7549a3b95392dc4e4079cff2a26aa2b682f3a672ab9de20f06bb0fb4",
+      "origin": "in-tree-test-fixture",
+      "note": "known regression: 32 leading-zero exp-Golomb / pred_weight_table VLA",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/hevc/truncated-nal",
+      "sha256": "951dcee3a7a4f3aac67ec76a2ce4469cc76df650f134bf2572bf60a65c982338",
+      "origin": "in-tree-test-fixture",
+      "note": "truncated HEVC NAL header",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/vp9/zeros",
+      "sha256": "3e7077fd2f66d689e0cee6a7cf5b37bf2dca7c979af356d0a31cbc5c85605c7d",
+      "origin": "in-tree-test-fixture",
+      "note": "zero header from tests/vp9.c parser_inputs",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/vp9/bad-marker",
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+      "origin": "in-tree-test-fixture",
+      "note": "frame_marker != 2",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/vp9/keyframe-prefix",
+      "sha256": "ec5faf0ebac0c329aebd490fa9493a5eb4c85db63ae1dd28d151305160c56b07",
+      "origin": "generated-locally",
+      "note": "VP9 keyframe prefix matching tests/vp9.c header()",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/va-api/legal-begin-render-end",
+      "sha256": "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",
+      "origin": "in-tree-test-fixture",
+      "note": "Begin/Render/End from tests/picture.c",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/va-api/double-begin",
+      "sha256": "9d1e0e2d9459d06523ad13e28a4093c2316baafe7aec5b25f30eba2e113599c4",
+      "origin": "in-tree-test-fixture",
+      "note": "double BeginPicture",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/va-api/destroy-during",
+      "sha256": "4d7b3ef7300acf70c892d8327db8272f54434adbc61a4e130a563cb59a0d0f47",
+      "origin": "in-tree-test-fixture",
+      "note": "destroy target during picture",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/va-api/invalid-begin",
+      "sha256": "e7cf46a078fed4fafd0b5e3aff144802b853f8ae459a4f0c14add3314b7cc3a6",
+      "origin": "in-tree-test-fixture",
+      "note": "invalid context/surface BeginPicture",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/va-api/render-negative",
+      "sha256": "ef6cbd2161eaea7943ce8693b9824d23d1793ffb1c0fca05b600d3899b44c977",
+      "origin": "in-tree-test-fixture",
+      "note": "RenderPicture with negative count",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/va-api/create-extra-surface",
+      "sha256": "f38c7af25becdf67335726828776252167dd3d088f781fbcccf022e56f1bdc57",
+      "origin": "generated-locally",
+      "note": "CreateSurfaces2 then DestroySurfaces",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    },
+    {
+      "path": "fuzz/seeds/va-api/create-buffer",
+      "sha256": "beead77994cf573341ec17b58bbf7eb34d2711c993c1d976b128b3188dc1829a",
+      "origin": "generated-locally",
+      "note": "CreateBuffer opcode; teardown must free buffer data (LSan)",
+      "licence": "GPL-3.0-or-later",
+      "redistributable": true
+    }
+  ]
+}

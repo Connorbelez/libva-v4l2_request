@@ -119,6 +119,81 @@ foreach case : ['render-errors', 'begin-errors', 'target-lifetime', 'reference-o
   test('picture-' + case, picture, args: [case], timeout: 10)
 endforeach
 
+fuzz_inc = [root_inc, include_directories('../src')]
+fuzz_va_wrap = ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll', '-Wl,--wrap=__poll_chk',
+                '-Wl,--wrap=open', '-Wl,--wrap=open64', '-Wl,--wrap=__open_2', '-Wl,--wrap=__open64_2',
+                '-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=realloc', '-Wl,--wrap=free']
+fuzz_seed_root = meson.current_source_dir() / 'fuzz' / 'seeds'
+
+if conf.get('HAVE_V4L2_CTRL_H264') == 1
+  fuzz_h264_replay = executable('fuzz-h264-replay', 'fuzz-h264.c', 'fuzz-replay.c', driver_sources,
+    include_directories: fuzz_inc,
+    dependencies: [libva_dep, libdrm_dep, threads_dep])
+  test('fuzz-h264', fuzz_h264_replay, args: [fuzz_seed_root / 'h264'], timeout: 15)
+endif
+if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
+  fuzz_hevc_replay = executable('fuzz-hevc-replay', 'fuzz-hevc.c', 'fuzz-replay.c', driver_sources,
+    include_directories: fuzz_inc,
+    dependencies: [libva_dep, libdrm_dep, threads_dep])
+  test('fuzz-hevc', fuzz_hevc_replay, args: [fuzz_seed_root / 'hevc'], timeout: 15)
+endif
+if conf.get('HAVE_V4L2_CTRL_VP9') == 1
+  fuzz_vp9_replay = executable('fuzz-vp9-replay', 'fuzz-vp9.c', 'fuzz-replay.c', driver_sources,
+    include_directories: fuzz_inc,
+    dependencies: [libva_dep, libdrm_dep, threads_dep])
+  test('fuzz-vp9', fuzz_vp9_replay, args: [fuzz_seed_root / 'vp9'], timeout: 15)
+endif
+fuzz_va_api_replay = executable('fuzz-va-api-replay', 'fuzz-va-api.c', 'fuzz-replay.c', driver_sources,
+  include_directories: fuzz_inc,
+  dependencies: [libva_dep, libdrm_dep, threads_dep],
+  link_args: fuzz_va_wrap)
+test('fuzz-va-api', fuzz_va_api_replay, args: [fuzz_seed_root / 'va-api'], timeout: 15)
+test('fuzz-budgets', fuzz_va_api_replay, args: ['--self-test'], timeout: 15)
+
+if get_option('fuzzing').enabled()
+  # libFuzzer is a C++ runtime. Combine it with the project's sanitizers so
+  # clang sees one -fsanitize= list. Debian/Ubuntu needs compiler-rt
+  # (libclang-rt-dev / libclang-rt-<ver>-dev) in addition to clang.
+  fuzzer_sanitize = 'fuzzer'
+  b_san = get_option('b_sanitize')
+  if b_san != 'none'
+    fuzzer_sanitize = 'fuzzer,' + b_san
+  endif
+  fuzzer_lto = ['-fsanitize=' + fuzzer_sanitize, '-lstdc++']
+  if not cc.links('''#include <stdint.h>
+int LLVMFuzzerTestOneInput(const uint8_t *d, unsigned long n) { (void)d; (void)n; return 0; }
+''', args: fuzzer_lto, name: 'libFuzzer')
+    error('fuzzing was enabled with -Dfuzzing=enabled, but this compiler cannot link -fsanitize=fuzzer. Use clang, install compiler-rt (Debian/Ubuntu: libclang-rt-dev), and keep the replay binaries for gcc. See docs/FUZZING.md.')
+  endif
+  if conf.get('HAVE_V4L2_CTRL_H264') == 1
+    executable('fuzz-h264', 'fuzz-h264.c', driver_sources,
+      include_directories: fuzz_inc,
+      dependencies: [libva_dep, libdrm_dep, threads_dep],
+      override_options: ['b_lundef=false'],
+      c_args: fuzzer_lto, link_args: fuzzer_lto)
+  endif
+  if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
+    executable('fuzz-hevc', 'fuzz-hevc.c', driver_sources,
+      include_directories: fuzz_inc,
+      dependencies: [libva_dep, libdrm_dep, threads_dep],
+      override_options: ['b_lundef=false'],
+      c_args: fuzzer_lto, link_args: fuzzer_lto)
+  endif
+  if conf.get('HAVE_V4L2_CTRL_VP9') == 1
+    executable('fuzz-vp9', 'fuzz-vp9.c', driver_sources,
+      include_directories: fuzz_inc,
+      dependencies: [libva_dep, libdrm_dep, threads_dep],
+      override_options: ['b_lundef=false'],
+      c_args: fuzzer_lto, link_args: fuzzer_lto)
+  endif
+  executable('fuzz-va-api', 'fuzz-va-api.c', driver_sources,
+    include_directories: fuzz_inc,
+    dependencies: [libva_dep, libdrm_dep, threads_dep],
+    override_options: ['b_lundef=false'],
+    c_args: fuzzer_lto, link_args: fuzzer_lto + fuzz_va_wrap)
+endif
+
+
 if conf.get('HAVE_V4L2_PIX_FMT_P010') == 1 and (conf.get('HAVE_V4L2_CTRL_H264') == 1 or conf.get('HAVE_V4L2_CTRL_HEVC') == 1)
   surface_probe = executable('surface-probe', 'surface-probe.c', driver_sources,
     c_args: ['-UNDEBUG'],
@@ -152,3 +227,4 @@ test('hevc-concurrency-research', python3, args: files('hevc-concurrency-researc
 # suite runs in revalidates the required-check wiring.
 test('ci-aggregate-fixtures', python3, args: [files('ci_check.py'), 'fixtures'], timeout: 30)
 test('ci-workflow-audit', python3, args: [files('ci_check.py'), 'audit', '--workflow', workflow_yml], timeout: 15)
+test('fuzz-provenance', python3, args: files('fuzz-provenance.py'), timeout: 15)
