@@ -51,6 +51,14 @@ jobs:
         run: |
           meson setup build -Db_sanitize=address,undefined
           meson test -C build --print-errorlogs
+      - name: Build libFuzzer campaign binaries and run a bounded smoke (clang only)
+        if: matrix.cc == 'clang'
+        run: |
+          sudo apt-get install -y --no-install-recommends libclang-rt-dev \
+            || sudo apt-get install -y --no-install-recommends libclang-rt-18-dev
+          meson setup build-fuzz -Db_sanitize=address,undefined -Dfuzzing=enabled
+          meson compile -C build-fuzz
+          sh tests/fuzz-campaign.sh --smoke build-fuzz
       - name: Software frame and shared-context checks
         run: |
           sh tests/frame-check.sh
@@ -97,10 +105,22 @@ jobs:
             echo 'ERROR: hevc-parser registered despite missing 6.0 UAPI' >&2
             exit 1
           fi
+          if printf '%s\n' "$tests" | grep -q '^fuzz-hevc$'; then
+            echo 'ERROR: fuzz-hevc registered despite missing 6.0 UAPI' >&2
+            exit 1
+          fi
           if printf '%s\n' "$tests" | grep -q '^vp9-malformed$'; then
             echo 'ERROR: vp9 tests registered despite missing 5.17 UAPI' >&2
             exit 1
           fi
+          if printf '%s\n' "$tests" | grep -q '^fuzz-vp9$'; then
+            echo 'ERROR: fuzz-vp9 registered despite missing 5.17 UAPI' >&2
+            exit 1
+          fi
+          printf '%s\n' "$tests" | grep -q '^fuzz-h264$' || {
+            echo 'ERROR: fuzz-h264 missing despite 5.11 UAPI headers' >&2
+            exit 1
+          }
       - name: Software frame and shared-context checks
         run: |
           sh tests/frame-check.sh
@@ -138,13 +158,16 @@ jobs:
         run: |
           tests="$(meson test -C build --list)"
           echo "$tests"
-          for absent in hevc-parser vp9-malformed h264-incomplete h264-parser h264-profile image-bounds; do
+          for absent in hevc-parser vp9-malformed h264-incomplete h264-parser h264-profile image-bounds \
+                        fuzz-h264 fuzz-hevc fuzz-vp9; do
             if printf '%s\n' "$tests" | grep -q "^$absent\$"; then
               echo "ERROR: codec-gated test '$absent' registered without its UAPI" >&2
               exit 1
             fi
           done
-          for present in decode-error picture-render-errors support-matrix ci-aggregate-fixtures ci-workflow-audit; do
+          for present in decode-error picture-render-errors support-matrix ci-aggregate-fixtures ci-workflow-audit \
+                          fuzz-va-api fuzz-budgets fuzz-provenance \
+                          fuzz-timeout-replay fuzz-timeout-campaign fuzz-replay-mismatch; do
             printf '%s\n' "$tests" | grep -q "^$present\$" || {
               echo "ERROR: expected core test '$present' missing" >&2
               exit 1
@@ -203,14 +226,16 @@ jobs:
           tests="$(meson test -C build-off --list)"
           echo "$tests"
           for absent in hevc-parser vp9-malformed vp9-state vp9-parser vp9-references \
-                        h264-incomplete h264-slice-count h264-references h264-parser h264-profile; do
+                        h264-incomplete h264-slice-count h264-references h264-parser h264-profile \
+                        fuzz-h264 fuzz-hevc fuzz-vp9; do
             if printf '%s\n' "$tests" | grep -q "^$absent\$"; then
               echo "ERROR: codec-gated test '$absent' still registered with the codec disabled" >&2
               exit 1
             fi
           done
           for present in decode-error image-bounds picture-render-errors support-matrix \
-                          ci-aggregate-fixtures ci-workflow-audit; do
+                          ci-aggregate-fixtures ci-workflow-audit fuzz-va-api fuzz-budgets fuzz-provenance \
+                          fuzz-timeout-replay fuzz-timeout-campaign fuzz-replay-mismatch; do
             printf '%s\n' "$tests" | grep -q "^$present\$" || {
               echo "ERROR: expected test '$present' missing from the all-disabled configuration" >&2
               exit 1
@@ -227,8 +252,16 @@ jobs:
             echo 'ERROR: hevc-parser missing with -Dcodec_hevc=enabled' >&2
             exit 1
           }
+          printf '%s\n' "$tests" | grep -q '^fuzz-hevc$' || {
+            echo 'ERROR: fuzz-hevc missing with -Dcodec_hevc=enabled' >&2
+            exit 1
+          }
           if printf '%s\n' "$tests" | grep -q '^vp9-malformed$'; then
             echo 'ERROR: vp9-malformed still registered with -Dcodec_vp9=disabled' >&2
+            exit 1
+          fi
+          if printf '%s\n' "$tests" | grep -q '^fuzz-vp9$'; then
+            echo 'ERROR: fuzz-vp9 still registered with -Dcodec_vp9=disabled' >&2
             exit 1
           fi
 

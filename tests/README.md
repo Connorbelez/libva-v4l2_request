@@ -68,6 +68,18 @@ malicious-video exploit.
 Four VP9 cases cover malformed/incomplete headers, failed-submission state rollback, colour-range
 inheritance, missing/cross-context references and 24,000 deterministic parser inputs. These join
 the H.264 and HEVC inputs for 72,000 generated inputs across three registered parser cases.
+Those generated inputs are smoke coverage, not independent tests. Coverage-guided
+no-device fuzzing (issue #22) lives in `fuzz-h264`, `fuzz-hevc`, `fuzz-vp9` and
+`fuzz-va-api`: each replays pinned synthetic seeds twice under ASan/UBSan and
+compares a normalized oracle (a second differing call is a harness failure).
+`fuzz-budgets` checks oversize file-input truncation, non-regular I/O exit 99
+and the replay `SIGALRM` handler; `fuzz-timeout-campaign` proves campaign
+builds leave `SIGALRM` to libFuzzer; `fuzz-replay-mismatch` proves identity
+compare rejects a non-deterministic stub. `fuzz-provenance` checks
+`tests/fuzz/provenance.json`. libFuzzer campaign binaries are opt-in
+(`-Dfuzzing=enabled`) and are documented in [../docs/FUZZING.md](../docs/FUZZING.md);
+the 24 CPU-hour run is not a meson test and must not run on public PR CI.
+Clang CI runs `sh tests/fuzz-campaign.sh --smoke`.
 Six shared-lifecycle cases add failed Render/Begin recovery, active-target lifetime, reference
 ownership, invalid context arguments, and submission errors surviving a later buffer completion.
 `picture.c` calls the public picture entrypoints with an intercepted codec. The original target
@@ -221,11 +233,11 @@ pass; the numbers in earlier revisions predated several of those additions):
 
 | Configuration | Codecs | Expected tests |
 | --- | --- | --- |
-| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 139 (full suite) |
-| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 132 (no hevc-parser, vp9-\*, image-bounds) |
-| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 123 (no codec, image-bounds, picture or surface-probe cases; python checks run) |
-| all codecs disabled (any headers) | none | 128 on 6.8 headers (core plus image-bounds) |
-| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 135 (core plus codec tests of every compiled-in codec except vp9-\*) |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | full registered suite; enumerate with `meson test -C build --list` |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | HEVC/VP9/AV1-specific cases absent |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | codec-gated cases absent; core and Python checks remain |
+| all codecs disabled (any headers) | none | core cases, available image cases, and no-device VA fuzz replay |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | compiled-in codec tests, excluding VP9 cases |
 
 `deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
 auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all
