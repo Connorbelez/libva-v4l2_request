@@ -12,3 +12,31 @@ jobs:
       - run: meson test -C build --print-errorlogs
       - run: sh -x tests/frame-check.sh
       - run: sh -x tests/shared-contexts.sh
+  # Acquisition and provenance of the codec regression inputs. Kept separate from the
+  # codec/build matrix work tracked in #18: this job fetches only the bounded smoke
+  # subset, never opens a decoder and never touches a hardware device.
+  corpus:
+    runs-on: ubuntu-latest
+    env:
+      FLUSTER_COMMIT: f3ad284a9e6cac70dc01b02e0de71c2994181d34
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the pinned Fluster suite definitions
+        run: |
+          git init "$RUNNER_TEMP/fluster"
+          git -C "$RUNNER_TEMP/fluster" remote add origin https://github.com/fluendo/fluster.git
+          git -C "$RUNNER_TEMP/fluster" fetch --depth 1 origin "$FLUSTER_COMMIT"
+          git -C "$RUNNER_TEMP/fluster" checkout --quiet FETCH_HEAD
+      - name: Hermetic manifest self-test
+        run: python3 tests/corpus.py self-test
+      - name: Restore the smoke corpus cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/libva-corpus
+          key: corpus-smoke-${{ hashFiles('tests/corpus/manifest.json') }}
+      - name: Validate pins, licences and classifications
+        run: python3 tests/corpus.py validate --fluster "$RUNNER_TEMP/fluster"
+      - name: Acquire and verify the smoke subset
+        run: |
+          python3 tests/corpus.py fetch --fluster "$RUNNER_TEMP/fluster" --cache ~/.cache/libva-corpus --smoke
+          python3 tests/corpus.py verify --fluster "$RUNNER_TEMP/fluster" --cache ~/.cache/libva-corpus --require smoke

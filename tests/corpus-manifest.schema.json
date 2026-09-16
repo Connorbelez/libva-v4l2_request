@@ -1,0 +1,703 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/iconidentify/libva-v4l2_request/tests/corpus-manifest.schema.json",
+  "title": "libva-v4l2_request codec regression corpus manifest",
+  "description": "Acquisition, licence and provenance manifest for every input behind the codec evidence. tests/corpus.py performs the authoritative validation, including SHA-256 checks of the pinned Fluster suite files, derivation of each failure classification and completeness against the r11 pass sets; this schema documents the shape and keeps the shared vocabularies in one place.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "date",
+    "purpose",
+    "policy",
+    "upstreams",
+    "suites",
+    "known_issues",
+    "generated",
+    "smoke",
+    "excluded_suites",
+    "known_gaps",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "manifest_id": {
+      "type": "string",
+      "const": "libva-v4l2_request-corpus"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "redistribution_values",
+        "terms_status_values",
+        "asset_classes",
+        "coverage_vocabulary",
+        "hash_pinning",
+        "redaction"
+      ],
+      "properties": {
+        "redistribution_values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/redistribution"
+          }
+        },
+        "asset_classes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/classes"
+          }
+        },
+        "coverage_vocabulary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coverage"
+          }
+        },
+        "hash_pinning": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "redaction": {
+          "type": "string",
+          "minLength": 1
+        },
+        "terms_status_values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/terms_status"
+          }
+        }
+      }
+    },
+    "upstreams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fluster"
+      ],
+      "properties": {
+        "fluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repo",
+            "commit",
+            "commit_date",
+            "test_suites_path",
+            "note"
+          ],
+          "properties": {
+            "repo": {
+              "type": "string"
+            },
+            "commit": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            },
+            "commit_date": {
+              "type": "string"
+            },
+            "test_suites_path": {
+              "type": "string"
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "suites": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/suite"
+      }
+    },
+    "known_issues": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/known_issue"
+      }
+    },
+    "generated": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/generated"
+      }
+    },
+    "smoke": {
+      "$ref": "#/$defs/smoke"
+    },
+    "excluded_suites": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/excluded_suite"
+      }
+    },
+    "known_gaps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pass_set_file",
+        "record",
+        "note"
+      ],
+      "properties": {
+        "pass_set_file": {
+          "type": "string"
+        },
+        "record": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "redistribution": {
+      "enum": [
+        "generated-locally",
+        "download-on-demand-only",
+        "redistributable"
+      ]
+    },
+    "classes": {
+      "enum": [
+        "pass",
+        "expected-rejection",
+        "known-wrong-output",
+        "unsupported-hardware-format",
+        "unsupported-profile",
+        "unsupported-dimension",
+        "unimplemented-syntax",
+        "requires-profile-override",
+        "capability-boundary"
+      ]
+    },
+    "coverage": {
+      "enum": [
+        "progressive",
+        "interlaced",
+        "8-bit-420",
+        "10-bit-420",
+        "422-format",
+        "444-format",
+        "12-bit",
+        "lossless",
+        "full-range",
+        "long-term-reference",
+        "multi-slice",
+        "multi-tile",
+        "multi-context-interleave",
+        "resolution-change",
+        "crop-odd-dimensions",
+        "sub-64-dimension",
+        "profile-override",
+        "truncated-input"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "redistribution",
+        "terms_status",
+        "terms_reference",
+        "terms_checked",
+        "terms_note",
+        "basis",
+        "notes"
+      ],
+      "properties": {
+        "redistribution": {
+          "$ref": "#/$defs/redistribution"
+        },
+        "terms_status": {
+          "$ref": "#/$defs/terms_status"
+        },
+        "terms_reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "terms_checked": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "terms_note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "codec",
+        "suite_name",
+        "suite_file",
+        "suite_file_sha256",
+        "suite_upstream_commit",
+        "vector_count",
+        "r11_pass_set_key",
+        "acquisition",
+        "license",
+        "assets"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^fluster/"
+        },
+        "kind": {
+          "const": "fluster-suite"
+        },
+        "codec": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suite_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suite_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suite_file_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "suite_upstream_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "vector_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "r11_pass_set_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acquisition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "tool",
+            "resources_layout",
+            "mirror_compatible"
+          ],
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "tool": {
+              "type": "string"
+            },
+            "resources_layout": {
+              "type": "string"
+            },
+            "mirror_compatible": {
+              "type": "boolean"
+            }
+          }
+        },
+        "r11_expected": {
+          "type": "object"
+        },
+        "license": {
+          "$ref": "#/$defs/license"
+        },
+        "assets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "class",
+              "covers",
+              "asset_sha256",
+              "bytes"
+            ],
+            "properties": {
+              "class": {
+                "$ref": "#/$defs/classes"
+              },
+              "covers": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/coverage"
+                }
+              },
+              "asset_sha256": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "hash_status": {
+                "const": "pending"
+              }
+            }
+          }
+        }
+      }
+    },
+    "known_issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "suite",
+        "class",
+        "summary",
+        "evidence",
+        "vectors",
+        "derive",
+        "hardware_needed",
+        "review"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suite": {
+          "type": "string"
+        },
+        "class": {
+          "$ref": "#/$defs/classes"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "vectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "derive": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "base"
+              ],
+              "properties": {
+                "base": {
+                  "enum": [
+                    "suite_all",
+                    "r11_failing",
+                    "r11_passing"
+                  ]
+                },
+                "name_regex": {
+                  "type": "string"
+                },
+                "dimension_below": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "output_format_in": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "exclude_entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "hardware_needed": {
+          "type": "boolean"
+        },
+        "review": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "generated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "codec",
+        "producer",
+        "reproduction",
+        "frames",
+        "checksum_policy",
+        "expected_asset_hashes_committed",
+        "r11_part",
+        "r11_frames",
+        "determinism",
+        "covers",
+        "license",
+        "tools"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "generated"
+        },
+        "codec": {
+          "type": "string"
+        },
+        "producer": {
+          "type": "string"
+        },
+        "frames": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "checksum_policy": {
+          "enum": [
+            "compare-to-software-output",
+            "derived-at-runtime"
+          ]
+        },
+        "expected_asset_hashes_committed": {
+          "const": false
+        },
+        "r11_part": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "r11_frames": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "determinism": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "basis",
+            "seed_policy",
+            "tool_pins"
+          ],
+          "properties": {
+            "basis": {
+              "type": "string"
+            },
+            "seed_policy": {
+              "type": "string"
+            },
+            "tool_pins": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "covers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/coverage"
+          }
+        },
+        "license": {
+          "$ref": "#/$defs/license"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "version"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "reproduction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "producer",
+            "invocation",
+            "description"
+          ],
+          "properties": {
+            "producer": {
+              "type": "string"
+            },
+            "invocation": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "smoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "description",
+        "max_bytes",
+        "required_coverage",
+        "entries"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "required_coverage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/coverage"
+          }
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "excluded_suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suite_file",
+        "reason_code",
+        "summary"
+      ],
+      "properties": {
+        "suite_file": {
+          "type": "string"
+        },
+        "reason_code": {
+          "enum": [
+            "outside-tested-scope",
+            "unsupported-hardware-format"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "terms_status": {
+      "enum": [
+        "identified",
+        "not-established"
+      ]
+    }
+  }
+}

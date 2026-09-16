@@ -1,0 +1,16 @@
+{
+  "suites": {
+    "tiny": {
+      "passed": 1,
+      "total": 4,
+      "passing_vectors": [
+        "tiny-pass.webm"
+      ],
+      "failing_vectors": [
+        "tiny-size-08x08.webm",
+        "tiny-resize.ivf",
+        "tiny-422.webm"
+      ]
+    }
+  }
+}
