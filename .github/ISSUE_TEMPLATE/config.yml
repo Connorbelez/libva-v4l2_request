@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+- name: Read security reporting instructions
+  url: https://github.com/iconidentify/libva-v4l2_request/blob/avd-fixes/SECURITY.md
+  about: Check private reporting availability before sharing vulnerability details.
+- name: Check repository ownership
+  url: https://github.com/iconidentify/libva-v4l2_request/blob/avd-fixes/CONTRIBUTING.md
+  about: Choose the driver or companion repository for your report.

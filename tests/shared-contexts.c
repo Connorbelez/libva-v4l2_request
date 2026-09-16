@@ -30,7 +30,12 @@ int main(int argc, char **argv)
                                                  NULL, NULL, 0)) < 0) goto done;
     for (int i = 0; i < count; i++) {
         struct stream *s = &streams[i];
+        /* Same libavcodec 59 const gate as the included frame-check.c. */
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(59, 0, 100)
         const AVCodec *codec;
+#else
+        AVCodec *codec;
+#endif
         s->check.hardware = hardware;
         s->check.format = av_get_pix_fmt(argv[3 + i * 2]);
         if (s->check.format == AV_PIX_FMT_NONE) { ret = AVERROR(EINVAL); goto done; }

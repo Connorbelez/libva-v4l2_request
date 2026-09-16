@@ -556,7 +556,15 @@ static VAStatus queue_decode(struct v4l2r_context *ctx,
 		.tv_usec = target->capture_index + 1,
 	};
 
+#if HAVE_V4L2_M2M_HOLD_CAPTURE_BUF
 	flags = last_slice ? 0 : V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF;
+#else
+	/* The flag first appeared in Linux 5.9, before the first stateless
+	 * codec pixelformat (5.11): without it no codec is compiled in and
+	 * decoding cannot be reached. */
+	flags = 0;
+	(void)last_slice;
+#endif
 	ret = queue_output_buffer(ctx, output, flags);
 	if (ret < 0) {
 		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_ERROR,
@@ -643,8 +651,10 @@ VAStatus v4l2r_decode(struct v4l2r_context *ctx,
 
 	/* Without HOLD_CAPTURE_BUF support every slice must be submitted as
 	 * a full frame. */
+#if HAVE_V4L2_M2M_HOLD_CAPTURE_BUF
 	if (!(ctx->output_capabilities & V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF))
 		return queue_decode(ctx, controls, count, true, true);
+#endif
 
 	return queue_decode(ctx, controls, count, first_slice, last_slice);
 }

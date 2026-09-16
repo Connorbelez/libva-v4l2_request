@@ -28,6 +28,12 @@ See the [roadmap and ticket index](docs/ROADMAP.md) for planned codec, reliabili
 client/display and release work across both repositories. Agents and contributors should
 read the [claim and execution workflow](docs/AGENT_WORKFLOW.md) before taking a ticket.
 
+## Contributing and reporting
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) for repository ownership, offline checks
+and PR evidence. Use [SECURITY.md](SECURITY.md) for suspected vulnerabilities, and
+[maintenance and handoff](docs/MAINTENANCE.md) for triage, review and release decisions.
+
 ## Upstream and credits
 
 - **libva-v4l2_request** by Ondřej Jirman (megi): the driver this all builds on.

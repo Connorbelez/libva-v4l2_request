@@ -58,7 +58,10 @@ int main(void)
 {
     struct rlimit core = {0, 0};
     assert(!setrlimit(RLIMIT_CORE, &core));
-#if VA_CHECK_VERSION(1, 18, 0)
+/* The probe needs the H.264 control UAPI, a libva new enough to carry the
+ * High 10 profile and the P010 capture format in the kernel headers
+ * (first in Linux 6.0) for its 10-bit CAPTURE enumeration. */
+#if HAVE_V4L2_CTRL_H264 && HAVE_V4L2_PIX_FMT_P010 && VA_CHECK_VERSION(1, 18, 0)
     capture_format = V4L2_PIX_FMT_P010;
     assert(v4l2r_probe_h264_10bit(123, V4L2_BUF_TYPE_VIDEO_OUTPUT));
     assert(v4l2r_probe_h264_10bit(123, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE));
