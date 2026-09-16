@@ -3,10 +3,12 @@
 
 import argparse
 import json
+import math
 import mmap
 import os
 from pathlib import Path
 import platform
+import signal
 import subprocess
 import sys
 import tempfile
@@ -82,19 +84,20 @@ def _read_dmabufs(pid, fds):
             "identity": inode,
         })
 
-    if not readable or unresolved_candidate:
+    if (fds and not readable) or unresolved_candidate:
         return {"status": "unavailable", "references": None,
                 "unique_objects": None, "unique_bytes": None}
     identities = {}
+    known_identities = all(reference["identity"] for reference in references)
     for reference in references:
-        identity = reference["identity"] or "fd:{}".format(reference["fd"])
+        identity = reference["identity"]
         identities.setdefault(identity, reference["size_bytes"])
     known_sizes = [size for size in identities.values() if size is not None]
     return {
         "status": "observed" if references else "none-observed",
         "references": len(references),
-        "unique_objects": len(identities),
-        "unique_bytes": sum(known_sizes) if len(known_sizes) == len(identities) else None,
+        "unique_objects": len(identities) if known_identities else None,
+        "unique_bytes": sum(known_sizes) if known_identities and len(known_sizes) == len(identities) else None,
     }
 
 
@@ -111,7 +114,9 @@ def snapshot(pid):
     sample = {
         "type": "sample",
         "timestamp_ns": time.time_ns(),
+        "monotonic_ns": time.monotonic_ns(),
         "pid": pid,
+        "process_start_time": start_time,
         "fd_count": len(fds),
         "map_count": map_count,
         "mapped_bytes": mapped_bytes,
@@ -191,31 +196,114 @@ def write_record(stream, record):
     os.fsync(stream.fileno())
 
 
+def validate_options(count, interval, limits, acceptance, warmup, exit_timeout):
+    if count < 2:
+        raise ValueError("recording requires at least two samples")
+    for name, value, allow_zero in (("interval", interval, False),
+                                     ("warmup", warmup, True),
+                                     ("exit timeout", exit_timeout, False)):
+        if not math.isfinite(value) or value < 0 or (value == 0 and not allow_zero):
+            raise ValueError("{} must be finite and {}".format(
+                name, "nonnegative" if allow_zero else "positive"))
+    if any(value is not None and value < 0 for value in limits.values()):
+        raise ValueError("growth limits must be nonnegative")
+    if acceptance and limits.get("vmrss_kib") is None:
+        raise ValueError("acceptance mode requires --max-rss-growth-kib")
+
+
+def stop_workload(process, timeout, process_group=False):
+    """Bounded cleanup of a workload we spawned; never used for monitor --pid."""
+    def alive():
+        if not process_group:
+            return process.poll() is None
+        process.poll()  # Reap the direct child before checking its group.
+        try:
+            os.killpg(process.pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+
+    def send(sig):
+        try:
+            if process_group:
+                os.killpg(process.pid, sig)
+            else:
+                process.send_signal(sig)
+        except ProcessLookupError:
+            pass
+
+    if not alive():
+        return False
+    send(signal.SIGTERM)
+    try:
+        process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        pass
+    if alive():
+        send(signal.SIGKILL)
+    try:
+        process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        pass  # The result is already a failure; never hang on an unkillable task.
+    return True
+
+
 def record(pid, output, count, interval, limits, acceptance=False, process=None,
-           warmup=0.0, exit_timeout=1.0):
+           warmup=0.0, exit_timeout=1.0, process_group=False):
+    # Cover output-open, sampling and JSONL-write exceptions as well as normal exit.
+    cleanup_timeout = exit_timeout if math.isfinite(exit_timeout) and exit_timeout > 0 else 1.0
+    try:
+        validate_options(count, interval, limits, acceptance, warmup, exit_timeout)
+        return _record(pid, output, count, interval, limits, acceptance, process,
+                       warmup, exit_timeout, process_group)
+    finally:
+        if process is not None:
+            # A guard may give us only a short SIGTERM grace period. On any
+            # interrupted/failed recording, do not spend the normal exit timeout.
+            timeout = min(cleanup_timeout, 0.25) if sys.exc_info()[0] else cleanup_timeout
+            stop_workload(process, timeout, process_group)
+
+
+def _record(pid, output, count, interval, limits, acceptance, process,
+            warmup, exit_timeout, process_group):
     samples = []
+    errors = []
+    expected_identity = None
+    try:
+        state, expected_identity = _read_identity(pid)
+        if state == "Z":
+            errors.append("target is already a zombie")
+    except (OSError, ValueError, IndexError) as error:
+        errors.append("cannot establish target identity: {}".format(type(error).__name__))
     metadata = {
         "type": "metadata",
         "source_commit": os.environ.get("V4L2R_SOURCE_COMMIT"),
         "kernel": platform.release(),
         "platform": platform.platform(),
         "pid": pid,
+        "process_start_time": expected_identity,
         "interval_seconds": interval,
         "requested_samples": count,
         "warmup_seconds": warmup,
         "exit_timeout_seconds": exit_timeout if process is not None else None,
-        "command": process.args if process is not None else None,
+        # Arguments may contain media paths or credentials. Store reviewed provenance
+        # separately; the recorder does not copy raw command arguments into JSONL.
+        "workload_executable": Path(process.args[0]).name if process is not None else None,
     }
     with output.open("w") as stream:
         write_record(stream, metadata)
-        if warmup:
+        if warmup and not errors:
             time.sleep(warmup)
         for index in range(count):
-            if process is not None and process.poll() is not None:
+            if errors or (process is not None and process.poll() is not None):
                 break
             try:
                 sample = snapshot(pid)
-            except (FileNotFoundError, ProcessLookupError):
+                if sample["process_start_time"] != expected_identity:
+                    errors.append("target process identity changed during campaign")
+                    break
+            except (OSError, ValueError, IndexError) as error:
+                errors.append("sample unavailable: {}".format(type(error).__name__))
                 break
             sample["index"] = index
             samples.append(sample)
@@ -229,32 +317,26 @@ def record(pid, output, count, interval, limits, acceptance=False, process=None,
                 "type": "summary", "samples": len(samples), "limits": limits,
                 "violations": [str(error)], "passed": False,
             }
+        result["violations"].extend(errors)
+        result["elapsed_sample_seconds"] = (
+            (samples[-1]["monotonic_ns"] - samples[0]["monotonic_ns"]) / 1e9
+            if len(samples) > 1 else 0.0)
         if len(samples) != count:
             result["violations"].append(
                 "recorded {} of {} requested samples".format(len(samples), count))
-            result["passed"] = False
         if process is not None:
             try:
                 result["exit_status"] = process.wait(timeout=exit_timeout)
             except subprocess.TimeoutExpired:
-                process.terminate()
-                try:
-                    process.wait(timeout=exit_timeout)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    try:
-                        process.wait(timeout=exit_timeout)
-                    except subprocess.TimeoutExpired:
-                        result["violations"].append(
-                            "workload did not terminate after SIGKILL")
                 result["exit_status"] = None
                 result["violations"].append(
                     "workload remained live after the sampling window")
-                result["passed"] = False
+            if stop_workload(process, exit_timeout, process_group):
+                result["violations"].append("owned workload required forced cleanup")
             if result["exit_status"] not in (None, 0):
                 result["violations"].append(
                     "workload exited with status {}".format(result["exit_status"]))
-                result["passed"] = False
+        result["passed"] = not result["violations"]
         write_record(stream, result)
     return result
 
@@ -341,8 +423,128 @@ def self_test():
                           "dmabuf_objects": 0, "dmabuf_bytes": 0},
                          acceptance=True, process=process, warmup=0.05)
         assert not partial["passed"]
+    regression_tests(baseline)
     print("resource-churn self-test: PASS")
     return 0
+
+
+def regression_tests(baseline):
+    from types import SimpleNamespace
+    from unittest import mock
+
+    limits = {"fds": 0, "maps": 0, "mapped_bytes": 0, "vmrss_kib": 1024,
+              "dmabuf_references": 0, "dmabuf_objects": 0, "dmabuf_bytes": 0}
+    module = sys.modules[__name__]
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        changed = dict(baseline, process_start_time="different-process")
+        with mock.patch.object(module, "_read_identity", return_value=("S", baseline["process_start_time"])), \
+             mock.patch.object(module, "snapshot", side_effect=[baseline, changed]):
+            result = record(123, root / "identity.jsonl", 2, 0.001, limits, True)
+        assert not result["passed"] and result["samples"] == 1
+        assert any("identity changed" in error for error in result["violations"])
+
+        with mock.patch.object(module, "_read_identity", return_value=("S", baseline["process_start_time"])), \
+             mock.patch.object(module, "snapshot", side_effect=PermissionError()):
+            result = record(123, root / "permission.jsonl", 2, 0.001, limits, True)
+        assert not result["passed"] and result["samples"] == 0
+
+        # Output-open and mid-record write failures must both reap the owned child.
+        for fail_write in (False, True):
+            child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
+                                     start_new_session=True)
+            output = root / "write.jsonl" if fail_write else root / "missing" / "out"
+            try:
+                with mock.patch.object(module, "write_record", side_effect=OSError("disk full")):
+                    try:
+                        record(child.pid, output, 2, 0.001, limits, True,
+                               child, exit_timeout=0.05, process_group=True)
+                    except OSError:
+                        pass
+                    else:
+                        raise AssertionError("expected logging failure")
+                assert child.poll() is not None
+            finally:
+                stop_workload(child, 0.05, True)
+
+        # A command must never launch when timing or acceptance options are invalid.
+        marker = root / "launched"
+        for extra in (("--interval", "nan"), ("--interval", "inf"),
+                      ("--interval", "0"), ("--samples", "1"),
+                      ("--warmup-seconds", "-1"), ("--exit-timeout", "0"),
+                      ("--max-fd-growth", "-1"), ("--acceptance",)):
+            result = subprocess.run([sys.executable, __file__, "run", "--output", str(root / "invalid.jsonl"),
+                                     *extra, "--", sys.executable, "-c",
+                                     "from pathlib import Path; Path({!r}).touch()".format(str(marker))],
+                                    capture_output=True, timeout=3)
+            assert result.returncode == 2 and not marker.exists()
+
+        # A still-running command is bounded and fails, even if resources were stable.
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"],
+                                 start_new_session=True)
+        try:
+            result = record(child.pid, root / "bounded.jsonl", 2, 0.005, limits,
+                            process=child, warmup=0.05, exit_timeout=0.02,
+                            process_group=True)
+            assert not result["passed"] and child.poll() is not None
+            assert any("sampling window" in error for error in result["violations"])
+        finally:
+            stop_workload(child, 0.05, True)
+
+        # A hardware guard's SIGTERM must propagate to the owned workload group.
+        sampler = subprocess.Popen([sys.executable, __file__, "run", "--output",
+            str(root / "signal.jsonl"), "--warmup-seconds", "10", "--", sys.executable,
+            "-c", "import os,time; print(os.getpid(),flush=True); time.sleep(30)"],
+            stdout=subprocess.PIPE, text=True)
+        try:
+            target = int(sampler.stdout.readline())
+            sampler.terminate()
+            assert sampler.wait(timeout=3) == 128 + signal.SIGTERM
+            try:
+                assert _read_identity(target)[0] == "Z"
+            except (FileNotFoundError, ProcessLookupError):
+                pass
+        finally:
+            if sampler.poll() is None:
+                sampler.kill()
+                sampler.wait(timeout=1)
+            sampler.stdout.close()
+
+        # A wrapper may exit first; terminate only the new workload's remaining group.
+        child = subprocess.Popen([sys.executable, "-c",
+            "import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-c',"
+            "'import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(30)']);"
+            "print(p.pid,flush=True); time.sleep(30)"], stdout=subprocess.PIPE,
+            text=True, start_new_session=True)
+        try:
+            descendant = int(child.stdout.readline())
+            assert stop_workload(child, 0.05, True)
+            assert child.poll() is not None
+            for _ in range(50):
+                try:
+                    if _read_identity(descendant)[0] == "Z":
+                        break
+                except ProcessLookupError:
+                    break
+                except FileNotFoundError:
+                    break
+                time.sleep(0.01)
+            else:
+                raise AssertionError("owned workload descendant remained live")
+        finally:
+            stop_workload(child, 0.05, True)
+            child.stdout.close()
+
+    # Missing dma-buf identity cannot be called a known number of unique objects.
+    with mock.patch.object(os, "readlink", return_value="/dmabuf"), \
+         mock.patch.object(os, "stat", return_value=SimpleNamespace(st_ino=1)), \
+         mock.patch.object(Path, "read_text", return_value="exp_name: fake\nsize: 4096\n"):
+        dma = _read_dmabufs(123, ["3", "4"])
+    assert dma["references"] == 2 and dma["unique_objects"] is None and dma["unique_bytes"] is None
+    unknown = dict(baseline, dmabuf=dma, dmabuf_references=2,
+                   dmabuf_objects=None, dmabuf_bytes=None)
+    assert not summarize([unknown, unknown], limits, acceptance=True)["passed"]
+    print("resource-churn adversarial regressions: PASS")
 
 
 def limits_from_args(args):
@@ -395,6 +597,12 @@ def main():
     if args.command == "snapshot":
         print(json.dumps(snapshot(args.pid), sort_keys=True))
         return 0
+    try:
+        validate_options(args.samples, args.interval, limits_from_args(args),
+                         args.acceptance, args.warmup_seconds,
+                         getattr(args, "exit_timeout", 1.0))
+    except ValueError as error:
+        parser.error(str(error))
     if args.command == "monitor":
         result = record(args.pid, args.output, args.samples, args.interval,
                         limits_from_args(args), args.acceptance,
@@ -403,11 +611,30 @@ def main():
     if not args.workload:
         parser.error("run requires a workload after --")
     workload = args.workload[1:] if args.workload[0] == "--" else args.workload
-    process = subprocess.Popen(workload)
-    result = record(process.pid, args.output, args.samples, args.interval,
-                    limits_from_args(args), args.acceptance, process,
-                    args.warmup_seconds, args.exit_timeout)
-    return 0 if result["passed"] else 1
+    if not workload:
+        parser.error("run requires a workload after --")
+    def interrupted(signum, frame):
+        del frame
+        raise SystemExit(128 + signum)
+
+    previous = {sig: signal.signal(sig, interrupted) for sig in (signal.SIGINT, signal.SIGTERM)}
+    process = None
+    try:
+        process = subprocess.Popen(workload, start_new_session=True)
+        result = record(process.pid, args.output, args.samples, args.interval,
+                        limits_from_args(args), args.acceptance, process,
+                        args.warmup_seconds, args.exit_timeout, process_group=True)
+        return 0 if result["passed"] else 1
+    finally:
+        # Also cover an interrupt immediately after Popen returns.
+        for sig in previous:
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            if process is not None:
+                stop_workload(process, 0.25, True)
+        finally:
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
 
 
 if __name__ == "__main__":

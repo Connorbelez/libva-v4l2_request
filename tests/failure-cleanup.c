@@ -311,7 +311,7 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
             fds[i].output_queued |= 1u << b->index;
             if (fds[i].kind == VIDEO) {
                 unsigned int req = fd_slot(b->request_fd);
-                fds[req].request_video = (int)i; fds[req].request_output = (int)b->index;
+                fds[req].request_video = fd; fds[req].request_output = (int)b->index;
                 /* Keep the target and final-slice bit with the request. */
                 fds[req].captures = (unsigned int)b->timestamp.tv_usec - 1;
 #ifdef V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF
@@ -329,14 +329,14 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
     }
     if (request == MEDIA_REQUEST_IOC_QUEUE) {
         assert(fds[i].request_video >= 0 && fds[i].request_output >= 0);
-        unsigned int v = (unsigned int)fds[i].request_video;
+        unsigned int v = fd_slot(fds[i].request_video);
         fds[v].output_ready |= 1u << fds[i].request_output;
         if (fds[i].outputs) fds[v].capture_ready |= UINT64_C(1) << fds[i].captures;
         fds[i].request_done = true; return 0;
     }
     if (request == MEDIA_REQUEST_IOC_REINIT) {
         if (fds[i].request_video >= 0 && fds[i].request_output >= 0) {
-            unsigned int v = (unsigned int)fds[i].request_video;
+            unsigned int v = fd_slot(fds[i].request_video);
             fds[v].output_queued &= ~(1u << fds[i].request_output);
             fds[v].output_ready &= ~(1u << fds[i].request_output);
         }

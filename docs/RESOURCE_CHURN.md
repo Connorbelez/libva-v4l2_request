@@ -55,7 +55,8 @@ records descriptor count, mapping count and virtual bytes, `VmRSS`, `VmHWM`, the
 RSS components reported by the kernel, and dma-buf fdinfo when present. It never
 reads global debugfs dma-buf data or another application's media. Duplicate
 dma-buf descriptors are counted as references and deduplicated by fdinfo identity
-where the kernel exposes one.
+where the kernel exposes one. Missing identity makes unique-object/byte metrics
+unavailable; it is not converted into a made-up identity per descriptor.
 
 The dma-buf result is `observed`, `none-observed`, or `unavailable`; unavailable
 accounting is never reported as zero and fails acceptance mode. Reference,
@@ -64,6 +65,15 @@ sample and summary record is flushed and fsynced. Acceptance mode requires an
 explicit RSS-growth threshold because libc and sanitizer retention make a
 universal threshold misleading. It also fails when the target exits before every
 requested sample is recorded, so a short run cannot stand in for a soak.
+
+The campaign binds to the process start time before warmup and rejects identity
+changes across samples. Timing options must be finite, with positive intervals
+and at least two samples; invalid options fail before a workload starts. Sample
+records include wall and monotonic clocks, and the summary records the elapsed
+sample span. `/proc` reads are not an atomic process snapshot: detected races fail,
+but exact resource checkpoints still require the workload to be quiescent.
+Only the executable basename is recorded, not command arguments that might contain
+media paths or credentials. Preserve reviewed workload/input provenance separately.
 
 ```sh
 python3 tests/resource-churn.py self-test
@@ -86,9 +96,17 @@ steady-state growth. Choose the interval and sample count to cover the declared
 duration; an early or nonzero workload exit fails the summary. The command must
 exit after its bounded campaign. A workload still running after the final sample
 and `--exit-timeout` is terminated and the result fails rather than hanging the
-sampler.
+sampler. `run` owns a new process group and cleans up that group on logging or
+sampling exceptions as well as on timeout; forced cleanup fails acceptance. SIGINT
+and SIGTERM propagate through bounded cleanup, including a guard's stop signal.
+An interrupted campaign is incomplete even if it has no final summary.
+`monitor --pid` only observes and never terminates its target. Descendant resource
+usage is not sampled, so the measured decoder must be the selected process, not a
+wrapper that runs the decoder in a child. If output cannot be written, the command
+fails and cleans up, but cannot promise a durable summary on that broken output.
 
 ```sh
+V4L2R_SOURCE_COMMIT=$(git rev-parse HEAD) \
 python3 tests/resource-churn.py run \
   --samples 61 --interval 60 --acceptance \
   --max-fd-growth <reviewed-bound> --max-map-growth <reviewed-bound> \
