@@ -1,0 +1,65 @@
+name: Propose research
+description: Bound an investigation before claiming an implementation is feasible.
+body:
+- type: markdown
+  attributes:
+    value: 'This is a public report. For a suspected vulnerability, stop here and follow [SECURITY.md](https://github.com/iconidentify/libva-v4l2_request/blob/avd-fixes/SECURITY.md).
+
+      Share only a minimal synthetic or redistributable example and relevant redacted excerpts. Do
+      not upload private media, credentials, personal paths/URLs, core dumps or unrelated process
+      logs. Do not rerun a known decoder wedge. Routine reports stay in these forks.'
+- type: textarea
+  id: question
+  attributes:
+    label: Question and decision
+    description: State the uncertainty, the decision this research should inform and the owning layer.
+  validations:
+    required: true
+- type: textarea
+  id: evidence
+  attributes:
+    label: Existing evidence
+    description: Link exact source revisions, prior experiments and related tickets. Separate observations
+      from hypotheses.
+  validations:
+    required: true
+- type: textarea
+  id: method
+  attributes:
+    label: Bounded investigation and stop conditions
+    description: Describe the smallest investigation, expected evidence and limits. State which work
+      is source-only and what would need hardware or kernel authorisation.
+  validations:
+    required: true
+- type: textarea
+  id: dependencies
+  attributes:
+    label: Dependencies and resources
+    description: List prerequisites, hardware/guard needs and permissions still required. Research
+      approval is not permission to install, alter patches or reboot.
+  validations:
+    required: true
+- type: textarea
+  id: completion
+  attributes:
+    label: Completion and follow-on work
+    description: Define the decision record and any implementation children needed. A completed investigation
+      must not be represented as delivered support.
+  validations:
+    required: true
+- type: textarea
+  id: attribution
+  attributes:
+    label: AI assistance and imported work
+    description: If applicable, describe AI assistance and credit imported material with its source
+      and licence.
+  validations:
+    required: false
+- type: checkboxes
+  id: privacy
+  attributes:
+    label: Before submitting
+    description: Review the public text and attachments.
+    options:
+    - label: I have removed sensitive data and this is not a private vulnerability report.
+      required: true

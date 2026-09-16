@@ -44,8 +44,8 @@ rejection, High 10 quantizer modes and fake-device capability checks. Three H.26
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
-35 sanitizer Meson cases plus the `support-matrix`, `conformance-result` and
-`hwguard` checks.
+35 sanitizer Meson cases plus the `support-matrix`, `conformance-result`,
+`hwguard`, `rps-e-research` and HEVC concurrency research checks.
 The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.

@@ -24,16 +24,32 @@ from typing import Any, Iterable
 LEASE_ENV = "LIBVA_HW_GUARD_LEASE"
 IDENTITY_ENV = "LIBVA_HW_GUARD_IDENTITY"
 BUSY_EXIT = 75
-AVD_JOURNAL_MARKERS = (
-    "apple_avd",
+AVD_FAULT_PHRASES = (
+    "h2 error",
+    "h3 error",
+    "h2 timeout",
+    "h3 timeout",
+    "frame processing timed out",
     "avd firmware",
     "avd_timeout",
-    "H2 timeout",
-    "H3 timeout",
-    "Unable to handle kernel",
-    "Internal error: Oops",
-    "kernel BUG at",
+    "unable to handle kernel",
+    "internal error: oops",
+    "kernel bug at",
 )
+# Keep the old name for tests that mention journal markers.
+AVD_JOURNAL_MARKERS = AVD_FAULT_PHRASES
+
+
+def is_avd_fault(line: str) -> bool:
+    lowered = line.lower()
+    taint = "taints kernel" in lowered or "tainting kernel" in lowered
+    if any(phrase in lowered for phrase in AVD_FAULT_PHRASES):
+        return True
+    if taint:
+        return False
+    if ("apple_avd:" in lowered or ".avd:" in lowered) and "error" in lowered:
+        return True
+    return False
 DECODER_WCHANS = ("video_do_ioctl", "v4l2_", "vb2_", "m2m", "avd_", "media_request")
 REDACT = re.compile(r"(https?://\S+)|(/\S+)|([A-Za-z]:\\[^\s]+)")
 WEDGE_GRACE_S = 10.0
@@ -86,17 +102,22 @@ def is_owned_holder(holder_pid: int, child_pid: int) -> bool:
     if holder_pid in (child_pid, os.getpid()):
         return True
     group = process_group(holder_pid)
-    if group is not None and group == child_pid:
+    if group is not None and group in (child_pid, process_group(child_pid) or -1):
         return True
-    try:
-        stat = Path(f"/proc/{holder_pid}/stat").read_text()
-        ppid = int(stat.rsplit(")", 1)[-1].split()[1])
-    except (OSError, IndexError, ValueError):
-        return False
-    if ppid in (child_pid, os.getpid()):
-        return True
-    parent_group = process_group(ppid)
-    return parent_group is not None and parent_group == child_pid
+    seen: set[int] = set()
+    pid = holder_pid
+    while pid and pid not in seen:
+        if pid in (child_pid, os.getpid()):
+            return True
+        if process_group(pid) == child_pid:
+            return True
+        seen.add(pid)
+        try:
+            stat = Path(f"/proc/{pid}/stat").read_text()
+            pid = int(stat.rsplit(")", 1)[-1].split()[1])
+        except (OSError, IndexError, ValueError):
+            return False
+    return False
 
 
 def infer_driver_path(cmd: list[str]) -> str | None:
@@ -169,6 +190,9 @@ def _read(path: Path) -> str | None:
 
 
 class LinuxBackend:
+    def __init__(self, preflight_since: str | None = None) -> None:
+        self.preflight_since = preflight_since
+
     def state(self) -> DecoderState:
         video = media = None
         sys_v4l = Path("/sys/class/video4linux")
@@ -216,7 +240,7 @@ class LinuxBackend:
             media_node=media,
             holders=holders,
             stuck_tasks=stuck,
-            faults=self.journal_since(),
+            faults=self.journal_since(self.preflight_since),
         )
 
     def journal_since(self, since: str | None = None) -> list[str]:
@@ -228,7 +252,7 @@ class LinuxBackend:
             raise GuardError(f"journalctl is not available: {exc}") from exc
         if proc.returncode != 0:
             raise GuardError(f"journalctl failed ({proc.returncode})")
-        return [line for line in proc.stdout.splitlines() if any(m in line for m in AVD_JOURNAL_MARKERS)]
+        return [line for line in proc.stdout.splitlines() if is_avd_fault(line)]
 
 
 class FakeBackend:
@@ -247,7 +271,7 @@ class FakeBackend:
         stuck = json.loads((self.root / "stuck.json").read_text() or "[]")
         faults = [
             line for line in (self.root / "journal").read_text().splitlines()
-            if any(m in line for m in AVD_JOURNAL_MARKERS)
+            if is_avd_fault(line)
         ]
         return DecoderState(
             module_loaded=(self.root / "module").read_text().strip() == "1",
@@ -262,7 +286,7 @@ class FakeBackend:
         del since
         return [
             line for line in (self.root / "journal").read_text().splitlines()
-            if any(m in line for m in AVD_JOURNAL_MARKERS)
+            if is_avd_fault(line)
         ]
 
     def inject_fault(self, line: str) -> None:
@@ -410,6 +434,7 @@ def run_guarded(
     verbose: bool = False,
     inject: str | None = None,
     env: dict[str, str] | None = None,
+    journal_since: str | None = None,
 ) -> RunStatus:
     run_id = str(uuid.uuid4())
     lock_dir = lock_dir or default_lock_dir()
@@ -423,7 +448,7 @@ def run_guarded(
         if inject == "preflight-fault":
             backend.inject_fault("apple_avd: firmware timeout H3")
     else:
-        backend = LinuxBackend()
+        backend = LinuxBackend(preflight_since=journal_since)
     lease = Lease(lock_dir, identity, run_id)
     busy = lease.acquire()
     if busy:
@@ -481,7 +506,7 @@ def run_guarded(
                 request_stop("timeout")
                 timed_out = True
             elif inject == "avd-error" and fake:
-                backend.inject_fault("apple_avd: firmware timeout H3")
+                backend.inject_fault("avd 269080000.avd: H3 error")
             elif inject == "foreign" and fake:
                 backend.inject_holder(99999)
             elif inject == "owned-holder" and fake:
@@ -621,8 +646,21 @@ def run_self_test() -> int:
     proc1.terminate()
     proc1.wait(timeout=5)
 
+    check(not is_avd_fault("apple_avd: loading out-of-tree module taints kernel."),
+          "module taint line must not count as a decoder fault")
+    check(is_avd_fault("avd 269080000.avd: H3 error"),
+          "documented H3 error must count as a decoder fault")
+    check(is_avd_fault("avd 269080000.avd: Frame processing timed out!"),
+          "documented frame timeout must count as a decoder fault")
+    check(is_avd_fault("avd 269080000.avd: H2 error"),
+          "documented H2 error must count as a decoder fault")
+    check(is_avd_fault("apple_avd: H3 error while taints kernel"),
+          "taint plus a real error must still count as a decoder fault")
     check(journalctl_cmd()[-1] == "-b", "boot journal query must use journalctl -b")
     check("--since" not in journalctl_cmd(), "boot journal query must not use --since")
+    since_cmd = journalctl_cmd("2026-09-16 00:00:00")
+    check("--since" in since_cmd and "2026-09-16 00:00:00" in since_cmd,
+          "journalctl_cmd(since) must pass --since")
     check(infer_driver_path(["sh", "tests/hwdownload.sh", "/tmp/build/src"]) == "/tmp/build/src",
           "driver path not inferred from hardware script argv")
 
@@ -759,7 +797,7 @@ def run_self_test() -> int:
 
     for script in (
         "hwdownload.sh", "early-export.sh", "h264-high10.sh", "vp9-matrix.sh",
-        "frame-check.sh", "shared-contexts.sh",
+        "frame-check.sh", "shared-contexts.sh", "hevc-concurrent.py",
     ):
         text = (root / "tests" / script).read_text()
         check("require-hw-guard.sh" in text or "LIBVA_HW_GUARD_LEASE" in text,
@@ -767,6 +805,21 @@ def run_self_test() -> int:
 
     conf = (root / "tests" / "conformance.py").read_text()
     check("LIBVA_HW_GUARD_LEASE" in conf, "conformance.py --driver is not guard-gated")
+    ung = subprocess.run(
+        [sys.executable, str(root / "tests" / "hevc-concurrent.py"),
+         "--schedule", "pair-bd", "--resources", "/tmp",
+         "--frame-check", "/bin/true", "--output", "/tmp/hevc-conc-ungarded"],
+        capture_output=True, text=True,
+    )
+    check(ung.returncode == 2, "hevc-concurrent.py did not refuse unguarded hardware")
+
+    sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(8)"])
+    try:
+        check(is_owned_holder(sleeper.pid, sleeper.pid), "pid must own itself")
+        check(not is_owned_holder(1, sleeper.pid), "init must not count as the child")
+    finally:
+        sleeper.kill()
+        sleeper.wait(timeout=5)
 
     if errors:
         print(f"{len(errors)} hwguard self-test error(s):", file=sys.stderr)
@@ -796,6 +849,10 @@ def main() -> int:
         "--inject",
         choices=("timeout", "avd-error", "foreign", "owned-holder", "stuck-child"),
     )
+    parser.add_argument(
+        "--journal-since",
+        help="preflight journalctl --since instead of -b (new faults during the run still abort)",
+    )
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
@@ -815,6 +872,7 @@ def main() -> int:
         log_path=args.log,
         verbose=args.verbose_log,
         inject=args.inject,
+        journal_since=args.journal_since,
     )
     payload = {
         "status": result.status,
