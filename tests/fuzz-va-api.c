@@ -332,6 +332,12 @@ static uint8_t take(const uint8_t **data, size_t *size)
 	return v;
 }
 
+static VAStatus observe_status(VAStatus status)
+{
+    fuzz_oracle_mix(status);
+    return status;
+}
+
 static void run_opcodes(const uint8_t *data, size_t size)
 {
 	unsigned extra_surfaces = 0, extra_buffers = 0;
@@ -344,16 +350,16 @@ static void run_opcodes(const uint8_t *data, size_t size)
 
 		switch (op) {
 		case OP_BEGIN:
-			(void)v4l2r_BeginPicture(&va, cid, sid);
+			(void)observe_status(v4l2r_BeginPicture(&va, cid, sid));
 			break;
 		case OP_RENDER:
-			(void)v4l2r_RenderPicture(&va, cid, &bid, 1);
+			(void)observe_status(v4l2r_RenderPicture(&va, cid, &bid, 1));
 			break;
 		case OP_END:
-			(void)v4l2r_EndPicture(&va, cid);
+			(void)observe_status(v4l2r_EndPicture(&va, cid));
 			break;
 		case OP_SYNC:
-			(void)v4l2r_SyncSurface(&va, sid);
+			(void)observe_status(v4l2r_SyncSurface(&va, sid));
 			break;
 		case OP_DESTROY_SURFACE: {
 			VASurfaceID victim = sid;
@@ -361,7 +367,7 @@ static void run_opcodes(const uint8_t *data, size_t size)
 
 			if (extra_surfaces && idx < extra_surfaces)
 				victim = extras[idx % extra_surfaces];
-			(void)v4l2r_DestroySurfaces(&va, &victim, 1);
+			(void)observe_status(v4l2r_DestroySurfaces(&va, &victim, 1));
 			break;
 		}
 		case OP_CREATE_SURFACE:
@@ -369,8 +375,8 @@ static void run_opcodes(const uint8_t *data, size_t size)
 				unsigned w = 8u + (take(&data, &size) & 63u);
 				unsigned h = 8u + (take(&data, &size) & 63u);
 
-				if (v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, w, h,
-							  &extras[extra_surfaces], 1, NULL, 0) ==
+				if (observe_status(v4l2r_CreateSurfaces2(&va, VA_RT_FORMAT_YUV420, w, h,
+							  &extras[extra_surfaces], 1, NULL, 0)) ==
 				    VA_STATUS_SUCCESS)
 					extra_surfaces++;
 			}
@@ -381,7 +387,7 @@ static void run_opcodes(const uint8_t *data, size_t size)
 
 			if (extra_buffers && idx < extra_buffers)
 				victim = extra_bufs[idx % extra_buffers];
-			(void)v4l2r_DestroyBuffer(&va, victim);
+			(void)observe_status(v4l2r_DestroyBuffer(&va, victim));
 			break;
 		}
 		case OP_CREATE_BUFFER:
@@ -389,14 +395,14 @@ static void run_opcodes(const uint8_t *data, size_t size)
 				unsigned n = 1u + (take(&data, &size) & 7u);
 				unsigned sz = 1u + (take(&data, &size) & 63u);
 
-				if (v4l2r_CreateBuffer(&va, cid, VASliceDataBufferType, sz, n,
-						       NULL, &extra_bufs[extra_buffers]) ==
+				if (observe_status(v4l2r_CreateBuffer(&va, cid, VASliceDataBufferType, sz, n,
+						       NULL, &extra_bufs[extra_buffers])) ==
 				    VA_STATUS_SUCCESS)
 					extra_buffers++;
 			}
 			break;
 		case OP_DESTROY_CONTEXT:
-			(void)v4l2r_DestroyContext(&va, cid);
+			(void)observe_status(v4l2r_DestroyContext(&va, cid));
 			ctx = NULL;
 			break;
 		case OP_CREATE_CONTEXT: {
@@ -406,34 +412,34 @@ static void run_opcodes(const uint8_t *data, size_t size)
 			int h = (int)take(&data, &size);
 			int n = (int)(take(&data, &size) % 4u) - 1;
 
-			(void)v4l2r_CreateContext(&va, cfg, w, h, 0, n > 0 ? &sid : NULL, n,
-						  &created);
+			(void)observe_status(v4l2r_CreateContext(&va, cfg, w, h, 0, n > 0 ? &sid : NULL, n,
+						  &created));
 			break;
 		}
 		case OP_BEGIN_INVALID:
-			(void)v4l2r_BeginPicture(&va, 0xdeadbeefu, sid);
-			(void)v4l2r_BeginPicture(&va, cid, VA_INVALID_SURFACE);
+			(void)observe_status(v4l2r_BeginPicture(&va, 0xdeadbeefu, sid));
+			(void)observe_status(v4l2r_BeginPicture(&va, cid, VA_INVALID_SURFACE));
 			break;
 		case OP_RENDER_NEGATIVE:
-			(void)v4l2r_RenderPicture(&va, cid, NULL, -1);
-			(void)v4l2r_RenderPicture(&va, cid, NULL, 1);
+			(void)observe_status(v4l2r_RenderPicture(&va, cid, NULL, -1));
+			(void)observe_status(v4l2r_RenderPicture(&va, cid, NULL, 1));
 			break;
 		case OP_DOUBLE_BEGIN:
-			(void)v4l2r_BeginPicture(&va, cid, sid);
-			(void)v4l2r_BeginPicture(&va, cid, sid);
+			(void)observe_status(v4l2r_BeginPicture(&va, cid, sid));
+			(void)observe_status(v4l2r_BeginPicture(&va, cid, sid));
 			break;
 		case OP_DESTROY_DURING:
-			(void)v4l2r_BeginPicture(&va, cid, sid);
-			(void)v4l2r_DestroySurfaces(&va, &sid, 1);
-			(void)v4l2r_EndPicture(&va, cid);
+			(void)observe_status(v4l2r_BeginPicture(&va, cid, sid));
+			(void)observe_status(v4l2r_DestroySurfaces(&va, &sid, 1));
+			(void)observe_status(v4l2r_EndPicture(&va, cid));
 			break;
 		case OP_CREATE_CONFIG: {
 			VAConfigID cfg = VA_INVALID_ID;
 
-			(void)v4l2r_CreateConfig(&va, VAProfileH264Main, VAEntrypointVLD,
-						 NULL, 0, &cfg);
+			(void)observe_status(v4l2r_CreateConfig(&va, VAProfileH264Main, VAEntrypointVLD,
+						 NULL, 0, &cfg));
 			if (cfg != VA_INVALID_ID)
-				(void)v4l2r_DestroyConfig(&va, cfg);
+				(void)observe_status(v4l2r_DestroyConfig(&va, cfg));
 			break;
 		}
 		default:
@@ -452,6 +458,19 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	size = fuzz_cap_size(size);
 	if (setup() == 0) {
 		run_opcodes(data, size);
+        fuzz_oracle_mix(ctx ? ctx->in_picture : 0);
+        struct v4l2r_handles *tables[] = {
+            &drv.configs, &drv.contexts, &drv.surfaces, &drv.buffers, &drv.images
+        };
+        for (unsigned i = 0; i < sizeof(tables) / sizeof(tables[0]); i++) {
+            unsigned iter = 0, count = 0;
+            uint32_t id;
+            while (v4l2r_handles_next(tables[i], &iter, &id)) {
+                fuzz_oracle_mix(id);
+                count++;
+            }
+            fuzz_oracle_mix(count);
+        }
 		if (device_opens)
 			fuzz_oracle_last.flags |= FUZZ_ORACLE_ERROR;
 		fuzz_oracle_last.extra = device_opens;

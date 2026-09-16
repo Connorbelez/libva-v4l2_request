@@ -137,55 +137,51 @@ static size_t nal_only(unsigned int unit_type)
     return 1;
 }
 
+static void unsupported_nals(const unsigned int *types, size_t count)
+{
+    for (unsigned int mode = 0; mode < 2; mode++) {
+        codec.decode_mode = mode ? V4L2_STATELESS_H264_DECODE_MODE_FRAME_BASED :
+                                  V4L2_STATELESS_H264_DECODE_MODE_SLICE_BASED;
+        for (size_t i = 0; i < count; i++) {
+            begin();
+            VASliceParameterBufferH264 slice = {.slice_type = SLICE_I,
+                .slice_data_size = nal_only(types[i])};
+            assert(render(&slice) == VA_STATUS_ERROR_UNIMPLEMENTED);
+            assert(codec.failed && !submitted && !appended);
+            VASliceParameterBufferH264 valid = {.slice_type = SLICE_I,
+                .slice_data_size = header(SLICE_I)};
+            assert(parameters(&valid, 1) == VA_STATUS_ERROR_INVALID_BUFFER);
+            assert(h264_end_picture(&ctx) == VA_STATUS_ERROR_INVALID_BUFFER);
+            assert(!submitted);
+            begin();
+            assert(render(&valid) == VA_STATUS_SUCCESS);
+            assert(h264_end_picture(&ctx) == VA_STATUS_SUCCESS && submitted == 1);
+        }
+    }
+}
+
 static void unsupported_partition(void)
 {
-    char *log = NULL;
-    size_t log_size = 0;
-    FILE *sink = open_memstream(&log, &log_size);
-    v4l2r_diag_configure(&(struct v4l2r_diag_options) {
-        .mode = V4L2R_DIAG_MODE_JSON, .sink = sink });
-    codec.decode_mode = V4L2_STATELESS_H264_DECODE_MODE_SLICE_BASED;
-    begin();
-    VASliceParameterBufferH264 slice = {.slice_type = SLICE_I,
-        .slice_data_size = nal_only(2)};  /* data partition A */
-    /* Unsupported, not malformed: the client is told to fall back. */
-    assert(render(&slice) == VA_STATUS_ERROR_UNIMPLEMENTED);
-    assert(codec.failed && !submitted && !appended);
-    /* The rejected picture cannot be completed by a later valid slice. */
-    assert(h264_end_picture(&ctx) == VA_STATUS_ERROR_INVALID_BUFFER);
-    assert(!submitted);
-    assert(fclose(sink) == 0);
-    assert(strstr(log, "h264-unsupported-nal"));
-    free(log);
-    /* Rejection is per picture: the next picture stays usable. */
-    begin();
-    VASliceParameterBufferH264 valid = {.slice_type = SLICE_I,
-        .slice_data_size = header(SLICE_I)};
-    assert(render(&valid) == VA_STATUS_SUCCESS);
-    assert(h264_end_picture(&ctx) == VA_STATUS_SUCCESS && submitted == 1);
+    static const unsigned int types[] = {2, 3, 4};
+    unsupported_nals(types, sizeof(types) / sizeof(types[0]));
 }
 
 static void unsupported_extension(void)
 {
-    codec.decode_mode = V4L2_STATELESS_H264_DECODE_MODE_SLICE_BASED;
-    begin();
-    VASliceParameterBufferH264 slice = {.slice_type = SLICE_I,
-        .slice_data_size = nal_only(20)}; /* MVC extension */
-    assert(render(&slice) == VA_STATUS_ERROR_UNIMPLEMENTED);
-    assert(codec.failed && !submitted && !appended);
-    assert(h264_end_picture(&ctx) == VA_STATUS_ERROR_INVALID_BUFFER);
-    begin();
-    VASliceParameterBufferH264 valid = {.slice_type = SLICE_I,
-        .slice_data_size = header(SLICE_I)};
-    assert(render(&valid) == VA_STATUS_SUCCESS);
-    assert(h264_end_picture(&ctx) == VA_STATUS_SUCCESS && submitted == 1);
+    static const unsigned int types[] = {20, 21};
+    unsupported_nals(types, sizeof(types) / sizeof(types[0]));
 }
 
 static void unsupported_fmo(void)
 {
+    begin();
     VAPictureParameterBufferH264 pic = {0};
     pic.seq_fields.bits.frame_mbs_only_flag = 1;
-    pic.num_slice_groups_minus1 = 1; /* slice groups declared by the client */
+    /* Deliberately exercise the deprecated input that the driver rejects. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    pic.num_slice_groups_minus1 = 1;
+#pragma GCC diagnostic pop
     struct v4l2r_buffer buf = {.type = VAPictureParameterBufferType,
         .data = &pic, .element_size = sizeof(pic), .nb_elements = 1};
     assert(h264_render_buffer(&ctx, &buf) == VA_STATUS_ERROR_UNIMPLEMENTED);

@@ -31,6 +31,7 @@ import signal
 import subprocess
 import sys
 import time
+import tempfile
 
 MASK64 = (1 << 64) - 1
 WORKER_LINE = re.compile(r"^worker (\d+) frames=(\d+) MD5=([0-9a-f]{32})$")
@@ -128,93 +129,119 @@ def check_run(lines, count, expected_frames, deadline_seen, expected):
 
 
 def kill_process_group(proc):
-    """Bounded, owned cleanup: kill the worker's whole process group so
-    a descendant holding stdout cannot outlive or hang the run. Workers
-    run with start_new_session, so the group id is the worker's own pid
-    and stays valid for killpg even after the worker itself has exited."""
+    """Signal once, before reaping the leader can release its numeric ID.
+
+    Only Popen objects registered by this runner carry group ownership. Callers
+    must not poll()/wait()/communicate() before releasing that ownership here.
+    """
+    if not getattr(proc, "_group_owned", False):
+        return
+    proc._group_owned = False
     try:
         os.killpg(proc.pid, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError):
-        try:
-            proc.kill()
-        except ProcessLookupError:
-            pass
+    except ProcessLookupError:
+        pass
+
+
+def exited_without_reaping(proc):
+    return os.waitid(os.P_PID, proc.pid,
+                     os.WEXITED | os.WNOHANG | os.WNOWAIT) is not None
 
 
 def run_processes(worker_cmd, count, frames, reps, seed, deadline):
-    """Run the process schedule once per repetition. worker_cmd is the
-    command prefix; the worker arguments are appended per worker. Each
-    repetition passes a per-repetition base seed (the same mixing the
-    harness main() applies per repetition) and every worker derives its
-    own repetition-0 seed from it internally, exactly like this
-    derivation; the expected digests follow the same chain."""
-    for rep in range(reps):
-        base = rep_seed(seed, rep)
-        expected = {worker: expected_digest(base, worker, frames, 0)
-                    for worker in range(count)}
-        # The deadline covers process creation, the barrier release and
-        # the run, not just the tail of it.
-        limit = time.monotonic() + deadline
-        workers = []
-        outputs = []
-        breached = False
-        try:
+    """Run seeded schedules with owned process groups and finite cleanup.
+
+    Regular temporary output files avoid pipe EOF depending on descendants.
+    waitid(WNOWAIT) pins the leader's PID until group cleanup precedes wait().
+    A signal records cancellation instead of interrupting Popen registration.
+    """
+    if not (1 <= count <= MAX_PROCESSES and 2 <= frames <= MAX_FRAMES and
+            1 <= reps <= MAX_REPS and 0 <= seed <= MASK64 and
+            0 < deadline < float("inf")):
+        return 2
+    stopped = []
+    def stop(signum, _frame):
+        stopped.append(signum)
+    old = {sig: signal.signal(sig, stop) for sig in (signal.SIGTERM, signal.SIGINT)}
+    try:
+        for rep in range(reps):
+            base = rep_seed(seed, rep)
+            expected = {worker: expected_digest(base, worker, frames, 0)
+                        for worker in range(count)}
+            limit = time.monotonic() + deadline
+            workers, outputs = [], []
+            breached = False
             try:
                 for worker_id in range(count):
-                    workers.append(subprocess.Popen(
-                        worker_cmd + ["worker", str(worker_id), str(frames),
-                                      str(base)],
-                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT, text=True,
-                        start_new_session=True))
-            except (OSError, ValueError) as error:
-                print("processes-%d rep %d FAILED to launch: %s" %
-                      (count, rep, error))
-                return 1
-            for proc in workers:
-                try:
-                    proc.stdin.write("S")
-                    proc.stdin.flush()
-                except (BrokenPipeError, OSError):
-                    pass
-            for proc in workers:
-                remaining = max(0.0, limit - time.monotonic())
-                try:
-                    out, _ = proc.communicate(timeout=remaining)
-                except subprocess.TimeoutExpired:
-                    breached = True
-                    kill_process_group(proc)
+                    if stopped or time.monotonic() >= limit:
+                        breached = True
+                        break
+                    output = tempfile.TemporaryFile(mode="w+b")
                     try:
-                        out, _ = proc.communicate(timeout=5.0)
-                    except subprocess.TimeoutExpired:
-                        kill_process_group(proc)
-                        out, _ = proc.communicate()
-                outputs.append((proc.returncode, out))
-        finally:
-            for proc in workers:
-                if proc.poll() is None:
-                    kill_process_group(proc)
+                        proc = subprocess.Popen(
+                            worker_cmd + ["worker", str(worker_id), str(frames), str(base)],
+                            stdin=subprocess.PIPE, stdout=output,
+                            stderr=subprocess.STDOUT, start_new_session=True)
+                    except (OSError, ValueError) as error:
+                        output.close()
+                        print("FAILED to launch: %s" % error)
+                        return 1
+                    proc._group_owned = True
+                    workers.append((proc, output))
+                for proc, _ in workers:
                     try:
-                        proc.wait(timeout=5.0)
+                        proc.stdin.write(b"S")
+                        proc.stdin.close()
+                    except (BrokenPipeError, OSError):
+                        pass
+                while not stopped and not breached:
+                    if all(exited_without_reaping(proc) for proc, _ in workers):
+                        break
+                    if time.monotonic() >= limit:
+                        breached = True
+                        break
+                    time.sleep(0.01)
+            finally:
+                # Signal every group before reaping any leader. Re-entry is a no-op.
+                for proc, _ in workers:
+                    kill_process_group(proc)
+                cleanup_end = time.monotonic() + 5.0
+                for proc, output in workers:
+                    try:
+                        proc.wait(timeout=max(0.001, cleanup_end - time.monotonic()))
+                        output.seek(0)
+                        data = output.read(1024 * 1024 + 1)
+                        if len(data) > 1024 * 1024:
+                            breached = True
+                        outputs.append((proc.returncode, data.decode("utf-8", errors="replace")))
                     except subprocess.TimeoutExpired:
-                        kill_process_group(proc)
-                        proc.wait()
-        lines = []
-        for returncode, out in outputs:
-            if returncode != 0:
-                print("worker failed (exit %d):\n%s" % (returncode, out))
+                        breached = True
+                    finally:
+                        if proc.stdin:
+                            proc.stdin.close()
+                        output.close()
+            if stopped:
+                print("process schedule interrupted; owned groups cleaned up")
+                return 128 + stopped[0]
+            lines = []
+            for returncode, out in outputs:
+                if returncode != 0:
+                    print("worker failed (exit %d):\n%s" % (returncode, out))
+                    return 1
+                lines.extend(parse_worker_output(out))
+            error = check_run(lines, count, frames, breached, expected)
+            if error:
+                print("processes-%d rep %d FAILED: %s" % (count, rep, error))
                 return 1
-            lines.extend(parse_worker_output(out))
-        error = check_run(lines, count, frames, breached, expected)
-        if error:
-            print("processes-%d rep %d FAILED: %s" % (count, rep, error))
-            return 1
-        for worker, frames_ok, digest in sorted(lines):
-            print("worker %d frames=%d MD5=%s (derived: %s)" %
-                  (worker, frames_ok, digest, expected[worker]))
-    print("PASS processes-%d reps=%d seed=%#x (digests derived and matched)"
-          % (count, reps, seed))
-    return 0
+            for worker, frames_ok, digest in sorted(lines):
+                print("worker %d frames=%d MD5=%s (derived: %s)" %
+                      (worker, frames_ok, digest, expected[worker]))
+        print("PASS processes-%d reps=%d seed=%#x (digests derived and matched)" %
+              (count, reps, seed))
+        return 0
+    finally:
+        for sig, handler in old.items():
+            signal.signal(sig, handler)
 
 
 def self_test(worker_cmd=None):

@@ -123,8 +123,8 @@ static void h264_parse_slice_header(struct h264_context *codec,
 		case 2: /* partition A */
 		case 3: /* partition B */
 		case 4: /* partition C */
-		case 20: /* MVC extension */
-		case 21: /* SVC extension */
+		case 20: /* SVC/MVC extension */
+		case 21: /* 3D-AVC extension */
 			/* Recognised and unsupported: report it as such instead of
 			 * returning as if the buffer were malformed. Anything else in a
 			 * slice-data buffer is treated as invalid. */
@@ -707,8 +707,8 @@ static VAStatus h264_process_slice(struct v4l2r_context *ctx,
 		/* Data partitions and extension NALs are not representable in the
 		 * VA or V4L2 H.264 interfaces; fail as unimplemented so the client
 		 * can fall back, and let the failure stay sticky for this picture. */
-		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_BITSTREAM,
-			   "h264-unsupported-nal", info.unsupported_nal_unit_type,
+		v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_UNSUPPORTED,
+			   "h264-unsupported-nal", 0,
 			   info.unsupported_nal_unit_type <= 4 ?
 			   "H.264 data partitions (NAL 2/3/4) are not implemented" :
 			   "H.264 extension NALs (20/21) are not implemented");
@@ -957,7 +957,7 @@ static VAStatus h264_render_buffer_impl(struct v4l2r_context *ctx,
 			 * carry num_slice_groups_minus1 but no slice-group map. Fail as
 			 * unimplemented so the client can fall back to software. */
 			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING,
-				   V4L2R_DIAG_BITSTREAM, "h264-fmo", 0,
+				   V4L2R_DIAG_UNSUPPORTED, "h264-fmo", 0,
 				   "H.264 FMO (flexible macroblock ordering) is not implemented");
 			return VA_STATUS_ERROR_UNIMPLEMENTED;
 		}

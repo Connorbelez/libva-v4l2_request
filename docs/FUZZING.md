@@ -36,7 +36,7 @@ Each `LLVMFuzzerTestOneInput` call:
 - Truncates input to 64 KiB (oversize is not a harness fault). Replay applies that bound **before** allocating or reading a seed file, including sparse files, and rejects non-regular inputs.
 - Limits wall time to 1 s in replay (`ITIMER_REAL`, compiled with `-DFUZZ_REPLAY_BUILD`). Campaigns are compiled with `-DFUZZ_CAMPAIGN_BUILD` and do not install `SIGALRM`; they use libFuzzer `-timeout=1` so the engine still writes its timeout artifact. `-fsanitize=fuzzer` does not define `FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION` here.
 - Caps live VA objects (8 extra surfaces/buffers) and, on the VA-API target, total `malloc`/`calloc`/`realloc` bytes (16 MiB) **only while that input is running**. Linker wraps are inactive during libFuzzer/runtime startup.
-- Records a normalized oracle (digest, validity, NAL type, extra flags). Replay runs each seed twice and fails on a mismatch; pinned names have expected outcomes (`valid-idr` NAL type, rejected NALs, HEVC guards).
+- Records a normalized oracle (digest, validity, NAL type, extra flags); the VA-API target includes every API return status and remaining object/picture state. Replay runs each seed twice and fails on a mismatch; pinned names have expected outcomes (`valid-idr` NAL type, rejected NALs, HEVC guards).
 - Returns 0 for every well-bounded input. Parser rejection is success.
 
 Harness faults print `fuzz-harness:` on stderr and exit 99 (replay timeout via `_exit`, seed I/O, identity mismatch). Sanitizer traps are parser/driver defects. The VA-API target wraps `open`/`open64`: `/dev/*` returns `ENODEV` and logs `fuzz-harness: device-open`; ioctls and poll fail closed with `ENODEV`.
@@ -82,17 +82,24 @@ sh tests/fuzz-campaign.sh --smoke build-fuzz
 sh tests/fuzz-campaign.sh build-fuzz 24
 ```
 
-`tests/fuzz-campaign.sh` copies the pinned seeds into `$builddir/fuzz-artifacts/<target>/corpus`
-(libFuzzer writes new units there, never into `tests/fuzz/seeds/`). The first
-argument after flags is CPU-hours per target, not wall hours: wall time is
-`cpu_hours / nproc` so eight cores do not turn 24 CPU-hours into 192. Each
-target writes `campaign-record.txt` with engine, compiler (`${CC:-clang}`),
-source SHA, workers, wall budget, elapsed time, exit status and findings.
-GNU `timeout --kill-after=60s` is required for a full run. Exit 124/137 with
-no `crash-*`/`leak-*`/`oom-*` artifacts is budget exhaustion; a crashing
-worker is a failure even if another worker is still running. Missing campaign
-binaries or a non-positive hour count fail the script; they do not skip to
-success.
+`tests/fuzz-campaign.sh` invokes the Python coordinator. Each invocation creates
+`<builddir>/fuzz-artifacts/campaign-<unique>/<target>/` with a copied seed corpus,
+`worker.log` and `campaign-record.json`; earlier runs are never overwritten.
+The positional arguments are the build directory and CPU-hours **per target**.
+One direct engine worker runs per target, sequentially. `RLIMIT_CPU` enforces the
+rounded-up CPU-second budget and `wait4` records actual user plus system CPU.
+Elapsed wall time is recorded separately and has a finite safety deadline.
+This trades parallel throughput for an auditable per-worker CPU budget.
+
+Each record includes Meson's recorded compiler identity, source SHA/dirty state,
+binary hash, command, measured CPU and wall time, exit/signal, findings and cleanup
+outcome. Unknown source/compiler identity is explicit. Only the expected CPU-limit
+signal with sufficient measured CPU is budget exhaustion; SIGKILL, premature exit,
+wall deadline, cancellation, any single crash/timeout/leak/OOM artifact, sanitizer
+or harness diagnostic fails the campaign. A group is signalled once before its
+leader is reaped; cleanup is bounded. Missing binaries and invalid budgets fail.
+The four-target summary remains incomplete if interrupted. Full campaigns remain
+outstanding on #22; no smoke result satisfies that requirement.
 
 `--smoke` runs `-runs=1000` per target (one worker) so a startup abort such as
 a wrapped `malloc` returning NULL to libc++ is visible. Public GitHub-hosted

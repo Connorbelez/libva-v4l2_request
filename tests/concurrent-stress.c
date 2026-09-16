@@ -3,8 +3,8 @@
  *
  * Schedules (all offline, deterministic seeds, no real device, no real
  * sleeping while waiting for the decoder: the model device completes
- * queued work after a seeded number of model ticks, so concurrent
- * threads genuinely overlap inside the driver's wait paths):
+ * queued work after a seeded number of model ticks; the harness does
+ * not measure in-driver overlap):
  *
  *   threads N FRAMES REPS SEED   N contexts decode mixed-codec frames
  *                                and read them back through GetImage,
@@ -23,7 +23,7 @@
  *                                every frame.
  *   failure N FRAMES REPS SEED   A separate misbehaving client keeps
  *                                issuing invalid calls (bogus ids,
- *                                foreign surfaces, double destroys)
+ *                                foreign surfaces, object churn)
  *                                against a valid stream while every
  *                                stream completes all frames exactly.
  *   worker ID FRAMES SEED        Single-stream process mode for the
@@ -1157,36 +1157,10 @@ static void stream_destroy_now(struct stream *s)
     pthread_mutex_unlock(&s->lock);
 }
 
-/* Track public entrypoints in flight across all threads: recorded per
- * repetition and asserted, so a green run is evidence that API calls
- * genuinely overlapped (AC2) rather than just that threads existed. */
-static _Atomic unsigned api_in_flight;
-static _Atomic int api_max_overlap;
-/* First-call rendezvous state: counts decoders only. */
+/* Coordinate caller start times only. This is outside the driver and does
+ * not measure overlapping execution inside API entrypoints. */
 static _Atomic unsigned api_rendezvous_arrived;
 
-static void api_enter(void)
-{
-    unsigned mine = atomic_fetch_add(&api_in_flight, 1) + 1;
-    int prev = atomic_load(&api_max_overlap);
-
-    while (prev < (int)mine &&
-           !atomic_compare_exchange_weak(&api_max_overlap, &prev, (int)mine))
-        ;
-}
-
-static void api_leave(void)
-{
-    atomic_fetch_sub(&api_in_flight, 1);
-}
-
-/* First-call rendezvous: every decoder is inside its first
- * vaBeginPicture wrapper before any of them proceeds. The arrive
- * counter only counts decoders — readers, the destroyer and the actor
- * can neither satisfy nor break it — so a decoder that the scheduler
- * starved cannot miss the window: the other decoders always arrive,
- * which makes both the rendezvous and the recorded N-way overlap
- * deterministic instead of scheduling luck. */
 static void api_rendezvous_decoders(void)
 {
     atomic_fetch_add(&api_rendezvous_arrived, 1);
@@ -1221,15 +1195,14 @@ static void *decoder_thread(void *arg)
             if (atomic_load(&s->teardown_requested))
                 break;
         }
-        api_enter();
         if (frame == 0)
             api_rendezvous_decoders();
         st = table.vaBeginPicture(&va_ctx, s->context, sid);
-        api_leave();
         if (st != VA_STATUS_SUCCESS) {
             /* Only a concurrent teardown of this context may abort a
              * valid sequence; anything else is a driver defect. */
             assert(expect_abort);
+            assert(st == VA_STATUS_ERROR_INVALID_CONTEXT);
             assert(atomic_load(&s->teardown_requested));
             break;
         }
@@ -1256,16 +1229,16 @@ static void *decoder_thread(void *arg)
              * above). No buffer was created, so there is nothing to
              * clean up. Any other failure is a driver defect. */
             assert(expect_abort);
+            assert(st == VA_STATUS_ERROR_INVALID_CONTEXT);
             assert(atomic_load(&s->teardown_requested));
             break;
         }
-        api_enter();
         st = table.vaRenderPicture(&va_ctx, s->context, &slice, 1);
         if (st == VA_STATUS_SUCCESS)
             st = table.vaEndPicture(&va_ctx, s->context);
-        api_leave();
         if (st != VA_STATUS_SUCCESS) {
             assert(expect_abort);
+            assert(st == VA_STATUS_ERROR_INVALID_CONTEXT);
             assert(atomic_load(&s->teardown_requested));
             /* Client-owned buffer: stays destroyable across teardown. */
             assert(v4l2r_DestroyBuffer(&va_ctx, slice) == VA_STATUS_SUCCESS);
@@ -1331,11 +1304,9 @@ static void readback_export(struct stream *s, unsigned frame)
     VADRMPRIMESurfaceDescriptor desc;
     void *map;
 
-    api_enter();
     VAStatus st = table.vaExportSurfaceHandle(&va_ctx,
             s->surfaces[(frame + s->rotate) % STREAM_SURFACES],
             VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME_2, 0, &desc);
-    api_leave();
     assert(st == VA_STATUS_SUCCESS);
     assert(desc.num_objects >= 1);
     map = mmap(NULL, (size_t)s->width * s->height * 3 / 2, PROT_READ,
@@ -1350,11 +1321,9 @@ static void readback_image(struct stream *s, unsigned frame, VAImage *image)
 {
     void *data;
 
-    api_enter();
     VAStatus st = table.vaGetImage(&va_ctx,
             s->surfaces[(frame + s->rotate) % STREAM_SURFACES], 0, 0,
             (int)s->width, (int)s->height, image->image_id);
-    api_leave();
     assert(st == VA_STATUS_SUCCESS);
     assert(v4l2r_MapBuffer(&va_ctx, image->buf, &data) == VA_STATUS_SUCCESS);
     verify_frame_strided(s, frame, data, image->pitches[0]);
@@ -1384,9 +1353,7 @@ static void *reader_thread(void *arg)
         if (wait_published(s, frame) <= frame)
             break; /* decoder stopped early (teardown victim) */
         sid = s->surfaces[(frame + s->rotate) % STREAM_SURFACES];
-        api_enter();
         st = table.vaSyncSurface(&va_ctx, sid);
-        api_leave();
         if (st != VA_STATUS_SUCCESS) {
             /* Only the mid-decode teardown victim may lose a frame;
              * everything already published must complete. */
@@ -1420,9 +1387,7 @@ static void *reader_thread(void *arg)
         void *data;
         VAStatus st;
 
-        api_enter();
         st = table.vaDeriveImage(&va_ctx, sid, &derived);
-        api_leave();
         assert(st == VA_STATUS_SUCCESS);
         assert(v4l2r_MapBuffer(&va_ctx, derived.buf, &data) ==
                VA_STATUS_SUCCESS);
@@ -1437,9 +1402,7 @@ static void *reader_thread(void *arg)
             pthread_cond_wait(&s->destroyed_cv, &s->lock);
         pthread_mutex_unlock(&s->lock);
         /* Post-teardown survivors (regression.c context-lifetime). */
-        api_enter();
         st = table.vaSyncSurface(&va_ctx, sid);
-        api_leave();
         assert(st == VA_STATUS_SUCCESS);
         readback_image(s, rep.frames - 1, &image);
         assert(v4l2r_MapBuffer(&va_ctx, derived.buf, &data) ==
@@ -1647,14 +1610,10 @@ static void *actor_thread(void *arg)
     assert(table.vaCreateContext(&va_ctx, own.config, 64, 48, 0,
                                  &own.surface, 1, &own.context) ==
            VA_STATUS_SUCCESS);
-    /* One-shot cross-context busy check. It structurally overlaps valid
-     * client work: the destroyer cannot tear stream 0 down until the
-     * flag below is set, so stream 0's context is alive and its reader
-     * is unfinished here, no matter how late this actor thread started. */
-    api_enter();
+    /* Keep stream 0 alive until this check completes. This proves lifetime
+     * ordering, not simultaneous progress inside another API call. */
     VAStatus st = table.vaBeginPicture(&va_ctx, own.context,
            rep.streams[0].surfaces[rep.streams[0].rotate]);
-    api_leave();
     assert(st == VA_STATUS_ERROR_SURFACE_BUSY);
     faults++;
     /* Release the destroyer (and record it) only after the check. */
@@ -1672,8 +1631,7 @@ static void *actor_thread(void *arg)
         }
         if (all_done)
             break;
-        /* Every fault in this loop fires while at least one stream's
-         * reader is still working, by the loop's own condition. */
+        /* A reader has not finished; it may be waiting for teardown. */
         actor_fault(&own, &rng);
         faults++;
         nanosleep(&pause, NULL);
@@ -1681,7 +1639,7 @@ static void *actor_thread(void *arg)
     assert(table.vaDestroyContext(&va_ctx, own.context) == VA_STATUS_SUCCESS);
     assert(table.vaDestroySurfaces(&va_ctx, &own.surface, 1) ==
            VA_STATUS_SUCCESS);
-    printf("actor faults=%u (one-shot busy check overlapped stream 0 before its teardown)\n",
+    printf("actor faults=%u (one-shot busy check completed before stream 0 teardown)\n",
            faults);
     return NULL;
 }
@@ -1730,8 +1688,6 @@ static void run_rep(void)
     driver_setup();
     model_reset(rep.seed);
     atomic_store(&actor_one_shot_done, rep.schedule != SCHED_FAILURE);
-    atomic_store(&api_in_flight, 0);
-    atomic_store(&api_max_overlap, 0);
     atomic_store(&api_rendezvous_arrived, 0);
     for (unsigned i = 0; i < rep.n_streams; i++)
         stream_setup(&rep.streams[i], rep.base_index + i, rep.frames,
@@ -1761,11 +1717,6 @@ static void run_rep(void)
     atomic_store_explicit(&rep_done, true, memory_order_release);
     assert(pthread_join(threads[0], NULL) == 0);
 
-    /* AC2 evidence: the recorded maximum of simultaneously in-flight
-     * public entrypoints must reach the stream count — the first-call
-     * rendezvous makes that deterministic. */
-    assert(atomic_load(&api_max_overlap) >= (int)rep.n_streams);
-
     for (unsigned i = 0; i < rep.n_streams; i++) {
         struct stream *s = &rep.streams[i];
 
@@ -1782,9 +1733,8 @@ static void run_rep(void)
     }
 
     pthread_mutex_lock(&model.mutex);
-    printf("rep ioctls=%u polls=%u completions=%u overlap=%d\n",
-           model.ioctls, model.polls, model.completions,
-           atomic_load(&api_max_overlap));
+    printf("rep ioctls=%u polls=%u completions=%u\n",
+           model.ioctls, model.polls, model.completions);
     pthread_mutex_unlock(&model.mutex);
     for (unsigned i = 0; i < rep.n_streams; i++)
         print_stream_result(&rep.streams[i]);

@@ -109,10 +109,10 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
-The `concurrent-stress` Meson cases (issue #36) close that gap offline: they call the
+The `concurrent-stress` Meson cases (issue #36) add offline caller schedules: they call the
 real public entrypoints from multiple threads against an in-memory model decoder
 (no device, no real sleeping — the model completes queued work after a seeded number
-of model-time ticks, so waits genuinely overlap). `threads-1/2/4` decode mixed-codec
+of model-time ticks; in-driver overlap is not measured). `threads-1/2/4` decode mixed-codec
 frames, read them back through GetImage, exported dma-bufs and derived images, and
 destroy each context while later streams continue; `teardown-1/2/4` destroy one
 context mid-decode and require every published frame to complete byte-exact while
@@ -128,7 +128,8 @@ the maximum of simultaneously in-flight public entrypoints are printed for the
 evidence record; the mid-decode teardown victim is destroyed while it provably holds
 a staged picture open (between BeginPicture and its buffer creation) and verifies
 exactly half its frames byte-exact — every other count and hash is exact, and a
-first-call rendezvous makes the initial API-call overlap deterministic.
+first-call rendezvous coordinates caller starts outside the driver. Instrumented
+in-driver overlap remains an open #36 criterion.
 `concurrent-process.py` drives the same single-stream worker in 1/2/4
 separate processes behind a start barrier (per-process isolation; every worker's
 digest is derived independently from the declared seed/frame recipe and compared
@@ -226,7 +227,8 @@ to build and pass the offline suite (Ubuntu 20.04: libva 2.7, gcc 9, 5.4 headers
 
 Executed CI configurations and their expected Meson test sets (codec-gated tests
 register only when the codec is compiled in). The counts are re-measured from the
-registered set at this revision — they include the r11 regression suite, the
+registered set (enumerate the selected build rather than relying on historical
+counts) — they include the r11 regression suite, the
 lifecycle, failure-cleanup, diagnostics, corpus and CI checks, and the 12
 concurrent-stress cases (7 threaded schedules, 4 process checks, 1 ThreadSanitizer
 pass; the numbers in earlier revisions predated several of those additions):

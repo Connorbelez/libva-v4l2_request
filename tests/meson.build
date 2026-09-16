@@ -210,7 +210,8 @@ if get_option('fuzzing').enabled()
   if b_san != 'none'
     fuzzer_sanitize = 'fuzzer,' + b_san
   endif
-  fuzzer_lto = ['-fsanitize=' + fuzzer_sanitize, '-lstdc++']
+  fuzzer_compile = ['-fsanitize=' + fuzzer_sanitize]
+  fuzzer_lto = fuzzer_compile + ['-lstdc++']
   if not cc.links('''#include <stdint.h>
 int LLVMFuzzerTestOneInput(const uint8_t *d, unsigned long n) { (void)d; (void)n; return 0; }
 ''', args: fuzzer_lto, name: 'libFuzzer')
@@ -221,27 +222,27 @@ int LLVMFuzzerTestOneInput(const uint8_t *d, unsigned long n) { (void)d; (void)n
       include_directories: fuzz_inc,
       dependencies: [libva_dep, libdrm_dep, threads_dep],
       override_options: ['b_lundef=false'],
-      c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto)
+      c_args: fuzzer_compile + fuzz_campaign_def, link_args: fuzzer_lto)
   endif
   if conf.get('HAVE_V4L2_CTRL_HEVC') == 1
     executable('fuzz-hevc', 'fuzz-hevc.c', 'fuzz-oracle.c', driver_sources,
       include_directories: fuzz_inc,
       dependencies: [libva_dep, libdrm_dep, threads_dep],
       override_options: ['b_lundef=false'],
-      c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto)
+      c_args: fuzzer_compile + fuzz_campaign_def, link_args: fuzzer_lto)
   endif
   if conf.get('HAVE_V4L2_CTRL_VP9') == 1
     executable('fuzz-vp9', 'fuzz-vp9.c', 'fuzz-oracle.c', driver_sources,
       include_directories: fuzz_inc,
       dependencies: [libva_dep, libdrm_dep, threads_dep],
       override_options: ['b_lundef=false'],
-      c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto)
+      c_args: fuzzer_compile + fuzz_campaign_def, link_args: fuzzer_lto)
   endif
   executable('fuzz-va-api', 'fuzz-va-api.c', 'fuzz-oracle.c', driver_sources,
     include_directories: fuzz_inc,
     dependencies: [libva_dep, libdrm_dep, threads_dep],
     override_options: ['b_lundef=false'],
-    c_args: fuzzer_lto + fuzz_campaign_def, link_args: fuzzer_lto + fuzz_va_wrap)
+    c_args: fuzzer_compile + fuzz_campaign_def, link_args: fuzzer_lto + fuzz_va_wrap)
 endif
 
 
@@ -297,3 +298,8 @@ test('hevc-concurrency-research', python3, args: files('hevc-concurrency-researc
 test('ci-aggregate-fixtures', python3, args: [files('ci_check.py'), 'fixtures'], timeout: 30)
 test('ci-workflow-audit', python3, args: [files('ci_check.py'), 'audit', '--workflow', workflow_yml], timeout: 15)
 test('fuzz-provenance', python3, args: files('fuzz-provenance.py'), timeout: 15)
+
+test('concurrent-process-cleanup', python3, args: files('concurrent-process-test.py'), timeout: 30)
+test('concurrent-tsan-probe', python3, args: [files('concurrent-tsan.py'), '--self-test'], timeout: 30)
+test('fuzz-campaign-runner', python3, args: [files('fuzz-campaign.py'), '--self-test'], timeout: 30)
+test('h264-syntax-probe', python3, args: files('h264-syntax-probe-test.py'), timeout: 30)

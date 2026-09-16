@@ -125,7 +125,7 @@ class BitReader:
 
 
 def split_annex_b(data: bytes) -> list[tuple[int, bytes]]:
-    """Return (nal_unit_type, rbsp) for every NAL unit, de-emulating the RBSP."""
+    """Return (NAL header byte, rbsp) for every NAL unit, de-emulating the RBSP."""
     starts: list[int] = []
     index = 0
     while True:
@@ -153,7 +153,9 @@ def split_annex_b(data: bytes) -> list[tuple[int, bytes]]:
                 continue
             zeros = zeros + 1 if byte == 0 else 0
             rbsp.append(byte)
-        units.append((payload[0] & 0x1F, bytes(rbsp)))
+        if payload[0] & 0x80:
+            raise SyntaxError_("forbidden_zero_bit set")
+        units.append((payload[0], bytes(rbsp)))
     return units
 
 
@@ -169,12 +171,14 @@ def skip_scaling_list(reader: BitReader, size: int) -> None:
 
 def skip_hrd_parameters(reader: BitReader) -> None:
     cpb_cnt = reader.ue() + 1
-    reader.skip(4)  # bit_rate_scale, cpb_size_scale
+    if cpb_cnt > 32:
+        raise SyntaxError_("cpb_cnt_minus1 exceeds 31")
+    reader.skip(8)  # bit_rate_scale, cpb_size_scale
     for _ in range(cpb_cnt):
         reader.ue()  # bit_rate_value_minus1
         reader.ue()  # cpb_size_value_minus1
         reader.bit()  # cbr_flag
-    reader.skip(5 + 5 + 5 + 5 + 5)  # initial_cpb_removal_delay_length_minus1 .. time_offset_length
+    reader.skip(5 + 5 + 5 + 5)  # initial_cpb_removal_delay_length_minus1 .. time_offset_length
 
 
 def skip_vui(reader: BitReader) -> None:
@@ -237,7 +241,7 @@ def parse_sps(rbsp: bytes) -> dict:
     if fields["pic_order_cnt_type"] == 0:
         fields["log2_max_pic_order_cnt_lsb_minus4"] = reader.ue()
     elif fields["pic_order_cnt_type"] == 1:
-        reader.bit()  # delta_pic_order_always_zero_flag
+        fields["delta_pic_order_always_zero_flag"] = reader.bit()
         reader.se()
         reader.se()
         for _ in range(reader.ue()):  # num_ref_frames_in_pic_order_cnt_cycle
@@ -256,23 +260,17 @@ def parse_sps(rbsp: bytes) -> dict:
             reader.ue()
     if reader.bit():  # vui_parameters_present_flag
         skip_vui(reader)
-    fields["num_slice_groups_minus1"] = 0
-    fields["slice_group_map_type"] = None
-    if reader.more_rbsp_data():
-        fields["num_slice_groups_minus1"] = reader.ue()
-        if fields["num_slice_groups_minus1"] > 0:
-            fields["slice_group_map_type"] = reader.ue()
     fields["parse_ok"] = (
         reader.trailing_bits_ok() and fields["profile_idc"] in KNOWN_PROFILES
     )
     return fields
 
 
-def parse_pps(rbsp: bytes) -> dict:
+def parse_pps(rbsp: bytes, sps_by_id=None) -> dict:
     reader = BitReader(rbsp)
     fields: dict = {}
     try:
-        return _parse_pps_body(reader, fields)
+        return _parse_pps_body(reader, fields, sps_by_id or {})
     except SyntaxError_ as error:
         # A PPS that cannot be walked to its end still tells us whether it
         # declares slice groups, which is the signal that matters here.
@@ -281,14 +279,15 @@ def parse_pps(rbsp: bytes) -> dict:
         return fields
 
 
-def _parse_pps_body(reader: BitReader, fields: dict) -> dict:
+def _parse_pps_body(reader: BitReader, fields: dict, sps_by_id: dict) -> dict:
     fields["pic_parameter_set_id"] = reader.ue()
     fields["seq_parameter_set_id"] = reader.ue()
     reader.bit()  # entropy_coding_mode_flag
     fields["bottom_field_pic_order_in_frame_present_flag"] = reader.bit()
     fields["num_slice_groups_minus1"] = reader.ue()
-    # The picture parameter set repeats the slice-group map, so it has to be
-    # consumed here or every later field in this PPS is misread on FMO streams.
+    # FMO syntax belongs to the PPS; the SPS has no slice-group fields.
+    if fields["num_slice_groups_minus1"] > 7:
+        raise SyntaxError_("more than eight slice groups")
     if fields["num_slice_groups_minus1"] > 0:
         map_type = reader.ue()
         fields["slice_group_map_type"] = map_type
@@ -297,7 +296,7 @@ def _parse_pps_body(reader: BitReader, fields: dict) -> dict:
             for _ in range(groups):
                 reader.ue()  # run_length_minus1
         elif map_type == 2:
-            for _ in range(groups):
+            for _ in range(groups - 1):
                 reader.ue()  # top_left
                 reader.ue()  # bottom_right
         elif map_type in (3, 4, 5):
@@ -308,6 +307,8 @@ def _parse_pps_body(reader: BitReader, fields: dict) -> dict:
             width = max(1, (groups - 1).bit_length())
             for _ in range(pic_size + 1):
                 reader.u(width)  # slice_group_id
+        elif map_type != 1:
+            raise SyntaxError_("invalid slice_group_map_type")
     reader.ue()  # num_ref_idx_l0_default_active_minus1
     reader.ue()  # num_ref_idx_l1_default_active_minus1
     reader.bit()  # weighted_pred_flag
@@ -318,44 +319,96 @@ def _parse_pps_body(reader: BitReader, fields: dict) -> dict:
     reader.bit()  # deblocking_filter_control_present_flag
     reader.bit()  # constrained_intra_pred_flag
     fields["redundant_pic_cnt_present_flag"] = reader.bit()
+    if reader.more_rbsp_data():
+        transform8 = reader.bit()
+        if reader.bit():  # pic_scaling_matrix_present_flag
+            sps = sps_by_id.get(fields['seq_parameter_set_id'])
+            if not sps or not sps.get('parse_ok'):
+                raise SyntaxError_("PPS scaling list needs its referenced SPS")
+            count = 6 + (2 if sps['chroma_format_idc'] != 3 else 6) * transform8
+            for index in range(count):
+                if reader.bit():
+                    skip_scaling_list(reader, 16 if index < 6 else 64)
+        reader.se()  # second_chroma_qp_index_offset
     fields["parse_ok"] = reader.trailing_bits_ok()
     return fields
 
 
-def parse_slice_prefix(rbsp: bytes, sps: dict) -> dict:
-    """Decode the slice-header fields needed to detect ordering and slice types."""
+def parse_slice_prefix(rbsp: bytes, sps_by_id: dict, pps_by_id: dict,
+                       nal_type: int, nal_ref_idc: int) -> dict:
+    """Resolve the active PPS/SPS and read the picture-boundary prefix."""
     reader = BitReader(rbsp)
-    fields: dict = {}
-    fields["first_mb_in_slice"] = reader.ue()
+    fields = {"first_mb_in_slice": reader.ue()}
     raw_type = reader.ue()
-    fields["slice_type_raw"] = raw_type
-    fields["slice_type"] = raw_type % 5
-    fields["slice_type_name"] = SLICE_NAMES.get(fields["slice_type"], "?")
-    fields["pic_parameter_set_id"] = reader.ue()
+    if raw_type > 9:
+        raise SyntaxError_("invalid slice_type")
+    fields.update(slice_type_raw=raw_type, slice_type=raw_type % 5,
+                  slice_type_name=SLICE_NAMES[raw_type % 5])
+    pps_id = fields["pic_parameter_set_id"] = reader.ue()
+    pps = pps_by_id.get(pps_id)
+    sps = sps_by_id.get(pps.get('seq_parameter_set_id')) if pps else None
+    if not pps or not pps.get('parse_ok') or not sps or not sps.get('parse_ok'):
+        raise SyntaxError_("slice references an unavailable/unparsed PPS or SPS")
+    if sps.get('separate_colour_plane_flag'):
+        fields['colour_plane_id'] = reader.u(2)
     fields["frame_num"] = reader.u(sps["log2_max_frame_num_minus4"] + 4)
+    fields['field_pic_flag'] = 0
     if not sps["frame_mbs_only_flag"]:
         fields["field_pic_flag"] = reader.bit()
         if fields["field_pic_flag"]:
             fields["bottom_field_flag"] = reader.bit()
+    fields['idr'] = nal_type == 5
+    fields['reference_picture'] = bool(nal_ref_idc)
+    if fields['idr']:
+        fields['idr_pic_id'] = reader.ue()
+    if sps['pic_order_cnt_type'] == 0:
+        fields['pic_order_cnt_lsb'] = reader.u(sps['log2_max_pic_order_cnt_lsb_minus4'] + 4)
+        if pps['bottom_field_pic_order_in_frame_present_flag'] and not fields['field_pic_flag']:
+            fields['delta_pic_order_cnt_bottom'] = reader.se()
+    elif sps['pic_order_cnt_type'] == 1 and not sps.get('delta_pic_order_always_zero_flag'):
+        fields['delta_pic_order_cnt0'] = reader.se()
+        if pps['bottom_field_pic_order_in_frame_present_flag'] and not fields['field_pic_flag']:
+            fields['delta_pic_order_cnt1'] = reader.se()
+    fields['picture_key'] = tuple(fields.get(name) for name in (
+        'pic_parameter_set_id', 'frame_num', 'field_pic_flag', 'bottom_field_flag',
+        'reference_picture', 'idr', 'idr_pic_id', 'pic_order_cnt_lsb',
+        'delta_pic_order_cnt_bottom', 'delta_pic_order_cnt0', 'delta_pic_order_cnt1',
+        'colour_plane_id'))
     return fields
 
 
 def probe_file(path: Path) -> dict:
     data = path.read_bytes()
     units = split_annex_b(data)
-    nal_counts = Counter(nal_type for nal_type, _ in units)
+    nal_counts = Counter(header & 31 for header, _ in units)
     sps_list: list[dict] = []
     pps_list: list[dict] = []
     slices: list[dict] = []
     errors: list[str] = []
-    for nal_type, rbsp in units:
+    sps_by_id, pps_by_id = {}, {}
+    picture = 0
+    previous_key = None
+    for header, rbsp in units:
+        nal_type = header & 31
         try:
             if nal_type == 7:
-                sps_list.append(parse_sps(rbsp))
+                parsed = parse_sps(rbsp)
+                sps_list.append(parsed)
+                sps_by_id[parsed['seq_parameter_set_id']] = parsed
             elif nal_type == 8:
-                pps_list.append(parse_pps(rbsp))
-            elif nal_type in (1, 5) and sps_list:
-                slices.append(parse_slice_prefix(rbsp, sps_list[-1]))
+                parsed = parse_pps(rbsp, sps_by_id)
+                pps_list.append(parsed)
+                if 'pic_parameter_set_id' in parsed:
+                    pps_by_id[parsed['pic_parameter_set_id']] = parsed
+            elif nal_type in (1, 5):
+                parsed = parse_slice_prefix(rbsp, sps_by_id, pps_by_id, nal_type, (header >> 5) & 3)
+                if parsed['picture_key'] != previous_key:
+                    picture += 1
+                previous_key = parsed['picture_key']
+                parsed['picture_index'] = picture
+                slices.append(parsed)
+            elif nal_type in (9, 10, 11):
+                previous_key = None
         except SyntaxError_ as error:
             # One unreadable unit must not hide the features that were measured.
             if len(errors) < 5:
@@ -366,25 +419,13 @@ def probe_file(path: Path) -> dict:
     usable_sps = [s for s in sps_list if s.get("parse_ok")]
     if sps_list and not usable_sps:
         features["sps_parse_failed"] = True
-    # The slice-group map lives in both parameter sets: the SPS carries the map
-    # itself and the PPS repeats num_slice_groups_minus1 and the map type. Real
-    # vectors (FM1_BT_B) declare zero slice groups in the SPS and every map type
-    # across eight PPS NALs, so a detector that only reads the SPS misses them.
-    group_declarers = [d for d in (sps_list + pps_list) if d.get("num_slice_groups_minus1")]
+    # Slice groups are declared only in the PPS. Never invent SPS fields.
+    group_declarers = [d for d in pps_list if d.get('parse_ok') and d.get('num_slice_groups_minus1')]
     if group_declarers:
-        features["fmo"] = True
-        features["slice_group_counts"] = sorted({d["num_slice_groups_minus1"] + 1 for d in group_declarers})
-        features["slice_group_map_types"] = sorted(
-            {d.get("slice_group_map_type") for d in group_declarers if d.get("slice_group_map_type") is not None}
-        )
-        features["fmo_sources"] = sorted(
-            {"sps" if d in sps_list else "pps" for d in group_declarers}
-        )
-        # FMO declared only in a PPS while the active SPS declares none.
-        features["fmo_in_pps_only"] = not any(s.get("num_slice_groups_minus1") for s in usable_sps)
-        plain_sps = [s for s in usable_sps if not s.get("num_slice_groups_minus1")]
-        features["fmo_after_plain_sps"] = bool(plain_sps)
-    unparsed_pps = [p for p in pps_list if p.get("num_slice_groups_minus1") is None]
+        features['fmo'] = True
+        features['slice_group_counts'] = sorted({d['num_slice_groups_minus1'] + 1 for d in group_declarers})
+        features['slice_group_map_types'] = sorted({d['slice_group_map_type'] for d in group_declarers})
+    unparsed_pps = [p for p in pps_list if not p.get("parse_ok")]
     if unparsed_pps:
         features["pps_unparsed_map_type"] = len(unparsed_pps)
     partitions = {PARTITION_NAL_TYPES[t]: nal_counts[t] for t in PARTITION_NAL_TYPES if nal_counts.get(t)}
@@ -404,7 +445,7 @@ def probe_file(path: Path) -> dict:
     # Arbitrary slice order: first_mb_in_slice decreasing inside one coded picture.
     per_picture: dict[tuple, list[int]] = defaultdict(list)
     for s in slices:
-        per_picture[(s["frame_num"], s.get("field_pic_flag"), s.get("bottom_field_flag"))].append(
+        per_picture[s["picture_index"]].append(
             s["first_mb_in_slice"]
         )
     out_of_order = [key for key, values in per_picture.items() if any(b < a for a, b in zip(values, values[1:]))]
@@ -466,13 +507,18 @@ def summarize(results: list[dict]) -> dict:
         for label in record.get("features", {}):
             labels[label] += 1
             vectors_with[label].append(record.get("vector") or record.get("file"))
-    multi = [r.get("vector") or r.get("file") for r in results if len(r.get("features", {})) > 1]
+    categories = {'field_coding', 'mbaff', 'fmo', 'data_partitions',
+                  'slice_order_not_monotonic', 'sp_or_si', 'redundant_slices', 'extension_nals'}
+    multi = [r.get("vector") or r.get("file") for r in results
+             if len(categories.intersection(r.get("features", {}))) > 1]
     return {
         "vectors": len(results),
         "feature_counts": dict(sorted(labels.items())),
         "vectors_per_feature": {k: sorted(v) for k, v in sorted(vectors_with.items())},
         "multi_label_vectors": sorted(multi),
-        "errors": [r for r in results if r.get("error")],
+        "errors": [r for r in results if r.get("error") or r.get("errors") or
+                   any(r.get("features", {}).get(k) for k in
+                       ('sps_parse_failed', 'pps_parse_failed', 'pps_unparsed_map_type'))],
     }
 
 
@@ -490,6 +536,8 @@ def main() -> int:
     args = parser.parse_args()
     if not args.files and not args.suite:
         parser.error("give files, or --suite with --fluster and --cache")
+    if args.suite and (not args.fluster or not args.cache):
+        parser.error('--suite requires --fluster and --cache')
     results = collect(args)
     summary = summarize(results)
     if args.json:
@@ -503,7 +551,7 @@ def main() -> int:
             print(f"  {label}: {len(names)}")
         if summary["errors"]:
             print(f"errors: {len(summary['errors'])}")
-    return 0
+    return 1 if summary['errors'] or not results else 0
 
 
 if __name__ == "__main__":

@@ -18,8 +18,8 @@ runbook below; it has not been run as part of the offline work.
 model V4L2 device. There is no decoder, no kernel module and no real sleeping:
 the model completes queued requests after a seeded number of model-time ticks,
 and time only advances when the driver polls or reads its monotonic clock, so
-concurrent threads genuinely overlap inside the driver's wait paths while every
-wait still terminates deterministically at its own deadline.
+the schedules advance model waits without a real decoder. Multiple caller threads
+are launched, but this does not prove simultaneous execution inside driver calls.
 
 The schedules exercise the real public API surface the same way a threaded
 client does:
@@ -76,27 +76,18 @@ dma-buf read directly through the model plane storage). Per-stream results are
 printed as `stream <id> frames=<n> MD5=<hex>` where the MD5 covers the verified
 frame sequence.
 
-Determinism and overlap proof (addressed in review of the first draft):
+Deterministic lifetime events and remaining overlap evidence:
 
-* The teardown victim is destroyed **while it provably holds a staged picture
-  open**: after `vaBeginPicture` of frame FRAMES/2 it signals the destroyer and
-  waits for the *completed* destroy before creating its slice buffer, so the
-  destroy lands between `vaBeginPicture` and the buffer creation every
-  repetition, the victim's verified count is exactly FRAMES/2, and every
-  published frame completes byte-exact. `teardown_requested` (set before
-  `vaDestroyContext`) and `teardown_completed` (set after it returns) are
-  separate: survivors are only read after the completed teardown.
-* Maximum simultaneously in-flight public entrypoints is recorded per
-  repetition (`overlap=` in each `rep` line) and asserted to reach the stream
-  count. A first-call rendezvous makes the initial overlap deterministic:
-  every decoder is inside its first `vaBeginPicture` at once before any of
-  them proceeds.
-* The failure actor's cross-context busy check is a one-shot that
-  structurally overlaps valid work: the destroyer cannot tear stream 0 down
-  until that check has completed, so the targeted context is alive and its
-  reader unfinished regardless of when the actor thread was scheduled. Every
-  fault in the actor loop fires while at least one stream's reader is still
-  working, by the loop's own condition.
+* The teardown victim holds a staged picture at frame FRAMES/2 until context
+  destruction completes. Its subsequent buffer creation must return exactly
+  `INVALID_CONTEXT`; any other failure aborts the test. All preceding frames are
+  verified, and survivor reads wait for completed teardown.
+* The first-call rendezvous coordinates callers **outside** the driver. The earlier
+  `overlap=` metric counted that barrier and has been removed. It did not prove #36
+  AC2. Instrumented overlap inside locked/unlocked operations remains open on #36.
+* The failure actor checks a foreign surface while its owner's context is alive.
+  Its handshake proves lifetime ordering only: an unfinished reader may be waiting
+  for teardown, so it cannot establish concurrent active API work.
 
 `concurrent-process.py` runs the same single-stream worker (`concurrent-stress
 worker ID FRAMES SEED`, where the worker id selects the stream recipe: model
@@ -107,10 +98,11 @@ same arithmetic as the harness) and compares exactly — a syntactically valid
 but wrong digest fails. The runner validates its arguments (bounded process,
 frame and repetition counts, finite positive deadline), the deadline covers
 process creation and the barrier release as well as the run, and cleanup
-kills each worker's whole process group with bounded waits so a descendant
-holding stdout cannot hang the schedule. Its `--self-test` runs real negative
+kills each owned worker group before reaping its leader, with bounded waits and
+one-time ownership release. Output uses temporary files, so an escaped descendant
+cannot keep pipe EOF pending. SIGTERM/SIGINT request cancellation and cleanup. Its `--self-test` runs real negative
 fixtures with actual child processes (stalled worker, inherited stdout
-holder, launch failure) and, against a real schedule, confirms the derived
+holder, launch failure), plus parent interruption and escaped-output fixtures and, against a real schedule, confirms the derived
 digests match the workers' output. Offline this proves per-process integrity
 and clean teardown with no shared state; contention for one real decoder is
 the hardware gate.
@@ -129,6 +121,8 @@ than silently accepted.
 
 ## Offline results
 
+Historical contributor results on `94cffec` (superseded by maintainer integration
+validation for the final source; these counts do not describe the integrated suite).
 Recorded from the validation runs of this work (Ubuntu 24.04.5 LTS, aarch64,
 GCC 13.3.0, meson 1.3.2, ninja 1.11.1, libva 1.20.0, libdrm 2.4.125,
 `-Db_sanitize=address,undefined`; commands and raw output retained in the
@@ -143,9 +137,8 @@ evidence log):
   `concurrent-processes-1/2/4` and `concurrent-tsan` (which ran, not skipped).
   The `threads` and `failure` schedules verify **12/12 frames per stream in
   every repetition**; the `teardown` victims verify **exactly 6/12**
-  (the forced midpoint), byte-exact in every case. The recorded maximum of
-  simultaneously in-flight public entrypoints reached 8 (4 decoders + 4
-  readers) on the 4-stream schedules. Flakiness check: 10 consecutive full
+  (the forced midpoint), byte-exact in every case. The earlier reported overlap
+  maximum is withdrawn because it counted a pre-call barrier. Flakiness check: 10 consecutive full
   runs each of `failure 4 12 10` and `teardown 4 12 10` (100 repetitions per
   schedule) with zero failures; the reviewer's two deterministic mutation
   windows (destroy between BeginPicture and buffer creation; a late-arriving
@@ -195,3 +188,12 @@ offline-equivalent steps for a device owner:
   other offline cases and the hardware matrix.
 * TSan coverage depends on the runtime being permitted in the environment;
   the skip is loud (exit 77 with the reason), never silent.
+
+## Maintainer integration
+
+Process cleanup, exact teardown status and TSan startup classification were fixed
+in the maintainer integration. Unknown TSan failures now fail; only enumerated
+startup incompatibilities skip. Compiler commands with arguments are parsed as an
+argument vector and used consistently for probe and build. Hermetic regressions
+exercise startup classification and actual cancellation/cleanup. #36 stays open for
+instrumented in-driver overlap, the real VA-API worker, and guarded hardware runs.
