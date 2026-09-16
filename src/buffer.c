@@ -41,11 +41,16 @@ VAStatus v4l2r_CreateBuffer(VADriverContextP va_ctx, VAContextID context_id,
 		return VA_STATUS_ERROR_UNSUPPORTED_BUFFERTYPE;
 	}
 
-	(void)context_id;
-
 	pthread_mutex_lock(&drv->mutex);
+	/* Image storage is allocated internally, independently of a context. */
+	if (type != VAImageBufferType && !V4L2R_CONTEXT(drv, context_id)) {
+		pthread_mutex_unlock(&drv->mutex);
+		return VA_STATUS_ERROR_INVALID_CONTEXT;
+	}
 	id = v4l2r_handles_alloc(&drv->buffers, sizeof(*buffer));
 	buffer = V4L2R_BUFFER(drv, id);
+	if (buffer)
+		buffer->context_id = type == VAImageBufferType ? VA_INVALID_ID : context_id;
 	pthread_mutex_unlock(&drv->mutex);
 	if (!buffer)
 		return VA_STATUS_ERROR_ALLOCATION_FAILED;
@@ -79,7 +84,7 @@ VAStatus v4l2r_BufferSetNumElements(VADriverContextP va_ctx, VABufferID buf_id,
 	if (!buffer)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 
-	if (buffer->derived)
+	if (buffer->derived || buffer->image_owned)
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	/* realloc(ptr, 0) may free ptr and return NULL; retaining it would
 	 * leave MapBuffer/DestroyBuffer using an already-freed allocation. */
@@ -133,7 +138,7 @@ VAStatus v4l2r_DestroyBuffer(VADriverContextP va_ctx, VABufferID buf_id)
 
 	pthread_mutex_lock(&drv->mutex);
 	buffer = V4L2R_BUFFER(drv, buf_id);
-	if (!buffer) {
+	if (!buffer || buffer->image_owned) {
 		pthread_mutex_unlock(&drv->mutex);
 		return VA_STATUS_ERROR_INVALID_BUFFER;
 	}

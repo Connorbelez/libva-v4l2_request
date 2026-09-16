@@ -1199,10 +1199,20 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	enum v4l2_buf_type type;
 	unsigned int iter = 0;
 	struct v4l2r_surface *surface;
+	struct v4l2r_surface *abandoned;
 
 	ctx = V4L2R_CONTEXT_GET(drv, context_id);
 	if (!ctx)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
+
+	/* A missing EndPicture cannot leave a successful frame behind or
+	 * submit an incomplete held-back picture during teardown. */
+	abandoned = ctx->in_picture ? ctx->pic.target : NULL;
+	if (abandoned) {
+		abandoned->decode_status = ctx->picture_status != VA_STATUS_SUCCESS ?
+			ctx->picture_status : VA_STATUS_ERROR_OPERATION_FAILED;
+		abandoned->status = VASurfaceReady;
+	}
 
 	/* Finish the last frames before STREAMOFF cancels the queue. The VA
 	 * surfaces may still be downloaded after this context goes away. Keep
@@ -1211,7 +1221,7 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	if (ctx->streaming) {
 		for (unsigned int i = 0; i < ctx->nb_captures; i++) {
 			surface = ctx->captures[i].surface;
-			if (surface) {
+			if (surface && surface != abandoned) {
 				VAStatus status = v4l2r_flush_surface(surface);
 				if (status != VA_STATUS_SUCCESS)
 					surface->decode_status = status;
@@ -1269,6 +1279,14 @@ VAStatus v4l2r_DestroyContext(VADriverContextP va_ctx, VAContextID context_id)
 	pthread_mutex_destroy(&ctx->mutex);
 
 	pthread_mutex_lock(&drv->mutex);
+	/* Client-owned buffers remain mappable/destroyable, but can never be
+	 * submitted through a later context which reuses this numeric ID. */
+	struct v4l2r_buffer *buffer;
+	iter = 0;
+	while ((buffer = v4l2r_handles_next(&drv->buffers, &iter, NULL))) {
+		if (buffer->context_id == context_id)
+			buffer->context_id = VA_INVALID_ID;
+	}
 	v4l2r_handles_free(&drv->contexts, context_id);
 	pthread_mutex_unlock(&drv->mutex);
 
@@ -1361,9 +1379,9 @@ VAStatus v4l2r_RenderPicture(VADriverContextP va_ctx, VAContextID context_id,
 		struct v4l2r_buffer *buffer;
 
 		buffer = V4L2R_BUFFER_GET(drv, buffers[i]);
-		if (!buffer) {
+		if (!buffer || buffer->context_id != context_id) {
 			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_DEBUG, V4L2R_DIAG_CLIENT,
-				   "render-picture", 0, "invalid buffer 0x%08x",
+				   "render-picture", 0, "invalid or foreign buffer 0x%08x",
 				   buffers[i]);
 			ctx->picture_status = VA_STATUS_ERROR_INVALID_BUFFER;
 			return ctx->picture_status;

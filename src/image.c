@@ -127,6 +127,7 @@ VAStatus v4l2r_CreateImage(VADriverContextP va_ctx, VAImageFormat *format,
 
 	image->buf = buffer_id;
 	image_object->image = *image;
+	V4L2R_BUFFER_GET(drv, buffer_id)->image_owned = true;
 
 	return VA_STATUS_SUCCESS;
 
@@ -221,6 +222,7 @@ VAStatus v4l2r_DeriveImage(VADriverContextP va_ctx, VASurfaceID surface_id,
 	}
 
 	buffer->type = VAImageBufferType;
+	buffer->context_id = VA_INVALID_ID;
 	buffer->element_size = image->data_size;
 	buffer->nb_elements = 1;
 	/* Own the mapping independently of the context and surface mappings. */
@@ -234,6 +236,7 @@ VAStatus v4l2r_DeriveImage(VADriverContextP va_ctx, VASurfaceID surface_id,
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 	}
 	buffer->derived = true;
+	buffer->image_owned = true;
 
 	image->buf = buffer_id;
 	image_object->image = *image;
@@ -254,6 +257,12 @@ VAStatus v4l2r_DestroyImage(VADriverContextP va_ctx, VAImageID image_id)
 		return VA_STATUS_ERROR_INVALID_IMAGE;
 	}
 	buffer_id = image_object->image.buf;
+	/* The image, rather than the caller of DestroyBuffer, owns this ID.
+	 * Releasing that ownership here prevents an image retaining an ID
+	 * that could otherwise be recycled for an unrelated parameter buffer. */
+	struct v4l2r_buffer *buffer = V4L2R_BUFFER(drv, buffer_id);
+	if (buffer)
+		buffer->image_owned = false;
 	v4l2r_handles_free(&drv->images, image_id);
 	pthread_mutex_unlock(&drv->mutex);
 
