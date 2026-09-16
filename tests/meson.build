@@ -1,3 +1,18 @@
+failure_cleanup = executable('failure-cleanup', 'failure-cleanup.c', driver_sources,
+  c_args: ['-UNDEBUG'],
+  include_directories: [root_inc, include_directories('../src')],
+  dependencies: [libva_dep, libdrm_dep, threads_dep],
+  link_args: ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll', '-Wl,--wrap=__poll_chk',
+              '-Wl,--wrap=open', '-Wl,--wrap=close', '-Wl,--wrap=dup',
+              '-Wl,--wrap=fcntl', '-Wl,--wrap=mmap', '-Wl,--wrap=munmap',
+              '-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=realloc', '-Wl,--wrap=free',
+              '-Wl,--wrap=open64', '-Wl,--wrap=__open_2', '-Wl,--wrap=__open64_2',
+              '-Wl,--wrap=fcntl64', '-Wl,--wrap=mmap64'])
+foreach case : ['control', 'capture-queue', 'request-queue', 'dequeue-error', 'poll-interrupted',
+                'converter-error-flag', 'converter-source-error', 'converter-export-error']
+  test('failure-' + case, failure_cleanup, args: [case], timeout: 15)
+endforeach
+
 regression = executable('regression', 'regression.c', driver_sources,
   c_args: ['-UNDEBUG'],
   include_directories: [root_inc, include_directories('../src')],
