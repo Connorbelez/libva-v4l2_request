@@ -12,6 +12,12 @@ driver patches, use [omarchy-m1-video](https://github.com/iconidentify/omarchy-m
 
 The original documentation is in [README](README).
 
+## Development roadmap
+
+See the [roadmap and ticket index](docs/ROADMAP.md) for planned codec, reliability,
+client/display and release work across both repositories. Agents and contributors should
+read the [claim and execution workflow](docs/AGENT_WORKFLOW.md) before taking a ticket.
+
 ## Upstream and credits
 
 - **libva-v4l2_request** by Ondřej Jirman (megi): the driver this all builds on.
