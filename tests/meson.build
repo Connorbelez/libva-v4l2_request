@@ -3,12 +3,17 @@ regression = executable('regression', 'regression.c', driver_sources,
   include_directories: [root_inc, include_directories('../src')],
   dependencies: [libva_dep, libdrm_dep, threads_dep],
   link_args: ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll', '-Wl,--wrap=__poll_chk'])
-foreach case : ['decode-error', 'submission-error', 'export-error', 'reuse-timeout', 'reader-timeout',
-                'refwait-timeout', 'export-timeout', 'flush-error',
-                'image-dimensions', 'odd-image-copy', 'image-bounds', 'buffer-zero',
-                'context-lifetime', 'context-error', 'context-timeout',
-                'output-grown', 'request-timeout',
-                'bitstream-overflow', 'derive-bounds', 'invalid-poll']
+regression_cases = ['decode-error', 'submission-error', 'export-error', 'reuse-timeout', 'reader-timeout',
+                    'refwait-timeout', 'export-timeout', 'flush-error',
+                    'image-dimensions', 'odd-image-copy', 'buffer-zero',
+                    'context-lifetime', 'context-error', 'context-timeout',
+                    'output-grown', 'request-timeout',
+                    'bitstream-overflow', 'derive-bounds', 'invalid-poll']
+# image-bounds needs the P010 capture format from Linux 6.0 UAPI headers.
+if conf.get('HAVE_V4L2_PIX_FMT_P010') == 1
+  regression_cases += 'image-bounds'
+endif
+foreach case : regression_cases
   test(case, regression, args: [case], timeout: 10)
 endforeach
 
@@ -56,6 +61,15 @@ foreach case : ['render-errors', 'begin-errors', 'target-lifetime', 'reference-o
   test('picture-' + case, picture, args: [case], timeout: 10)
 endforeach
 
+if conf.get('HAVE_V4L2_PIX_FMT_P010') == 1 and (conf.get('HAVE_V4L2_CTRL_H264') == 1 or conf.get('HAVE_V4L2_CTRL_HEVC') == 1)
+  surface_probe = executable('surface-probe', 'surface-probe.c', driver_sources,
+    c_args: ['-UNDEBUG'],
+    include_directories: [root_inc, include_directories('../src')],
+    dependencies: [libva_dep, libdrm_dep, threads_dep],
+    link_args: ['-Wl,--wrap=ioctl'])
+  test('surface-probe', surface_probe, timeout: 10)
+endif
+
 python3 = find_program('python3')
 test('support-matrix', python3, args: files('support-matrix.py'), timeout: 30)
 test('corpus-manifest', python3, args: [files('corpus.py'), 'self-test'], timeout: 60)
@@ -65,3 +79,9 @@ test('hwguard', python3, args: [files('hwguard.py'), '--self-test'], timeout: 60
 test('rps-e-research', python3, args: files('rps-e-research.py'), timeout: 15)
 test('hevc-concurrent', python3, args: [files('hevc-concurrent.py'), '--self-test'], timeout: 15)
 test('hevc-concurrency-research', python3, args: files('hevc-concurrency-research.py'), timeout: 15)
+
+# Offline fixtures and wiring audit for the CI aggregate gate.  The audit
+# checks the actual .github/workflows/checks.yml, so every environment this
+# suite runs in revalidates the required-check wiring.
+test('ci-aggregate-fixtures', python3, args: [files('ci_check.py'), 'fixtures'], timeout: 30)
+test('ci-workflow-audit', python3, args: [files('ci_check.py'), 'audit', '--workflow', workflow_yml], timeout: 15)

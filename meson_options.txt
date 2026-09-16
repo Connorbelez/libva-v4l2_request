@@ -1,2 +1,17 @@
 option('driverdir', type: 'string', value: '',
        description: 'libva driver installation directory (defaults to the libva pkg-config driverdir)')
+
+# Each stateless codec can be auto-detected from the kernel UAPI (default),
+# forced on (fails configuration when the UAPI is absent) or compiled out.
+option('codec_h264', type: 'feature', value: 'auto',
+       description: 'H.264 (AVC) stateless decoding (Linux UAPI >= 5.11)')
+option('codec_hevc', type: 'feature', value: 'auto',
+       description: 'HEVC stateless decoding (Linux UAPI >= 6.0)')
+option('codec_mpeg2', type: 'feature', value: 'auto',
+       description: 'MPEG-2 stateless decoding (Linux UAPI >= 5.14)')
+option('codec_vp8', type: 'feature', value: 'auto',
+       description: 'VP8 stateless decoding (Linux UAPI >= 5.13)')
+option('codec_vp9', type: 'feature', value: 'auto',
+       description: 'VP9 stateless decoding (Linux UAPI >= 5.17)')
+option('codec_av1', type: 'feature', value: 'auto',
+       description: 'AV1 stateless decoding (Linux UAPI >= 6.5)')

@@ -2,25 +2,291 @@ name: Checks
 on: [push, pull_request]
 permissions:
   contents: read
+
+# Offline validation only: every job runs on GitHub-hosted runners, uses the
+# fake-device software suite and never opens a decoder. The aggregate
+# 'userspace' job at the bottom is the stable required check; it evaluates
+# the needs context of every child job above it and passes only when each
+# one ran and succeeded. tests/ci_check.py (also run as the ci-aggregate-
+# fixtures and ci-workflow-audit Meson tests) is the single source of truth
+# for that evaluation and for the wiring invariants of this file.
 jobs:
-  userspace:
+  build-test:
+    name: build-test ${{ matrix.cc }} ${{ matrix.arch }} (current dependencies)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cc: gcc
+            arch: x86_64
+            os: ubuntu-latest
+          - cc: clang
+            arch: x86_64
+            os: ubuntu-latest
+          - cc: gcc
+            arch: aarch64
+            os: ubuntu-24.04-arm
+          - cc: clang
+            arch: aarch64
+            os: ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install build and test dependencies
+        run: >
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          meson ninja-build libva-dev libdrm-dev ffmpeg libavformat-dev
+          libavcodec-dev libavutil-dev libswscale-dev
+      - name: Record toolchain and dependency provenance
+        run: |
+          uname -a
+          $CC --version | head -1
+          echo "meson $(meson --version), ninja $(ninja --version)"
+          pkg-config --modversion libva libdrm
+          grep -E 'define VA_(MAJOR|MINOR)_VERSION' /usr/include/va/va_version.h
+          dpkg-query -W -f='${Package} ${Version}\n' linux-libc-dev libva-dev libdrm-dev ffmpeg
+      - name: Build with sanitizers and run the offline suite
+        run: |
+          meson setup build -Db_sanitize=address,undefined
+          meson test -C build --print-errorlogs
+      - name: Software frame and shared-context checks
+        run: |
+          sh tests/frame-check.sh
+          sh tests/shared-contexts.sh
+
+  deps-oldest:
+    name: oldest verified dependencies (libva 2.14, kernel UAPI 5.15)
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04@sha256:829f6df217bcbae2b371026e81711d1a787c61b2967ad09d015063663ebafbf7
+    steps:
+      - name: Install git and build dependencies
+        # Container package installs must never prompt; see the tzdata note
+        # on the uapi-minimal job below.
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: >
+          apt-get update && apt-get install -y --no-install-recommends git ca-certificates meson
+          ninja-build libva-dev libdrm-dev ffmpeg libavformat-dev
+          libavcodec-dev libavutil-dev libswscale-dev pkg-config build-essential
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Record toolchain and dependency provenance
+        run: |
+          uname -a
+          cc --version | head -1
+          echo "meson $(meson --version), ninja $(ninja --version)"
+          pkg-config --modversion libva libdrm
+          grep -E 'define VA_(MAJOR|MINOR)_VERSION' /usr/include/va/va_version.h
+          dpkg-query -W -f='${Package} ${Version}\n' linux-libc-dev libva-dev libdrm-dev ffmpeg
+      - name: Build with sanitizers and run the offline suite (codec subset auto-detected from 5.15 UAPI)
+        run: |
+          meson setup build -Db_sanitize=address,undefined
+          meson test -C build --print-errorlogs
+      - name: Verify the auto-detected codec test set (h264 and mpeg2 and vp8 only)
+        run: |
+          tests="$(meson test -C build --list)"
+          echo "$tests"
+          printf '%s\n' "$tests" | grep -q '^h264-profile$' || {
+            echo 'ERROR: h264 tests missing despite 5.11 UAPI headers' >&2
+            exit 1
+          }
+          if printf '%s\n' "$tests" | grep -q '^hevc-parser$'; then
+            echo 'ERROR: hevc-parser registered despite missing 6.0 UAPI' >&2
+            exit 1
+          fi
+          if printf '%s\n' "$tests" | grep -q '^vp9-malformed$'; then
+            echo 'ERROR: vp9 tests registered despite missing 5.17 UAPI' >&2
+            exit 1
+          fi
+      - name: Software frame and shared-context checks
+        run: |
+          sh tests/frame-check.sh
+          sh tests/shared-contexts.sh
+
+  uapi-minimal:
+    name: oldest kernel UAPI (5.4 headers, all stateless codecs compiled out)
+    runs-on: ubuntu-latest
+    container: ubuntu:20.04@sha256:8feb4d8ca5354def3d8fce243717141ce31e2c428701f6682bd2fafe15388214
+    steps:
+      - name: Install git and build dependencies
+        # The pinned 20.04 base image ships without tzdata, and the archive's
+        # current tzdata postinst prompts for a timezone, which would hang this
+        # container job; keep every debconf prompt noninteractive.
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: >
+          apt-get update && apt-get install -y --no-install-recommends git ca-certificates meson
+          ninja-build libva-dev libdrm-dev ffmpeg libavformat-dev
+          libavcodec-dev libavutil-dev libswscale-dev pkg-config build-essential
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Record toolchain and dependency provenance
+        run: |
+          uname -a
+          cc --version | head -1
+          echo "meson $(meson --version), ninja $(ninja --version)"
+          pkg-config --modversion libva libdrm
+          grep -E 'define VA_(MAJOR|MINOR)_VERSION' /usr/include/va/va_version.h
+          dpkg-query -W -f='${Package} ${Version}\n' linux-libc-dev libva-dev libdrm-dev ffmpeg
+      - name: Build with sanitizers and run the offline suite (no codec UAPI available)
+        run: |
+          meson setup build -Db_sanitize=address,undefined
+          meson test -C build --print-errorlogs
+      - name: Verify the auto-detected codec test set (no stateless codec UAPI)
+        run: |
+          tests="$(meson test -C build --list)"
+          echo "$tests"
+          for absent in hevc-parser vp9-malformed h264-incomplete h264-parser h264-profile image-bounds; do
+            if printf '%s\n' "$tests" | grep -q "^$absent\$"; then
+              echo "ERROR: codec-gated test '$absent' registered without its UAPI" >&2
+              exit 1
+            fi
+          done
+          for present in decode-error picture-render-errors support-matrix ci-aggregate-fixtures ci-workflow-audit; do
+            printf '%s\n' "$tests" | grep -q "^$present\$" || {
+              echo "ERROR: expected core test '$present' missing" >&2
+              exit 1
+            }
+          done
+      - name: Software frame check (FFmpeg 4.2)
+        # shared-contexts.sh stays on the newer tiers: its 10-bit VP9 test
+        # vector needs an FFmpeg whose libvpx-vp9 encoder wrapper accepts
+        # yuv420p10le (>= 4.3), and this tier's 4.2 cannot encode it.
+        run: sh tests/frame-check.sh
+
+  configure-reject:
+    name: configure-time codec option diagnostics (kernel UAPI 5.15)
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04@sha256:829f6df217bcbae2b371026e81711d1a787c61b2967ad09d015063663ebafbf7
+    steps:
+      - name: Install git and build dependencies
+        # Same noninteractive debconf rule as every other container install.
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: >
+          apt-get update && apt-get install -y --no-install-recommends git ca-certificates meson
+          ninja-build libva-dev libdrm-dev pkg-config build-essential
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: An enabled codec without its UAPI must fail configuration with the control named
+        run: |
+          if meson setup /tmp/reject -Dcodec_hevc=enabled >/tmp/reject.log 2>&1; then
+            echo 'ERROR: -Dcodec_hevc=enabled unexpectedly configured against 5.15 UAPI headers' >&2
+            cat /tmp/reject.log
+            exit 1
+          fi
+          cat /tmp/reject.log
+          grep -q 'V4L2_CID_STATELESS_HEVC_SPS' /tmp/reject.log
+          grep -q 'Linux 6.0' /tmp/reject.log
+          grep -q 'codec_hevc' /tmp/reject.log
+          echo 'Configure-time rejection diagnostic verified.'
+      - name: An explicitly enabled available codec must configure
+        run: meson setup /tmp/accept -Dcodec_h264=enabled
+
+  codec-options:
+    name: codec feature options (all disabled and mixed)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y meson ninja-build libva-dev libdrm-dev ffmpeg libavformat-dev libavcodec-dev libavutil-dev libswscale-dev
-      - run: meson setup build -Db_sanitize=address,undefined
-      - run: meson test -C build --print-errorlogs
-      - run: sh -x tests/frame-check.sh
-      - run: sh -x tests/shared-contexts.sh
-  # Acquisition and provenance of the codec regression inputs. Kept separate from the
-  # codec/build matrix work tracked in #18: this job fetches only the bounded smoke
-  # subset, never opens a decoder and never touches a hardware device.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install build dependencies
+        run: >
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          meson ninja-build libva-dev libdrm-dev pkg-config build-essential
+      - name: All codecs disabled build, reduced test set and expected codec test absence
+        run: |
+          meson setup build-off \
+            -Dcodec_h264=disabled -Dcodec_hevc=disabled -Dcodec_mpeg2=disabled \
+            -Dcodec_vp8=disabled -Dcodec_vp9=disabled -Dcodec_av1=disabled
+          meson compile -C build-off
+          meson test -C build-off --print-errorlogs
+          tests="$(meson test -C build-off --list)"
+          echo "$tests"
+          for absent in hevc-parser vp9-malformed vp9-state vp9-parser vp9-references \
+                        h264-incomplete h264-slice-count h264-references h264-parser h264-profile; do
+            if printf '%s\n' "$tests" | grep -q "^$absent\$"; then
+              echo "ERROR: codec-gated test '$absent' still registered with the codec disabled" >&2
+              exit 1
+            fi
+          done
+          for present in decode-error image-bounds picture-render-errors support-matrix \
+                          ci-aggregate-fixtures ci-workflow-audit; do
+            printf '%s\n' "$tests" | grep -q "^$present\$" || {
+              echo "ERROR: expected test '$present' missing from the all-disabled configuration" >&2
+              exit 1
+            }
+          done
+      - name: Mixed options build with the enabled codec's tests and no disabled codec tests
+        run: |
+          meson setup build-mixed -Dcodec_hevc=enabled -Dcodec_vp9=disabled
+          meson compile -C build-mixed
+          meson test -C build-mixed --print-errorlogs
+          tests="$(meson test -C build-mixed --list)"
+          echo "$tests"
+          printf '%s\n' "$tests" | grep -q '^hevc-parser$' || {
+            echo 'ERROR: hevc-parser missing with -Dcodec_hevc=enabled' >&2
+            exit 1
+          }
+          if printf '%s\n' "$tests" | grep -q '^vp9-malformed$'; then
+            echo 'ERROR: vp9-malformed still registered with -Dcodec_vp9=disabled' >&2
+            exit 1
+          fi
+
+  static-analysis:
+    name: bounded static analysis and warning-free builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Install build and analysis dependencies
+        run: >
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          meson ninja-build libva-dev libdrm-dev pkg-config build-essential
+          cppcheck clang
+      - name: Build with warnings as errors (both compilers)
+        run: |
+          CC=gcc meson setup build-werror-gcc -Dwerror=true
+          meson compile -C build-werror-gcc
+          CC=clang meson setup build-werror-clang -Dwerror=true
+          meson compile -C build-werror-clang
+      - name: cppcheck on the driver sources
+        # Warning level over the driver target's translation units only: the
+        # offline suite is a deliberate assert-driven harness (assert() with
+        # side effects under -UNDEBUG), and the pre-existing style-level
+        # suggestions across the parser suite (const-parameter, shadowing)
+        # need a dedicated cleanup rather than a blanket disable here.  The
+        # database is filtered because cppcheck's -i does not reliably
+        # exclude the test entries of a meson compile db.
+        run: |
+          meson setup build-sa
+          meson compile -C build-sa
+          python3 - <<'PY'
+          import json, re
+          def under_tests(path):
+              path = path.replace('\\', '/')
+              return path.startswith('tests/') or '/tests/' in path
+          db = json.load(open('build-sa/compile_commands.json'))
+          keep = []
+          for entry in db:
+              obj = re.search(r'(?:^|\s)-o\s+(\S+)', entry['command'])
+              if under_tests(entry['file']) or (obj and under_tests(obj.group(1))):
+                  continue
+              keep.append(entry)
+          files = [entry['file'] for entry in keep]
+          if not keep:
+              raise SystemExit('compile database filter kept no translation units')
+          if len(files) != len(set(files)):
+              raise SystemExit('compile database filter kept duplicate translation units')
+          json.dump(keep, open('build-sa/compile_commands_src.json', 'w'))
+          print('cppcheck scope: %d driver translation units' % len(keep))
+          PY
+          cppcheck --project=build-sa/compile_commands_src.json \
+            --enable=warning --inline-suppr --suppress=missingIncludeSystem \
+            --error-exitcode=1 -j 2
+
   corpus:
     runs-on: ubuntu-latest
     env:
       FLUSTER_COMMIT: f3ad284a9e6cac70dc01b02e0de71c2994181d34
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Fetch the pinned Fluster suite definitions
         run: |
           git init "$RUNNER_TEMP/fluster"
@@ -30,7 +296,7 @@ jobs:
       - name: Hermetic manifest self-test
         run: python3 tests/corpus.py self-test
       - name: Restore the smoke corpus cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ~/.cache/libva-corpus
           key: corpus-smoke-${{ hashFiles('tests/corpus/manifest.json') }}
@@ -40,3 +306,14 @@ jobs:
         run: |
           python3 tests/corpus.py fetch --fluster "$RUNNER_TEMP/fluster" --cache ~/.cache/libva-corpus --smoke
           python3 tests/corpus.py verify --fluster "$RUNNER_TEMP/fluster" --cache ~/.cache/libva-corpus --require smoke
+
+  userspace:
+    needs: [build-test, deps-oldest, uapi-minimal, configure-reject, codec-options, static-analysis, corpus]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Evaluate the required offline checks
+        run: >
+          python3 tests/ci_check.py check --workflow .github/workflows/checks.yml
+          --needs-json '${{ toJSON(needs) }}'

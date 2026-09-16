@@ -101,12 +101,18 @@ const struct v4l2r_codec **v4l2r_codec_list(unsigned int *count)
 
 const struct v4l2r_codec *v4l2r_codec_for_profile(VAProfile profile)
 {
+	/* Empty when no codec UAPI is available; the guard also keeps GCC from
+	 * warning about the loop's always-false bound in that configuration. */
+#if HAVE_V4L2R_CODECS
 	for (unsigned int i = 0; i < sizeof(codecs) / sizeof(codecs[0]); i++) {
 		for (unsigned int j = 0; j < codecs[i]->nb_profiles; j++) {
 			if (codecs[i]->profiles[j] == profile)
 				return codecs[i];
 		}
 	}
+#else
+	(void)profile;
+#endif
 
 	return NULL;
 }
@@ -257,9 +263,9 @@ static int devnode_from_devnum(uint32_t major, uint32_t minor, char *path,
  * size exceeds the current OUTPUT format — so the SPS is sized to the dimensions
  * the device just accepted for the coded format.
  */
+#if HAVE_V4L2_CTRL_HEVC
 static bool video_device_probe_hevc_10bit(int fd, uint32_t output_type)
 {
-#if HAVE_V4L2_CTRL_HEVC
 	bool mplane = V4L2_TYPE_IS_MULTIPLANAR(output_type);
 	struct v4l2_format format = { .type = output_type };
 	struct v4l2_ctrl_hevc_sps sps = {
@@ -306,12 +312,8 @@ static bool video_device_probe_hevc_10bit(int fd, uint32_t output_type)
 	}
 
 	return ioctl(fd, VIDIOC_S_EXT_CTRLS, &controls) == 0;
-#else
-	(void)fd;
-	(void)output_type;
-	return false;
-#endif
 }
+#endif
 
 bool v4l2r_probe_h264_10bit(int fd, uint32_t output_type)
 {
@@ -427,12 +429,16 @@ static bool video_device_is_request_decoder(const char *path,
 	decoder->hevc_10bit = false;
 	decoder->h264_10bit = false;
 	for (unsigned int i = 0; i < decoder->nb_pixelformats; i++) {
+#if HAVE_V4L2_CTRL_HEVC
 		if (decoder->pixelformats[i] == V4L2_PIX_FMT_HEVC_SLICE) {
 			decoder->hevc_10bit =
 				video_device_probe_hevc_10bit(fd, output_type);
 		}
+#endif
+#if HAVE_V4L2_CTRL_H264
 		if (decoder->pixelformats[i] == V4L2_PIX_FMT_H264_SLICE)
 			decoder->h264_10bit = v4l2r_probe_h264_10bit(fd, output_type);
+#endif
 	}
 
 	close(fd);
@@ -711,11 +717,16 @@ VAStatus v4l2r_QueryConfigProfiles(VADriverContextP va_ctx, VAProfile *profiles,
 				   int *num_profiles)
 {
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
-	unsigned int nb_codecs;
-	const struct v4l2r_codec **list = v4l2r_codec_list(&nb_codecs);
 	int count = 0;
 
 	pthread_mutex_lock(&drv->mutex);
+
+	/* Guarded like v4l2r_codec_for_profile: the table is empty without
+	 * codec UAPI, and GCC 9 also warns about subscripts into a
+	 * zero-length array. */
+#if HAVE_V4L2R_CODECS
+	unsigned int nb_codecs;
+	const struct v4l2r_codec **list = v4l2r_codec_list(&nb_codecs);
 
 	for (unsigned int i = 0; i < nb_codecs; i++) {
 		if (!driver_supports_pixelformat(drv, list[i]->pixelformat))
@@ -728,6 +739,7 @@ VAStatus v4l2r_QueryConfigProfiles(VADriverContextP va_ctx, VAProfile *profiles,
 				profiles[count++] = list[i]->profiles[j];
 		}
 	}
+#endif
 
 	/* Video processing. Listed unconditionally so plain decode clients
 	 * enumerating profiles never trigger the converter device scan; the
