@@ -51,6 +51,11 @@ static void reference_order(void)
     }
     struct hevc_context codec = {0};
     struct v4l2r_context ctx = {.drv = &drv, .codec_priv = &codec, .is_avd = true};
+    ctx.nb_captures = 4;
+    for (unsigned int i = 0; i < 4; i++) {
+        V4L2R_SURFACE(&drv, ids[i])->ctx = &ctx;
+        ctx.captures[i].surface = V4L2R_SURFACE(&drv, ids[i]);
+    }
     VAPictureParameterBufferHEVC *pic = &codec.va_pic;
     for (unsigned int i = 0; i < 15; i++)
         pic->ReferenceFrames[i].flags = VA_PICTURE_HEVC_INVALID;

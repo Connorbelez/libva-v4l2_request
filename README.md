@@ -81,6 +81,22 @@ submission. Missing reference storage, including references from an older decode
 is rejected before hardware submission. Four VP9 cases bring the sanitizer suite to 29 cases,
 including 24,000 additional deterministic parser inputs.
 
+Version `1.3.r11` protects the shared picture lifecycle and reference lookup:
+
+- Reserve fresh targets at BeginPicture and reject destruction while a picture still uses them;
+  a malformed API sequence previously left EndPicture with a freed target pointer.
+- Keep the first RenderPicture failure through EndPicture, prevent nested BeginPicture calls
+  from replacing staged work, and clean up after a failed codec begin.
+- Preserve a failed submission when an earlier slice finishes; a successful new submission
+  resets the status on surface reuse.
+- Resolve reference timestamps only for valid buffers owned by the requesting decoder context.
+  Missing, detached, mismatched and known-failed references cannot alias another context's buffer.
+- Validate context arguments and treat render-target lists as hints without changing ownership.
+
+Six new offline cases bring the sanitizer suite to 35 cases. The lifetime bug is reproduced
+under ASan using an intercepted codec; it is an API misuse reproduction, not a demonstrated
+malicious-video exploit. Full VP9 inter-frame resize support still needs kernel-side work.
+
 Tested on an M1 (T8103) with the kernel patches from omarchy-m1-video: `JCT-VC-HEVC_V1` 144/147 and
 `JVT-AVC_V1` 73/135 bit-exact through FFmpeg VA-API. Earlier Chrome 152 H.264 playback tests
 matched software rendering; this revision adds direct early-export pixel regressions.
@@ -146,7 +162,7 @@ This is a client compatibility setting, not a change to the VA-API or V4L2 param
 
 See [tests/README.md](tests/README.md) for the offline sanitizer suite and guarded hardware
 checks. `vainfo --display drm` identifies this build as
-`v4l2-request (omarchy-m1-video 1.3.r10)`.
+`v4l2-request (omarchy-m1-video 1.3.r11)`.
 
 ## License
 

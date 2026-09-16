@@ -3,7 +3,7 @@ regression = executable('regression', 'regression.c', driver_sources,
   include_directories: [root_inc, include_directories('../src')],
   dependencies: [libva_dep, libdrm_dep, threads_dep],
   link_args: ['-Wl,--wrap=ioctl', '-Wl,--wrap=poll', '-Wl,--wrap=__poll_chk'])
-foreach case : ['decode-error', 'export-error', 'reuse-timeout', 'reader-timeout',
+foreach case : ['decode-error', 'submission-error', 'export-error', 'reuse-timeout', 'reader-timeout',
                 'refwait-timeout', 'export-timeout', 'flush-error',
                 'image-dimensions', 'odd-image-copy', 'image-bounds', 'buffer-zero',
                 'context-lifetime', 'context-error', 'context-timeout',
@@ -47,3 +47,11 @@ if conf.get('HAVE_V4L2_CTRL_H264') == 1
     test(case, check, timeout: 30)
   endforeach
 endif
+
+picture = executable('picture', 'picture.c', driver_sources,
+  c_args: ['-UNDEBUG'],
+  include_directories: [root_inc, include_directories('../src')],
+  dependencies: [libva_dep, libdrm_dep, threads_dep])
+foreach case : ['render-errors', 'begin-errors', 'target-lifetime', 'reference-owner', 'context-parameters']
+  test('picture-' + case, picture, args: [case], timeout: 10)
+endforeach

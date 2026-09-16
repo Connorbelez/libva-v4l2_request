@@ -26,18 +26,23 @@
 /* Room kept at the tail of the OUTPUT buffer, zeroed before submission. */
 #define V4L2R_BITSTREAM_PADDING	64
 
-uint64_t v4l2r_surface_timestamp(struct v4l2r_driver *drv, VASurfaceID id)
+uint64_t v4l2r_surface_timestamp(struct v4l2r_context *ctx, VASurfaceID id)
 {
-	struct v4l2r_surface *surface = V4L2R_SURFACE_GET(drv, id);
+	struct v4l2r_surface *surface = V4L2R_SURFACE_GET(ctx->drv, id);
 
-	if (!surface || surface->capture_index < 0)
+	/* Buffer indices and their timestamps are local to a decoder context.
+	 * Never alias another context's buffer, or revive detached/failed data. */
+	if (!surface || surface->ctx != ctx || surface->capture_index < 0 ||
+	    surface->capture_index >= V4L2R_MAX_CAPTURE_BUFFERS ||
+	    (unsigned int)surface->capture_index >= ctx->nb_captures ||
+	    ctx->captures[surface->capture_index].surface != surface ||
+	    surface->decode_status != VA_STATUS_SUCCESS)
 		return 0;
 
 	/* Remember that the frame currently being assembled references this
 	 * CAPTURE buffer, so its reuse can be gated on that frame completing. */
-	if (surface->ctx && surface->ctx->in_picture &&
-	    surface->capture_index < V4L2R_MAX_CAPTURE_BUFFERS)
-		surface->ctx->pic.ref_mask |=
+	if (ctx->in_picture)
+		ctx->pic.ref_mask |=
 			UINT64_C(1) << surface->capture_index;
 
 	return v4l2r_capture_index_timestamp(surface->capture_index);
@@ -217,8 +222,11 @@ static int dequeue_buffer(struct v4l2r_context *ctx, enum v4l2_buf_type type)
 		if (buffer.index < ctx->nb_captures &&
 		    ctx->captures[buffer.index].surface) {
 			struct v4l2r_surface *surface = ctx->captures[buffer.index].surface;
-			surface->decode_status = (buffer.flags & V4L2_BUF_FLAG_ERROR) ?
-				VA_STATUS_ERROR_DECODING_ERROR : VA_STATUS_SUCCESS;
+			/* EndPicture may already have marked an incomplete submission
+			 * as failed. Completion of an earlier slice cannot clear it.
+			 * A new first-slice submission resets the status on reuse. */
+			if (buffer.flags & V4L2_BUF_FLAG_ERROR)
+				surface->decode_status = VA_STATUS_ERROR_DECODING_ERROR;
 			ctx->captures[buffer.index].surface->status =
 				VASurfaceReady;
 			/* Start the format conversion right away so it

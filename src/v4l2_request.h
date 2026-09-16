@@ -324,6 +324,7 @@ struct v4l2r_context {
 
 	struct v4l2r_picture pic;
 	bool in_picture;
+	VAStatus picture_status;		/* first Render failure, until End */
 
 	/* Format conversion chain (NULL when the CAPTURE format is directly
 	 * consumable); see convert.c. */
@@ -519,9 +520,9 @@ static inline uint64_t v4l2r_capture_index_timestamp(int index)
 	return ((uint64_t)index + 1) * 1000;
 }
 
-/* Timestamp of the CAPTURE buffer a reference surface was decoded into.
- * Returns 0 when the surface is invalid or was never decoded. */
-uint64_t v4l2r_surface_timestamp(struct v4l2r_driver *drv, VASurfaceID id);
+/* Timestamp of a usable reference buffer in this decoder context.
+ * Returns 0 for missing, foreign, detached or known-failed references. */
+uint64_t v4l2r_surface_timestamp(struct v4l2r_context *ctx, VASurfaceID id);
 
 int v4l2r_set_controls(struct v4l2r_context *ctx, int request_fd,
 		       struct v4l2_ext_control *controls, unsigned int count);

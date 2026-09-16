@@ -397,7 +397,7 @@ static void h264_fill_dpb(struct v4l2r_context *ctx,
 			continue;
 
 		entry = &decode->dpb[entries++];
-		entry->reference_ts = v4l2r_surface_timestamp(ctx->drv,
+		entry->reference_ts = v4l2r_surface_timestamp(ctx,
 							      ref->picture_id);
 		entry->pic_num = ref->frame_idx;
 		entry->frame_num = ref->frame_idx;
@@ -431,7 +431,7 @@ static int h264_reference_index(struct v4l2r_context *ctx,
 	if ((ref->flags & VA_PICTURE_H264_INVALID) ||
 	    ref->picture_id == VA_INVALID_SURFACE)
 		return -1;
-	timestamp = v4l2r_surface_timestamp(ctx->drv, ref->picture_id);
+	timestamp = v4l2r_surface_timestamp(ctx, ref->picture_id);
 	if (!timestamp)
 		return -1; /* Two unavailable surfaces must not match each other. */
 

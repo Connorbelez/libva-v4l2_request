@@ -133,12 +133,12 @@ static void mpeg2_fill_picture(struct v4l2r_context *ctx,
 	switch (va_pic->picture_coding_type) {
 	case 3: /* B */
 		codec->picture.backward_ref_ts =
-			v4l2r_surface_timestamp(ctx->drv,
+			v4l2r_surface_timestamp(ctx,
 					va_pic->backward_reference_picture);
 		/* fall-through */
 	case 2: /* P */
 		codec->picture.forward_ref_ts =
-			v4l2r_surface_timestamp(ctx->drv,
+			v4l2r_surface_timestamp(ctx,
 					va_pic->forward_reference_picture);
 	}
 

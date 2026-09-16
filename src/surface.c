@@ -88,6 +88,18 @@ VAStatus v4l2r_DestroySurfaces(VADriverContextP va_ctx, VASurfaceID *surface_lis
 			       int num_surfaces)
 {
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
+	if (num_surfaces < 0 || (num_surfaces && !surface_list))
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+	/* EndPicture still holds the target pointer even before its first
+	 * CAPTURE allocation. Reject the whole list before freeing anything. */
+	for (int i = 0; i < num_surfaces; i++) {
+		struct v4l2r_surface *surface = V4L2R_SURFACE_GET(drv, surface_list[i]);
+		if (!surface)
+			return VA_STATUS_ERROR_INVALID_SURFACE;
+		if (surface->ctx && surface->ctx->in_picture &&
+		    surface->ctx->pic.target == surface)
+			return VA_STATUS_ERROR_SURFACE_BUSY;
+	}
 
 	for (int i = 0; i < num_surfaces; i++) {
 		struct v4l2r_surface *surface;

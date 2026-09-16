@@ -262,6 +262,8 @@ int main(int argc, char **argv)
     assert(ref != VA_INVALID_SURFACE);
     V4L2R_SURFACE(&drv, ref)->ctx = &ctx;
     V4L2R_SURFACE(&drv, ref)->capture_index = 0;
+    ctx.nb_captures = 1;
+    ctx.captures[0].surface = V4L2R_SURFACE(&drv, ref);
     if (!strcmp(argv[1], "malformed")) malformed();
     else if (!strcmp(argv[1], "state")) persistent_state();
     else if (!strcmp(argv[1], "parser")) parser_inputs();

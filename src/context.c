@@ -858,6 +858,16 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 	config = V4L2R_CONFIG_GET(drv, config_id);
 	if (!config)
 		return VA_STATUS_ERROR_INVALID_CONFIG;
+	if (!context_id || num_render_targets < 0 ||
+	    (num_render_targets && !render_targets) ||
+	    (config->codec && (picture_width <= 0 || picture_height <= 0)))
+		return VA_STATUS_ERROR_INVALID_PARAMETER;
+	/* Render targets are a hint, not a transfer of ownership from another
+	 * context. Validate the list before allocating device resources. The
+	 * first successful BeginPicture reserves an unbound surface. */
+	for (int i = 0; i < num_render_targets; i++)
+		if (!V4L2R_SURFACE_GET(drv, render_targets[i]))
+			return VA_STATUS_ERROR_INVALID_SURFACE;
 
 	pthread_mutex_lock(&drv->mutex);
 	id = v4l2r_handles_alloc(&drv->contexts, sizeof(*ctx));
@@ -1022,19 +1032,6 @@ next:
 		}
 	}
 
-	/* Bind the passed render targets up front when given; any other
-	 * surface gets bound on first use. */
-	for (int i = 0; i < num_render_targets; i++) {
-		struct v4l2r_surface *surface;
-
-		surface = V4L2R_SURFACE_GET(drv, render_targets[i]);
-		if (!surface) {
-			status = VA_STATUS_ERROR_INVALID_SURFACE;
-			goto fail;
-		}
-		surface->ctx = ctx;
-	}
-
 	*context_id = id;
 	return VA_STATUS_SUCCESS;
 
@@ -1175,22 +1172,30 @@ VAStatus v4l2r_BeginPicture(VADriverContextP va_ctx, VAContextID context_id,
 
 	if (!ctx)
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
+	if (ctx->in_picture)
+		return VA_STATUS_ERROR_OPERATION_FAILED;
 	if (!surface)
 		return VA_STATUS_ERROR_INVALID_SURFACE;
 	if (surface->ctx && surface->ctx != ctx)
 		return VA_STATUS_ERROR_SURFACE_BUSY;
 
-	if (ctx->vpp)
-		return v4l2r_vpp_begin_picture(ctx, surface);
-
-	status = v4l2r_picture_begin(ctx, surface);
-	if (status != VA_STATUS_SUCCESS)
+	ctx->picture_status = VA_STATUS_SUCCESS;
+	if (ctx->vpp) {
+		status = v4l2r_vpp_begin_picture(ctx, surface);
+	} else {
+		status = v4l2r_picture_begin(ctx, surface);
+		if (status == VA_STATUS_SUCCESS) {
+			ctx->in_picture = true;
+			if (ctx->codec->begin_picture)
+				status = ctx->codec->begin_picture(ctx);
+		}
+	}
+	if (status != VA_STATUS_SUCCESS) {
+		ctx->in_picture = false;
+		ctx->pic = (struct v4l2r_picture){0};
 		return status;
-
-	ctx->in_picture = true;
-
-	if (ctx->codec->begin_picture)
-		return ctx->codec->begin_picture(ctx);
+	}
+	surface->ctx = ctx;
 
 	return VA_STATUS_SUCCESS;
 }
@@ -1207,18 +1212,28 @@ VAStatus v4l2r_RenderPicture(VADriverContextP va_ctx, VAContextID context_id,
 		return VA_STATUS_ERROR_INVALID_CONTEXT;
 	if (!ctx->in_picture)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
+	if (ctx->picture_status != VA_STATUS_SUCCESS)
+		return ctx->picture_status;
+	if (num_buffers < 0 || (num_buffers && !buffers)) {
+		ctx->picture_status = VA_STATUS_ERROR_INVALID_PARAMETER;
+		return ctx->picture_status;
+	}
 
 	for (int i = 0; i < num_buffers; i++) {
 		struct v4l2r_buffer *buffer;
 
 		buffer = V4L2R_BUFFER_GET(drv, buffers[i]);
-		if (!buffer)
-			return VA_STATUS_ERROR_INVALID_BUFFER;
+		if (!buffer) {
+			ctx->picture_status = VA_STATUS_ERROR_INVALID_BUFFER;
+			return ctx->picture_status;
+		}
 
 		status = ctx->vpp ? v4l2r_vpp_render_buffer(ctx, buffer) :
 			 ctx->codec->render_buffer(ctx, buffer);
-		if (status != VA_STATUS_SUCCESS)
+		if (status != VA_STATUS_SUCCESS) {
+			ctx->picture_status = status;
 			return status;
+		}
 	}
 
 	return VA_STATUS_SUCCESS;
@@ -1236,12 +1251,15 @@ VAStatus v4l2r_EndPicture(VADriverContextP va_ctx, VAContextID context_id)
 	if (!ctx->in_picture)
 		return VA_STATUS_ERROR_OPERATION_FAILED;
 
-	status = ctx->vpp ? v4l2r_vpp_end_picture(ctx) :
-		 ctx->codec->end_picture(ctx);
+	status = ctx->picture_status;
+	if (status == VA_STATUS_SUCCESS)
+		status = ctx->vpp ? v4l2r_vpp_end_picture(ctx) :
+			 ctx->codec->end_picture(ctx);
+	if (status != VA_STATUS_SUCCESS && ctx->pic.target)
+		ctx->pic.target->decode_status = status;
 
 	ctx->in_picture = false;
-	ctx->pic.output = NULL;
-	ctx->pic.target = NULL;
+	ctx->pic = (struct v4l2r_picture){0};
 
 	return status;
 }

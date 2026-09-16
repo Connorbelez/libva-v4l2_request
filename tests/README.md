@@ -21,14 +21,26 @@ rejection, High 10 quantizer modes and fake-device capability checks. Three H.26
 cases cover missing slice data at EndPicture, slice-count overflow, invalid/missing active
 references, contradictory slice types, preserving a staged slice's controls, and recovery
 on the next picture. Submission is intercepted in-process; no device is opened. There are
-29 Meson cases. The count-overflow case injects the boundary into codec state rather than
+35 Meson cases. The count-overflow case injects the boundary into codec state rather than
 allocating billions of real slices; it is an arithmetic regression, not proof of a practical
 malicious-video exploit.
 Four VP9 cases cover malformed/incomplete headers, failed-submission state rollback, colour-range
 inheritance, missing/cross-context references and 24,000 deterministic parser inputs. These join
 the H.264 and HEVC inputs for 72,000 generated inputs across three registered parser cases.
+Six shared-lifecycle cases add failed Render/Begin recovery, active-target lifetime, reference
+ownership, invalid context arguments, and submission errors surviving a later buffer completion.
+`picture.c` calls the public picture entrypoints with an intercepted codec. The original target
+lifetime failure produces an ASan use-after-free when the active target is destroyed before
+EndPicture; this does not establish that a media file can trigger the same API sequence.
 CI also runs `frame-check.sh` in software to test resolution changes and truncated input;
 hardware tests are separate.
+
+CI also runs `sh tests/shared-contexts.sh` in software. With a driver-directory argument,
+run it through the hardware guard to interleave H.264, HEVC and 8/10-bit VP9 decoders on
+one shared VA display. The clips contain 24, 36, 48 and 60 frames, so earlier contexts are
+destroyed while later ones continue. Each stream must match its independently decoded
+software checksum. Normal and early-export runs compare 336 hardware output frames.
+This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
 ## Hardware pixel comparisons
 

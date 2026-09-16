@@ -134,15 +134,23 @@ int main(int argc, char **argv)
     assert(!setrlimit(RLIMIT_CORE, &core));
     assert(argc == 2);
     setup();
-    if (!strcmp(argv[1], "decode-error") || !strcmp(argv[1], "export-error")) {
+    if (!strcmp(argv[1], "decode-error") || !strcmp(argv[1], "export-error") ||
+        !strcmp(argv[1], "submission-error")) {
         ctx.queued_capture = 1;
         ctx.submitted = 1;
         surface->status = VASurfaceRendering;
         capture_available = 1;
         capture_flags = V4L2_BUF_FLAG_ERROR;
-        if (!strcmp(argv[1], "decode-error")) {
-            assert(v4l2r_SyncSurface(&va, sid) == VA_STATUS_ERROR_DECODING_ERROR);
-            assert(v4l2r_SyncSurface(&va, sid) == VA_STATUS_ERROR_DECODING_ERROR);
+        VAStatus expected = VA_STATUS_ERROR_DECODING_ERROR;
+        if (!strcmp(argv[1], "submission-error")) {
+            /* An earlier slice completes successfully after EndPicture
+             * rejected the incomplete picture. It must remain failed. */
+            capture_flags = 0;
+            surface->decode_status = expected = VA_STATUS_ERROR_INVALID_BUFFER;
+        }
+        if (strcmp(argv[1], "export-error")) {
+            assert(v4l2r_SyncSurface(&va, sid) == expected);
+            assert(v4l2r_SyncSurface(&va, sid) == expected);
             assert(ctx.completed == 1 && ctx.queued_capture == 0);
             /* Failed pictures still complete and their buffer can be reused. */
             assert(v4l2r_context_bind_surface(&ctx, surface) == VA_STATUS_SUCCESS);

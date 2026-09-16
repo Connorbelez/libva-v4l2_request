@@ -396,7 +396,7 @@ static void av1_fill_frame(struct v4l2r_context *ctx)
 
 	for (int i = 0; i < V4L2_AV1_TOTAL_REFS_PER_FRAME; i++) {
 		frame->reference_frame_ts[i] =
-			v4l2r_surface_timestamp(ctx->drv, pic->ref_frame_map[i]);
+			v4l2r_surface_timestamp(ctx, pic->ref_frame_map[i]);
 
 		/* Order hints are tracked per surface as frames complete;
 		 * VA-API does not transport them. */
