@@ -14,6 +14,12 @@ src_dir=$(CDPATH= cd -- "$script_dir/.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
+# cd into the source tree so `meson setup <builddir>` (no explicit
+# sourcedir argument, matching how README.md documents the build) picks it
+# up from the working directory. Passing the source dir as a second
+# positional argument is rejected by some Meson releases.
+cd "$src_dir"
+
 fail() { echo "install-smoke: $*" >&2; exit 1; }
 
 module_name=v4l2_request_drv_video.so
@@ -43,7 +49,7 @@ cc -Wall -Wextra -Werror -o "$work/dlopen-check" "$work/dlopen-check.c" -ldl
 # --- default driverdir: build, install, verify, uninstall -----------------
 build_default="$work/build-default"
 destdir_default="$work/destdir-default"
-meson setup "$build_default" --prefix=/usr "$src_dir" >"$work/setup-default.log" 2>&1 \
+meson setup "$build_default" --prefix=/usr >"$work/setup-default.log" 2>&1 \
     || { cat "$work/setup-default.log" >&2; fail "meson setup (default driverdir) failed"; }
 meson compile -C "$build_default" >"$work/compile-default.log" 2>&1 \
     || { cat "$work/compile-default.log" >&2; fail "meson compile (default driverdir) failed"; }
@@ -109,7 +115,7 @@ DESTDIR="$destdir_default" ninja -C "$build_default" uninstall >"$work/uninstall
 build_custom="$work/build-custom"
 destdir_custom="$work/destdir-custom"
 custom_driverdir=/opt/custom-va-drivers
-meson setup "$build_custom" --prefix=/usr "-Ddriverdir=$custom_driverdir" "$src_dir" \
+meson setup "$build_custom" --prefix=/usr "-Ddriverdir=$custom_driverdir" \
     >"$work/setup-custom.log" 2>&1 \
     || { cat "$work/setup-custom.log" >&2; fail "meson setup (custom driverdir) failed"; }
 meson compile -C "$build_custom" >"$work/compile-custom.log" 2>&1 \
