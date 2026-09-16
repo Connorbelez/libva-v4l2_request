@@ -7,9 +7,9 @@ project('libva-v4l2_request', 'c',
           'warning_level=2',
           # debugoptimized keeps DWARF debug info, which embeds the absolute
           # source path of every compiled file (DW_AT_comp_dir/DW_AT_name).
-          # Strip installed binaries by default so `meson install` never
-          # ships a source-worktree or build-directory path inside the
-          # installed driver directory; the build-tree copy under
+          # Strip installed binaries by default to omit DWARF build paths;
+          # the install smoke separately checks for embedded path strings.
+          # The build-tree copy under
           # build/src/ stays unstripped, so LIBVA_DRIVERS_PATH=build/src
           # development keeps full debug symbols. Override with
           # `-Dstrip=false` (or `meson configure -Dstrip=false`) to install

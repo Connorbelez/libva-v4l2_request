@@ -62,49 +62,51 @@ fi
 
 DESTDIR="$destdir_default" meson install -C "$build_default" >"$work/install-default.log" 2>&1 \
     || { cat "$work/install-default.log" >&2; fail "meson install (default driverdir) failed"; }
-grep -q "^Stripping target " "$work/install-default.log" \
-    || fail "installed module was not stripped (strip=true default expected, see meson.build)"
+verify_install() {
+    stage=$1
+    build=$2
+    install_log=$3
+    driverdir=$4
+    grep -q "^Stripping target " "$install_log" \
+        || fail "installed module was not stripped (strip=true default expected)"
+    installed="$stage$driverdir/$module_name"
+    [ -f "$installed" ] || fail "expected $installed after install, not found"
+    found_count=$(find "$stage" -type f | wc -l)
+    [ "$found_count" -eq 1 ] || fail "expected exactly 1 installed file, found $found_count"
 
-installed="$destdir_default$expected_driverdir/$module_name"
-[ -f "$installed" ] || fail "expected $installed after install, not found"
+    # Inspect contents in both layouts, not just the install command's message.
+    strings "$installed" > "$work/installed-strings.txt"
+    if grep -qE '^/(tmp|home|root|build|usr/src)' "$work/installed-strings.txt" ||
+       grep -qF "$src_dir" "$work/installed-strings.txt" ||
+       grep -qF "$build" "$work/installed-strings.txt"; then
+        fail "installed module embeds an absolute build/worktree path"
+    fi
+    readelf -SW "$installed" > "$work/installed-sections.txt"
+    if grep -qE '\.(debug|zdebug)_' "$work/installed-sections.txt"; then
+        fail "installed module still contains DWARF debug sections"
+    fi
+    readelf -SW "$build/src/$module_name" > "$work/build-sections.txt"
+    grep -q '\.debug_info' "$work/build-sections.txt" \
+        || fail "build-tree module unexpectedly lost its debug info"
+    grep -q '^v4l2-request (omarchy-m1-video ' "$work/installed-strings.txt" \
+        || fail "installed module is missing its vendor/version marker"
 
-# Only the driver module may land under the driverdir; no test binaries.
-found_count=$(find "$destdir_default" -type f | wc -l)
-[ "$found_count" -eq 1 ] || {
-    find "$destdir_default" -type f >&2
-    fail "expected exactly 1 installed file, found $found_count"
-}
-
-# No absolute build/worktree/host paths embedded in the installed copy.
-if strings "$installed" | grep -qE '^/(tmp|home|root|build|usr/src)'; then
-    strings "$installed" | grep -E '^/(tmp|home|root|build|usr/src)' >&2
-    fail "installed module embeds an absolute build/worktree path"
-fi
-
-# No DWARF debug info in the installed copy (stripped); the build-tree copy
-# keeps it for LIBVA_DRIVERS_PATH development.
-file "$installed" | grep -q 'not stripped' && fail "installed module is not stripped"
-file "$build_default/src/$module_name" | grep -q 'with debug_info' \
-    || fail "build-tree module unexpectedly lost its debug info"
-
-# Vendor/version marker.
-strings "$installed" | grep -q '^v4l2-request (omarchy-m1-video ' \
-    || fail "installed module is missing its vendor/version marker string"
-
-# ABI entrypoint symbol matches the libva this build was configured against,
-# and the installed module actually loads: dlopen(RTLD_NOW) resolves every
-# shared-library dependency and dlsym finds the entrypoint libva looks up.
-if pkg-config --exists libva; then
     va_ver=$(pkg-config --modversion libva)
     va_major=${va_ver%%.*}
     va_minor_rest=${va_ver#*.}
     va_minor=${va_minor_rest%%.*}
     entry="__vaDriverInit_${va_major}_${va_minor}"
-    nm -D "$build_default/src/$module_name" 2>/dev/null | grep -q " T ${entry}\$" \
-        || fail "expected exported ABI entrypoint $entry for libva $va_ver, not found (rebuild against matching libva-dev headers)"
     "$work/dlopen-check" "$installed" "$entry" \
-        || fail "installed module at $installed failed to dlopen/dlsym $entry (see dlerror() above; a missing shared-library dependency or ABI mismatch would surface exactly like this to libva)"
-fi
+        || fail "installed module failed to load/resolve the build-header ABI $entry"
+    # Verify the checker actually rejects an unavailable entrypoint. This is
+    # a loader-only test; it does not initialize libva or open decoder devices.
+    if "$work/dlopen-check" "$installed" __vaDriverInit_0_0 >"$work/abi-negative.log" 2>&1; then
+        fail "ABI loader check accepted a missing entrypoint"
+    fi
+    grep -q 'dlsym(__vaDriverInit_0_0) failed' "$work/abi-negative.log" \
+        || fail "negative ABI check failed for an unexpected reason"
+}
+verify_install "$destdir_default" "$build_default" "$work/install-default.log" "$expected_driverdir"
 
 # Uninstall must remove every installed file and now-empty directory.
 DESTDIR="$destdir_default" ninja -C "$build_default" uninstall >"$work/uninstall-default.log" 2>&1 \
@@ -122,8 +124,7 @@ meson compile -C "$build_custom" >"$work/compile-custom.log" 2>&1 \
     || { cat "$work/compile-custom.log" >&2; fail "meson compile (custom driverdir) failed"; }
 DESTDIR="$destdir_custom" meson install -C "$build_custom" >"$work/install-custom.log" 2>&1 \
     || { cat "$work/install-custom.log" >&2; fail "meson install (custom driverdir) failed"; }
-[ -f "$destdir_custom$custom_driverdir/$module_name" ] \
-    || fail "custom -Ddriverdir=$custom_driverdir was not honoured on install"
+verify_install "$destdir_custom" "$build_custom" "$work/install-custom.log" "$custom_driverdir"
 DESTDIR="$destdir_custom" ninja -C "$build_custom" uninstall >"$work/uninstall-custom.log" 2>&1 \
     || { cat "$work/uninstall-custom.log" >&2; fail "ninja uninstall (custom driverdir) failed"; }
 [ -e "$destdir_custom" ] && fail "disposable root not fully removed by uninstall: $destdir_custom"
