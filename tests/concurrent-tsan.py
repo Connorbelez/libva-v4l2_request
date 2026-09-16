@@ -41,7 +41,7 @@ def probe(compiler, work):
     if built.returncode:
         print(built.stdout)
         # An unavailable sanitizer/toolchain is distinguishable from a source error.
-        if re.search(r'cannot find -ltsan|unsupported.*fsanitize=thread|libclang_rt.*tsan.*(?:No such file|not found)', built.stdout):
+        if re.search(r'cannot find -ltsan|cannot find libtsan_preinit\.o: No such file or directory|unsupported.*fsanitize=thread|libclang_rt.*tsan.*(?:No such file|not found)', built.stdout):
             return 77
         return 1
     run = subprocess.run([str(binary)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

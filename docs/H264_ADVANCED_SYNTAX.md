@@ -15,7 +15,7 @@ vector names.
 
 | Feature | Vectors | Detail |
 | --- | --- | --- |
-| interlace-driven (field coding 25 + MBAFF 27) | 52 | handed to [#14](https://github.com/iconidentify/libva-v4l2_request/issues/14)/[#10](https://github.com/iconidentify/libva-v4l2_request/issues/10); not this ticket's scope |
+| interlace-driven (field coding 25 + MBAFF 27) | 52 | handed to [#14](https://github.com/iconidentify/omarchy-m1-video/issues/14)/[#10](https://github.com/iconidentify/omarchy-m1-video/issues/10); not this ticket's scope |
 | FMO (slice groups) | 3 | `FM1_BT_B`, `FM1_FT_E`, `FM2_SVA_C`, all Baseline; `FM1_BT_B` carries all seven map types 0–6 |
 | slice order not monotonic within a picture | 3 | the three FMO vectors only; picture identity includes PPS/SPS, field and POC state |
 | SP/SI slices | 2 | `SP1_BT_A`, `sp2_bt_b`, Extended |
