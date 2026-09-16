@@ -67,6 +67,45 @@ destroyed while later ones continue. Each stream must match its independently de
 software checksum. Normal and early-export runs compare 336 hardware output frames.
 This interleaves work in one thread; it does not measure concurrent API calls or throughput.
 
+## Regression corpus
+
+Inputs behind the codec evidence are pinned, licensed and classified in
+[`corpus/manifest.json`](corpus/manifest.json); acquisition and provenance are documented in
+[../docs/CORPUS.md](../docs/CORPUS.md). No third-party media is redistributed: suites are
+downloaded from their distributor on demand, verified against the upstream checksum from the
+pinned Fluster suite definition, and cached in Fluster's
+`<suite_name>/<vector_name>/<input_file>` layout so the cache can be passed to
+the positional `resources` argument of `conformance.py`.
+
+```sh
+python3 tests/corpus.py self-test                                            # offline, no decoder
+python3 tests/corpus.py validate --fluster /path/to/fluster                   # pins, licences, classifications
+python3 tests/corpus.py fetch  --fluster /path/to/fluster --smoke             # bounded subset, on demand
+python3 tests/corpus.py verify --fluster /path/to/fluster --require smoke     # offline, needs no network
+```
+
+A suite-wide selection enumerates the **pinned suite definition**, not the manifest's pinned
+assets: `fetch --suite ID` takes every vector of that suite, `--all` takes all 662 (and refuses
+without `--confirm-large-corpus`), and `--dry-run` prints the plan while acquiring nothing. The
+same choice appears in `verify`: `--require smoke` checks the smoke subset, `--require all`
+checks the whole corpus. Pinning a vector's SHA-256 is a separate, reviewed step — `fetch` writes
+the identities it acquires to `<cache>/corpus-lock.json`, `verify` checks anything in that lock,
+and `corpus.py lock` reports hashes for review instead of editing the manifest.
+
+Licence decisions are recorded with the evidence behind them: each entry states whether usable
+terms were `identified` or `not-established`, where they were checked and what that implies. For
+the official vectors the honest answer is `not-established` (the ITU notice grants no
+reproduction right; the WebM test-data directory has no licence file), so nothing is
+redistributed and the vectors stay download-on-demand.
+
+The manifest also records **why** each r11 failure is expected
+(`unimplemented-syntax`, `requires-profile-override`, `unsupported-hardware-format`,
+`unsupported-profile`, `unsupported-dimension`, `expected-rejection`, `known-wrong-output`,
+`capability-boundary`). `validate` re-derives every classification from the pinned suite and
+fails if any r11 failing vector is undocumented, if a classification drifts, or if a vector the
+r11 record passes is called a failure. Corrupt fixtures are marked as such and are never
+reference output.
+
 ## CI matrix, codec options and the aggregate required check
 
 `.github/workflows/checks.yml` runs on GitHub-hosted runners only and never opens a
@@ -97,16 +136,16 @@ libva's pkg-config Version is the VA API version (libva 2.20 reports 1.20.0), so
 to build and pass the offline suite (Ubuntu 20.04: libva 2.7, gcc 9, 5.4 headers).
 
 Executed CI configurations and their expected Meson test sets (counts from the r11
-suite plus the two ci-aggregate/ci-workflow checks; codec-gated tests register only
+suite plus the CI checks, corpus checks and P010 probe regression; codec-gated tests register only
 when the codec is compiled in):
 
 | Configuration | Codecs | Expected tests |
 | --- | --- | --- |
-| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 43 (full suite) |
-| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 37 (no hevc-parser, vp9-\*, image-bounds) |
-| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 32 (regression minus image-bounds, picture, python checks) |
-| all codecs disabled (any headers) | none | 33 on 6.8 headers (core plus image-bounds) |
-| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 39 (core plus codec tests of every compiled-in codec except vp9-\*) |
+| ubuntu-latest and ubuntu-24.04-arm, GCC/Clang, 6.8 UAPI (`build-test`, `codec-options`, `static-analysis`) | all six | 46 (full suite) |
+| ubuntu:22.04 container, 5.15 UAPI (`deps-oldest`, `configure-reject`) | h264, mpeg2, vp8 | 39 (no hevc-parser, vp9-\*, image-bounds) |
+| ubuntu:20.04 container, 5.4 UAPI (`uapi-minimal`) | none | 34 (regression minus image-bounds, picture, python checks) |
+| all codecs disabled (any headers) | none | 35 on 6.8 headers (core plus image-bounds) |
+| `-Dcodec_hevc=enabled -Dcodec_vp9=disabled` | hevc (forced), others auto | 42 (core plus codec tests of every compiled-in codec except vp9-\*) |
 
 `deps-oldest`, `uapi-minimal`, `configure-reject` and `codec-options` assert the
 auto-detected and forced test sets in-job. The software `frame-check.sh` runs in all
