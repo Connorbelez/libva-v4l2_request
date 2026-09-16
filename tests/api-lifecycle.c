@@ -16,6 +16,14 @@ static struct VADriverContext va;
 static struct v4l2r_driver *drv;
 static struct VADriverVTable table;
 static unsigned int renders, submissions;
+static unsigned int flushes;
+
+static VAStatus flush(struct v4l2r_context *ctx, struct v4l2r_surface *surface)
+{
+    (void)ctx; (void)surface;
+    flushes++;
+    return VA_STATUS_SUCCESS;
+}
 
 static VAStatus render(struct v4l2r_context *ctx, struct v4l2r_buffer *buf)
 {
@@ -30,7 +38,9 @@ static VAStatus end(struct v4l2r_context *ctx)
     submissions++;
     return VA_STATUS_SUCCESS;
 }
-static const struct v4l2r_codec codec = {.render_buffer = render, .end_picture = end};
+static const struct v4l2r_codec codec = {
+    .render_buffer = render, .end_picture = end, .flush = flush,
+};
 
 static VAConfigID config(void)
 {
@@ -221,6 +231,9 @@ int main(int argc, char **argv)
         picture(b, other, foreign);
     } else if (!strcmp(test, "buffer-recycled-context")) {
         assert(table.vaDestroyContext(&va, a) == VA_STATUS_SUCCESS);
+        void *ptr;
+        assert(v4l2r_MapBuffer(&va, bid, &ptr) == VA_STATUS_SUCCESS && ((unsigned char *)ptr)[0] == 1);
+        assert(v4l2r_UnmapBuffer(&va, bid) == VA_STATUS_SUCCESS);
         VAContextID replacement = context();
         /* A numeric context ID may be reissued; old buffers must not follow it. */
         assert(replacement == a);
@@ -293,8 +306,17 @@ int main(int argc, char **argv)
         assert(v4l2r_DestroyImage(&va, two.image_id) == VA_STATUS_SUCCESS);
         assert(table.vaDestroySurfaces(&va, list, 2) == VA_STATUS_SUCCESS);
     } else if (!strcmp(test, "context-abort-reuse")) {
+        backing(sid);
         assert(table.vaBeginPicture(&va, a, sid) == VA_STATUS_SUCCESS);
+        struct v4l2r_context *ctx = V4L2R_CONTEXT(drv, a);
+        ctx->streaming = true;
+        ctx->nb_captures = 1;
+        ctx->captures[0].surface = V4L2R_SURFACE(drv, sid);
+        /* No device/queued requests: observe whether teardown flushes the
+         * incomplete current picture, independently of its return status. */
+        flushes = 0;
         assert(table.vaDestroyContext(&va, a) == VA_STATUS_SUCCESS);
+        assert(flushes == 0);
         assert(table.vaSyncSurface(&va, sid) == VA_STATUS_ERROR_OPERATION_FAILED);
         assert(table.vaEndPicture(&va, a) == VA_STATUS_ERROR_INVALID_CONTEXT);
         assert(table.vaDestroyContext(&va, a) == VA_STATUS_ERROR_INVALID_CONTEXT);
@@ -329,6 +351,17 @@ int main(int argc, char **argv)
         /* Abandoning the VPP context releases the retained source as well. */
         assert(table.vaDestroyContext(&va, vpp) == VA_STATUS_SUCCESS);
         assert(table.vaDestroySurfaces(&va, list, 2) == VA_STATUS_SUCCESS);
+        /* EndPicture failure also ends the source reservation. */
+        assert(table.vaCreateContext(&va, cfg, 64, 64, 0, NULL, 0, &vpp) == VA_STATUS_SUCCESS);
+        params.surface = surface();
+        assert(table.vaBeginPicture(&va, vpp, target) == VA_STATUS_SUCCESS);
+        assert(v4l2r_CreateBuffer(&va, vpp, VAProcPipelineParameterBufferType,
+            sizeof(params), 1, &params, &param) == VA_STATUS_SUCCESS);
+        assert(table.vaRenderPicture(&va, vpp, &param, 1) == VA_STATUS_SUCCESS);
+        VABufferID invalid = VA_INVALID_ID;
+        assert(table.vaRenderPicture(&va, vpp, &invalid, 1) == VA_STATUS_ERROR_INVALID_BUFFER);
+        assert(table.vaEndPicture(&va, vpp) == VA_STATUS_ERROR_INVALID_BUFFER);
+        assert(table.vaDestroySurfaces(&va, &params.surface, 1) == VA_STATUS_SUCCESS);
     } else {
         assert(!"unknown case");
     }
