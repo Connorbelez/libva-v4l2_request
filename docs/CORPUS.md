@@ -135,12 +135,47 @@ validator fails if no smoke entry provides one:
 | multi-context interleave | generated `shared-contexts` |
 | resolution change | `VP9-TEST-VECTORS#vp90-2-21-resize_inter_640x360_5_1-2.webm` and generated `frame-check-resolution-change` |
 | cropped / odd dimensions | generated `frame-check-crop` (60x44) and `h264-high10` |
-| sub-64 dimension | `VP9-TEST-VECTORS#vp90-2-02-size-08x08.webm` (rejected in userspace) |
+| sub-64 dimension | `VP9-TEST-VECTORS#vp90-2-02-size-08x08.webm` (AVD kernel guard in the pinned source; userspace gate covered offline, selected-driver hardware confirmation pending) |
 | profile override | `JVT-AVC_V1#BA3_SVA_C` |
 | truncated input | generated `frame-check-truncated` (corrupt by construction; must fail) |
 
 A smoke entry is never presented as a pass. Assets that are expected to be rejected carry
 `expected-rejection`, and an asset's class must agree with the classification that covers it.
+
+### Dimension reporting and rejection
+
+`vaQuerySurfaceAttributes` and `vaCreateContext` use the same coded-format size
+enumeration. Attributes describe the envelope of eligible decoder candidates;
+discrete pairs and stepwise holes cannot be expressed by VA min/max attributes,
+so context creation validates them on each candidate before `S_FMT` or request
+allocation. Continuous ranges accept every integer size. Stepwise maxima are
+rounded down relative to their advertised minimum, not relative to zero.
+Malformed ranges and enumeration errors fail closed. An absent ioctl (`ENOTTY`)
+retains the generic 1..65536 compatibility envelope; `EINVAL` at index zero
+means no usable enumeration. That fallback is a userspace admission bound, not
+proof that every size decodes; normal format/codec negotiation still follows.
+Surfaces are unbound allocations without a codec/configuration, so their existing
+allocation limits and video-processing behaviour remain unchanged.
+
+AVD VP9 additionally intersects enumeration with 64..4096 on each axis, including
+the `ENOTTY` fallback. The quirk is keyed to `QUERYCAP.driver == "avd"` and the
+VP9 coded FOURCC; it does not impose Apple limits on other backends or codecs.
+This corrects AVD's advertised minimum of 1 using the pinned kernel contract.
+The 64x16 allocation alignment is **not** a coded-size requirement: 66x66 remains
+admissible. VP9 picture parameters also reject this AVD boundary before controls
+are submitted, including when a client created a larger valid context first.
+
+Source authority: [merged companion research](https://github.com/iconidentify/omarchy-m1-video/blob/cca0e194e9205016deb3ecff78b8c622bac5104b/docs/plans/issue-12-vp9-sub64.md),
+and AsahiLinux/linux `94fb23346d522edf53722357c426a3e58030beea`
+(`asahi-7.1.13-3`), `avd-v4l2.c` format descriptors/`avd_enum_framesizes` and
+`avd-vp9.c:validate_dec_params`. The latter rejects sub-64 **coded** dimensions
+before firmware submission. This is source evidence of a kernel guard, not a
+proven firmware minimum or evidence about a loaded module. The earlier claim
+that this corpus vector was already rejected in userspace was unverified.
+The `dimensions-*` fixtures exercise VA entrypoints against an intercepted model
+device; they establish neither hardware decode nor exact r11 passing-vector
+preservation. Both remain guarded hardware gates for issue #79. No support row
+or expected-rejection classification is promoted by these offline checks.
 
 ## Failure classification
 

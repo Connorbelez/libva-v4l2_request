@@ -18,9 +18,12 @@ dimensions = executable('dimensions', 'dimensions.c', driver_sources,
               '-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=realloc', '-Wl,--wrap=free',
               '-Wl,--wrap=open64', '-Wl,--wrap=__open_2', '-Wl,--wrap=__open64_2',
               '-Wl,--wrap=fcntl64', '-Wl,--wrap=mmap64', '-Wl,--wrap=clock_gettime'])
-foreach case : ['avd', 'avd-missing', 'generic', 'stepwise', 'discrete', 'missing', 'invalid']
+foreach case : ['avd', 'avd-missing', 'generic', 'avd-other-codec', 'stepwise', 'discrete', 'missing', 'invalid']
   test('dimensions-' + case, dimensions, args: [case], timeout: 15)
 endforeach
+if conf.get('HAVE_V4L2_CTRL_VP9') == 1
+  test('dimensions-picture', dimensions, args: ['picture'], timeout: 15)
+endif
 foreach case : ['control', 'capture-queue', 'request-queue', 'dequeue-error', 'poll-interrupted',
                 'converter-error-flag', 'converter-source-error', 'converter-export-error',
                 'sweep-create', 'sweep-create-single', 'sweep-decode', 'sweep-decode-early',

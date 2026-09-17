@@ -232,6 +232,10 @@ VAStatus v4l2r_QuerySurfaceAttributes(VADriverContextP va_ctx, VAConfigID config
 		*num_attribs = 8;
 		return VA_STATUS_ERROR_MAX_NUM_EXCEEDED;
 	}
+	struct v4l2r_dimensions dimensions;
+	VAStatus status = v4l2r_config_dimensions(drv, cfg, &dimensions);
+	if (status != VA_STATUS_SUCCESS)
+		return status;
 
 	attrib_list[i].type = VASurfaceAttribPixelFormat;
 	attrib_list[i].flags = VA_SURFACE_ATTRIB_GETTABLE | VA_SURFACE_ATTRIB_SETTABLE;
@@ -266,25 +270,25 @@ VAStatus v4l2r_QuerySurfaceAttributes(VADriverContextP va_ctx, VAConfigID config
 	attrib_list[i].type = VASurfaceAttribMinWidth;
 	attrib_list[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
 	attrib_list[i].value.type = VAGenericValueTypeInteger;
-	attrib_list[i].value.value.i = 1;
+	attrib_list[i].value.value.i = dimensions.min_width;
 	i++;
 
 	attrib_list[i].type = VASurfaceAttribMinHeight;
 	attrib_list[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
 	attrib_list[i].value.type = VAGenericValueTypeInteger;
-	attrib_list[i].value.value.i = 1;
+	attrib_list[i].value.value.i = dimensions.min_height;
 	i++;
 
 	attrib_list[i].type = VASurfaceAttribMaxWidth;
 	attrib_list[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
 	attrib_list[i].value.type = VAGenericValueTypeInteger;
-	attrib_list[i].value.value.i = 65536;
+	attrib_list[i].value.value.i = dimensions.max_width;
 	i++;
 
 	attrib_list[i].type = VASurfaceAttribMaxHeight;
 	attrib_list[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
 	attrib_list[i].value.type = VAGenericValueTypeInteger;
-	attrib_list[i].value.value.i = 65536;
+	attrib_list[i].value.value.i = dimensions.max_height;
 	i++;
 
 	*num_attribs = i;

@@ -476,6 +476,21 @@ enum v4l2r_h264_high10_mode {
 
 bool v4l2r_probe_h264_10bit(int fd, uint32_t output_type);
 
+/* Coded dimensions, not the padded CAPTURE allocation. Min/max describe an
+ * envelope: discrete pairs and stepwise holes still need context validation. */
+struct v4l2r_dimensions {
+	uint32_t min_width, min_height, max_width, max_height;
+};
+/* Pinned AVD kernel VP9 contract; these are not allocation alignment steps. */
+#define V4L2R_AVD_VP9_MIN_DIMENSION 64u
+#define V4L2R_AVD_VP9_MAX_DIMENSION 4096u
+bool v4l2r_query_dimensions(int fd, uint32_t pixelformat, bool is_avd,
+			    uint32_t width, uint32_t height,
+			    struct v4l2r_dimensions *bounds);
+VAStatus v4l2r_config_dimensions(struct v4l2r_driver *drv,
+				const struct v4l2r_config *config,
+				struct v4l2r_dimensions *bounds);
+
 struct v4l2r_driver {
 	struct v4l2r_handles configs;
 	struct v4l2r_handles contexts;

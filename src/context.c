@@ -84,33 +84,127 @@ static bool try_output_format(struct v4l2r_context *ctx, uint32_t pixelformat)
 	return false;
 }
 
-static bool try_framesize(struct v4l2r_context *ctx, uint32_t pixelformat)
+static bool dimension_axis(uint32_t *min, uint32_t *max, uint32_t step,
+			   uint32_t floor, uint32_t ceiling)
+{
+	if (!*min || *min > *max || !step || *min > ceiling)
+		return false;
+	uint64_t first = *min;
+	if (first < floor)
+		first += ((floor - first + step - 1) / step) * step;
+	uint32_t last = *max < ceiling ? *max : ceiling;
+	if (first > last)
+		return false;
+	*min = first;
+	*max = first + ((last - first) / step) * step;
+	return true;
+}
+
+bool v4l2r_query_dimensions(int fd, uint32_t pixelformat, bool is_avd,
+			    uint32_t width, uint32_t height,
+			    struct v4l2r_dimensions *bounds)
 {
 	struct v4l2_frmsizeenum frmsize = {
 		.pixel_format = pixelformat,
 	};
+	/* asahi-7.1.13-3 / 94fb23346d522edf53722357c426a3e58030beea:
+	 * avd_enum_framesizes advertises 1 while avd-vp9.c rejects coded
+	 * dimensions below 64. The format descriptor caps VP9 at 4096.
+	 * This is a kernel contract, NOT evidence of a firmware minimum.
+	 * Allocation steps (64 x 16) are not coded-size steps: 66x66 is valid. */
+	bool avd_vp9 = is_avd && pixelformat == v4l2_fourcc('V', 'P', '9', 'F');
+	uint32_t floor = avd_vp9 ? V4L2R_AVD_VP9_MIN_DIMENSION : 1;
+	uint32_t ceiling = avd_vp9 ? V4L2R_AVD_VP9_MAX_DIMENSION : 65536;
+	*bounds = (struct v4l2r_dimensions){0};
+	for (;;) {
+		int ret = ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &frmsize);
+		if (ret < 0) {
+			/* Preserve ENOTTY compatibility; EINVAL at index zero is
+			 * an empty/unsupported format, not a license to guess. */
+			if (!frmsize.index && errno == ENOTTY) {
+				*bounds = (struct v4l2r_dimensions){floor, floor, ceiling, ceiling};
+				return !width || (width >= floor && width <= ceiling &&
+						 height >= floor && height <= ceiling);
+			}
+			return !width && frmsize.index && errno == EINVAL && bounds->min_width;
+		}
+		uint32_t min_w, min_h, max_w, max_h, step_w = 1, step_h = 1;
+		bool discrete = frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE;
+		if (discrete) {
+			min_w = max_w = frmsize.discrete.width;
+			min_h = max_h = frmsize.discrete.height;
+		} else if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE ||
+			   frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS) {
+			min_w = frmsize.stepwise.min_width;
+			min_h = frmsize.stepwise.min_height;
+			max_w = frmsize.stepwise.max_width;
+			max_h = frmsize.stepwise.max_height;
+			if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
+				step_w = frmsize.stepwise.step_width;
+				step_h = frmsize.stepwise.step_height;
+			}
+		} else {
+			return false;
+		}
+		if (dimension_axis(&min_w, &max_w, step_w, floor, ceiling) &&
+		    dimension_axis(&min_h, &max_h, step_h, floor, ceiling)) {
+			if (!bounds->min_width || min_w < bounds->min_width) bounds->min_width = min_w;
+			if (!bounds->min_height || min_h < bounds->min_height) bounds->min_height = min_h;
+			if (max_w > bounds->max_width) bounds->max_width = max_w;
+			if (max_h > bounds->max_height) bounds->max_height = max_h;
+			if (width && width >= min_w && width <= max_w &&
+			    height >= min_h && height <= max_h &&
+			    !((width - min_w) % step_w) && !((height - min_h) % step_h))
+				return true;
+		}
+		/* V4L2 only permits one stepwise/continuous entry. */
+		if (!discrete)
+			return !width && bounds->min_width;
+		if (++frmsize.index == 0)
+			return false;
+	}
+}
 
-	if (ioctl(ctx->video_fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) < 0)
-		return errno == ENOTTY;
-
-	do {
-		if (frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE &&
-		    ctx->picture_width == frmsize.discrete.width &&
-		    ctx->picture_height == frmsize.discrete.height)
-			return true;
-
-		if ((frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE ||
-		     frmsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS) &&
-		    ctx->picture_width >= frmsize.stepwise.min_width &&
-		    ctx->picture_height >= frmsize.stepwise.min_height &&
-		    ctx->picture_width <= frmsize.stepwise.max_width &&
-		    ctx->picture_height <= frmsize.stepwise.max_height)
-			return true;
-
-		frmsize.index++;
-	} while (ioctl(ctx->video_fd, VIDIOC_ENUM_FRAMESIZES, &frmsize) >= 0);
-
-	return false;
+VAStatus v4l2r_config_dimensions(struct v4l2r_driver *drv,
+				const struct v4l2r_config *config,
+				struct v4l2r_dimensions *bounds)
+{
+	*bounds = (struct v4l2r_dimensions){1, 1, 65536, 65536};
+	if (!config->codec) /* Video processing has no coded-format contract. */
+		return VA_STATUS_SUCCESS;
+	*bounds = (struct v4l2r_dimensions){0};
+	for (unsigned int i = 0; i < drv->nb_decoders; i++) {
+		const struct v4l2r_decoder *decoder = &drv->decoders[i];
+#if VA_CHECK_VERSION(1, 18, 0)
+		if (config->profile == VAProfileH264High10 && !decoder->h264_10bit)
+			continue;
+#endif
+		bool accepts = false;
+		for (unsigned int j = 0; j < decoder->nb_pixelformats; j++)
+			accepts |= decoder->pixelformats[j] == config->codec->pixelformat;
+		if (!accepts)
+			continue;
+		int fd = open(decoder->video_path, O_RDWR | O_NONBLOCK);
+		if (fd < 0)
+			continue;
+		struct v4l2_capability cap = {0};
+		struct v4l2r_dimensions candidate;
+		bool valid = ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0 &&
+			v4l2r_query_dimensions(fd, config->codec->pixelformat,
+				!strcmp((const char *)cap.driver, "avd"), 0, 0, &candidate);
+		close(fd);
+		if (!valid)
+			continue;
+		/* A config precedes decoder selection. Report the envelope of
+		 * its candidates; CreateContext checks each candidate exactly. */
+		if (!bounds->min_width || candidate.min_width < bounds->min_width)
+			bounds->min_width = candidate.min_width;
+		if (!bounds->min_height || candidate.min_height < bounds->min_height)
+			bounds->min_height = candidate.min_height;
+		if (candidate.max_width > bounds->max_width) bounds->max_width = candidate.max_width;
+		if (candidate.max_height > bounds->max_height) bounds->max_height = candidate.max_height;
+	}
+	return bounds->min_width ? VA_STATUS_SUCCESS : VA_STATUS_ERROR_OPERATION_FAILED;
 }
 
 /*
@@ -1069,7 +1163,10 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 		if (!try_output_format(ctx, ctx->codec->pixelformat))
 			goto next;
 
-		if (!try_framesize(ctx, ctx->codec->pixelformat))
+		struct v4l2r_dimensions dimensions;
+		if (!v4l2r_query_dimensions(ctx->video_fd, ctx->codec->pixelformat,
+					    ctx->is_avd, picture_width, picture_height,
+					    &dimensions))
 			goto next;
 
 		/* Initial bitstream buffer size: compressed frames rarely
@@ -1077,7 +1174,7 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 		 * demand (v4l2r_output_buffer_grow) - pre-booking the raw
 		 * frame size would pin tens of megabytes of CMA per 4K
 		 * context across the 4-buffer ring. */
-		buffersize = ctx->picture_width * ctx->picture_height / 4;
+		buffersize = (uint64_t)ctx->picture_width * ctx->picture_height / 4;
 		if (buffersize < 1024 * 1024)
 			buffersize = 1024 * 1024;
 

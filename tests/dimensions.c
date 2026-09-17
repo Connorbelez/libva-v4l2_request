@@ -8,7 +8,7 @@
 
 static bool avd;
 static int enum_error;
-static unsigned int size_count, formats_set, requests_allocated;
+static unsigned int size_count, formats_set, requests_allocated, controls_submitted;
 static struct v4l2_frmsizeenum sizes[3];
 static struct v4l2r_codec dimension_codec;
 
@@ -42,6 +42,7 @@ int __wrap_ioctl(int fd, unsigned long request, ...)
     }
     formats_set += request == VIDIOC_S_FMT;
     requests_allocated += request == MEDIA_IOC_REQUEST_ALLOC;
+    controls_submitted += request == VIDIOC_S_EXT_CTRLS;
     return model_ioctl(fd, request, arg);
 }
 
@@ -87,6 +88,32 @@ static void create(unsigned int width, unsigned int height, bool supported)
     assert(!live_handles(&drv->contexts));
 }
 
+#if HAVE_V4L2_CTRL_VP9
+static void picture_dimensions(unsigned int width, unsigned int height, bool supported)
+{
+    VAContextID id = context();
+    VASurfaceID sid = surface();
+    VABufferID bid;
+    VADecPictureParameterBufferVP9 pic = {
+        .frame_width = width, .frame_height = height, .bit_depth = 8,
+    };
+    assert(v4l2r_CreateBuffer(&va, id, VAPictureParameterBufferType,
+                            sizeof(pic), 1, &pic, &bid) == VA_STATUS_SUCCESS);
+    assert(table.vaBeginPicture(&va, id, sid) == VA_STATUS_SUCCESS);
+    unsigned int before_controls = controls_submitted, before_queues = queues;
+    unsigned int before_requests = requests_allocated;
+    VAStatus result = table.vaRenderPicture(&va, id, &bid, 1);
+    assert(result == (supported ? VA_STATUS_SUCCESS : VA_STATUS_ERROR_INVALID_BUFFER));
+    /* No slice data was supplied, so even valid parameters must not submit. */
+    assert(table.vaEndPicture(&va, id) != VA_STATUS_SUCCESS);
+    assert(controls_submitted == before_controls && queues == before_queues &&
+           requests_allocated == before_requests);
+    assert(v4l2r_DestroyBuffer(&va, bid) == VA_STATUS_SUCCESS);
+    assert(table.vaDestroyContext(&va, id) == VA_STATUS_SUCCESS);
+    assert(table.vaDestroySurfaces(&va, &sid, 1) == VA_STATUS_SUCCESS);
+}
+#endif
+
 int main(int argc, char **argv)
 {
     assert(argc == 2);
@@ -108,7 +135,12 @@ int main(int argc, char **argv)
         create(64, 64, true); create(66, 66, true);
         create(4096, 4096, true);
         create(4097, 64, false); create(64, 4097, false);
-    } else if (!strcmp(test, "generic")) {
+    } else if (!strcmp(test, "generic") || !strcmp(test, "avd-other-codec")) {
+        if (!strcmp(test, "avd-other-codec")) {
+            avd = true;
+            dimension_codec.pixelformat = V4L2_PIX_FMT_H264;
+            drv->decoders[0].pixelformats[0] = dimension_codec.pixelformat;
+        }
         range(1, 128, 1);
         attributes(1, 128);
         create(8, 8, true); create(128, 128, true); create(129, 128, false);
@@ -135,6 +167,17 @@ int main(int argc, char **argv)
         create(64, 64, false);
         VASurfaceAttrib attrs[8]; unsigned int count = 8;
         assert(table.vaQuerySurfaceAttributes(&va, cfg, attrs, &count) != VA_STATUS_SUCCESS);
+#if HAVE_V4L2_CTRL_VP9
+    } else if (!strcmp(test, "picture")) {
+        dimension_codec = *v4l2r_codec_for_profile(VAProfileVP9Profile0);
+        range(1, 4096, 1);
+        avd = true;
+        picture_dimensions(8, 64, false); picture_dimensions(64, 8, false);
+        picture_dimensions(4097, 64, false); picture_dimensions(64, 4097, false);
+        picture_dimensions(64, 64, true); picture_dimensions(66, 66, true);
+        avd = false;
+        picture_dimensions(8, 8, true);
+#endif
     } else {
         assert(!"unknown dimension fixture");
     }
