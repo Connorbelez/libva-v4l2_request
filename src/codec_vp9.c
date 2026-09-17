@@ -813,7 +813,7 @@ static VAStatus vp9_render_buffer_impl(struct v4l2r_context *ctx,
 			return VA_STATUS_ERROR_INVALID_BUFFER;
 		/* A client can declare a different coded size inside a valid
 		 * context. Reject the AVD kernel's unsupported boundary here too,
-		 * before parsing/submitting controls or allocating a request. */
+		 * before parsing or submitting controls. */
 		if (ctx->is_avd &&
 		    (codec->va_pic.frame_width < V4L2R_AVD_VP9_MIN_DIMENSION ||
 		     codec->va_pic.frame_height < V4L2R_AVD_VP9_MIN_DIMENSION ||

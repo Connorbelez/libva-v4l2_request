@@ -135,6 +135,11 @@ int main(int argc, char **argv)
         create(64, 64, true); create(66, 66, true);
         create(4096, 4096, true);
         create(4097, 64, false); create(64, 4097, false);
+        if (!enum_error) {
+            range(64, 2048, 1); /* Preserve a narrower advertised contract. */
+            attributes(64, 2048);
+            create(2048, 2048, true); create(2049, 64, false);
+        }
     } else if (!strcmp(test, "generic") || !strcmp(test, "avd-other-codec")) {
         if (!strcmp(test, "avd-other-codec")) {
             avd = true;
@@ -163,6 +168,12 @@ int main(int argc, char **argv)
     } else if (!strcmp(test, "invalid")) {
         range(10, 100, 0);
         create(10, 10, false);
+        range(100, 10, 1);
+        create(64, 64, false);
+        range(0, 100, 1);
+        create(64, 64, false);
+        enum_error = EINVAL;
+        create(64, 64, false);
         enum_error = EIO;
         create(64, 64, false);
         VASurfaceAttrib attrs[8]; unsigned int count = 8;

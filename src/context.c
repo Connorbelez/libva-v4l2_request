@@ -100,7 +100,8 @@ static bool dimension_axis(uint32_t *min, uint32_t *max, uint32_t step,
 	return true;
 }
 
-bool v4l2r_query_dimensions(int fd, uint32_t pixelformat, bool is_avd,
+/* width == 0 queries the envelope; otherwise validate one coded-size pair. */
+static bool query_dimensions(int fd, uint32_t pixelformat, bool is_avd,
 			    uint32_t width, uint32_t height,
 			    struct v4l2r_dimensions *bounds)
 {
@@ -190,7 +191,7 @@ VAStatus v4l2r_config_dimensions(struct v4l2r_driver *drv,
 		struct v4l2_capability cap = {0};
 		struct v4l2r_dimensions candidate;
 		bool valid = ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0 &&
-			v4l2r_query_dimensions(fd, config->codec->pixelformat,
+			query_dimensions(fd, config->codec->pixelformat,
 				!strcmp((const char *)cap.driver, "avd"), 0, 0, &candidate);
 		close(fd);
 		if (!valid)
@@ -1164,7 +1165,7 @@ VAStatus v4l2r_CreateContext(VADriverContextP va_ctx, VAConfigID config_id,
 			goto next;
 
 		struct v4l2r_dimensions dimensions;
-		if (!v4l2r_query_dimensions(ctx->video_fd, ctx->codec->pixelformat,
+		if (!query_dimensions(ctx->video_fd, ctx->codec->pixelformat,
 					    ctx->is_avd, picture_width, picture_height,
 					    &dimensions))
 			goto next;
