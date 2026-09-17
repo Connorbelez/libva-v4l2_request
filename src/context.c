@@ -166,6 +166,20 @@ static bool query_dimensions(int fd, uint32_t pixelformat, bool is_avd,
 	}
 }
 
+bool v4l2r_context_dimensions(struct v4l2r_context *ctx,
+			      uint32_t width, uint32_t height)
+{
+	if (!width || !height)
+		return false;
+	/* Context creation already checked this pair on the selected decoder.
+	 * Only a differing coded size needs another enumeration. */
+	if (width == ctx->picture_width && height == ctx->picture_height)
+		return true;
+	struct v4l2r_dimensions bounds;
+	return query_dimensions(ctx->video_fd, ctx->codec->pixelformat,
+				ctx->is_avd, width, height, &bounds);
+}
+
 VAStatus v4l2r_config_dimensions(struct v4l2r_driver *drv,
 				const struct v4l2r_config *config,
 				struct v4l2r_dimensions *bounds)

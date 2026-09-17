@@ -214,14 +214,24 @@ VAStatus v4l2r_QuerySurfaceAttributes(VADriverContextP va_ctx, VAConfigID config
 {
 	struct v4l2r_driver *drv = v4l2r_driver(va_ctx);
 	struct v4l2r_config *cfg;
+	struct v4l2r_config snapshot;
 	unsigned int i = 0;
 
 	if (!num_attribs)
 		return VA_STATUS_ERROR_INVALID_PARAMETER;
 
-	cfg = V4L2R_CONFIG_GET(drv, config);
-	if (!cfg)
+	/* Dimension enumeration performs device I/O. Keep immutable config
+	 * values after releasing the handle-table lock, not a borrowed object
+	 * that DestroyConfig can free while an ioctl is in progress. */
+	pthread_mutex_lock(&drv->mutex);
+	cfg = V4L2R_CONFIG(drv, config);
+	if (!cfg) {
+		pthread_mutex_unlock(&drv->mutex);
 		return VA_STATUS_ERROR_INVALID_CONFIG;
+	}
+	snapshot = *cfg;
+	pthread_mutex_unlock(&drv->mutex);
+	cfg = &snapshot;
 
 	if (!attrib_list) {
 		*num_attribs = 8;

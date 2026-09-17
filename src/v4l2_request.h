@@ -484,6 +484,8 @@ struct v4l2r_dimensions {
 /* Pinned AVD kernel VP9 contract; these are not allocation alignment steps. */
 #define V4L2R_AVD_VP9_MIN_DIMENSION 64u
 #define V4L2R_AVD_VP9_MAX_DIMENSION 4096u
+bool v4l2r_context_dimensions(struct v4l2r_context *ctx,
+			      uint32_t width, uint32_t height);
 VAStatus v4l2r_config_dimensions(struct v4l2r_driver *drv,
 				const struct v4l2r_config *config,
 				struct v4l2r_dimensions *bounds);

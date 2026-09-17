@@ -18,11 +18,14 @@ dimensions = executable('dimensions', 'dimensions.c', driver_sources,
               '-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=realloc', '-Wl,--wrap=free',
               '-Wl,--wrap=open64', '-Wl,--wrap=__open_2', '-Wl,--wrap=__open64_2',
               '-Wl,--wrap=fcntl64', '-Wl,--wrap=mmap64', '-Wl,--wrap=clock_gettime'])
-foreach case : ['avd', 'avd-missing', 'generic', 'avd-other-codec', 'stepwise', 'discrete', 'missing', 'invalid']
+foreach case : ['avd', 'avd-missing', 'generic', 'avd-other-codec', 'stepwise', 'discrete', 'missing', 'invalid', 'multiple', 'query-destroy']
   test('dimensions-' + case, dimensions, args: [case], timeout: 15)
 endforeach
 if conf.get('HAVE_V4L2_CTRL_VP9') == 1
-  test('dimensions-picture', dimensions, args: ['picture'], timeout: 15)
+  foreach case : ['picture', 'picture-narrow', 'picture-stepwise', 'picture-discrete',
+                  'picture-narrow-generic', 'picture-stepwise-generic', 'picture-discrete-generic', 'picture-selected']
+    test('dimensions-' + case, dimensions, args: [case], timeout: 15)
+  endforeach
 endif
 foreach case : ['control', 'capture-queue', 'request-queue', 'dequeue-error', 'poll-interrupted',
                 'converter-error-flag', 'converter-source-error', 'converter-export-error',
@@ -100,7 +103,7 @@ if conf.get('HAVE_V4L2_CTRL_VP9') == 1
     c_args: ['-UNDEBUG'],
     include_directories: [root_inc, include_directories('../src')],
     dependencies: [libva_dep, libdrm_dep, threads_dep])
-  foreach case : ['malformed', 'state', 'parser', 'references']
+  foreach case : ['malformed', 'state', 'parser', 'references', 'dimensions']
     test('vp9-' + case, vp9, args: [case], timeout: 30)
   endforeach
 endif

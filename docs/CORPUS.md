@@ -150,6 +150,8 @@ discrete pairs and stepwise holes cannot be expressed by VA min/max attributes,
 so context creation validates them on each candidate before `S_FMT` or request
 allocation. Continuous ranges accept every integer size. Stepwise maxima are
 rounded down relative to their advertised minimum, not relative to zero.
+Attribute queries snapshot the configuration under the handle-table lock before
+device I/O, so concurrent config destruction cannot free the query's inputs.
 Malformed ranges and enumeration errors fail closed. An absent ioctl (`ENOTTY`)
 retains the generic 1..65536 compatibility envelope; `EINVAL` at index zero
 means no usable enumeration. That fallback is a userspace admission bound, not
@@ -162,8 +164,15 @@ the `ENOTTY` fallback. The quirk is keyed to `QUERYCAP.driver == "avd"` and the
 VP9 coded FOURCC; it does not impose Apple limits on other backends or codecs.
 This corrects AVD's advertised minimum of 1 using the pinned kernel contract.
 The 64x16 allocation alignment is **not** a coded-size requirement: 66x66 remains
-admissible. VP9 picture parameters also reject this AVD boundary before controls
-are submitted, including when a client created a larger valid context first.
+admissible. VP9 picture parameters use the same contract on their **selected**
+decoder before controls are submitted. Narrower reported limits, stepwise holes
+and discrete pairs also apply on generic backends; the combined configuration
+envelope cannot admit a picture on the wrong device. The already-validated context
+size takes a fast path; other picture sizes are checked against that decoder's
+enumeration. Explicit coded sizes in key, intra-only and inter-frame headers must
+match the VA picture parameters. A client cannot conceal a sub-64 coded dimension
+by supplying a larger VA dimension. This does not implement reference-state
+preservation across resolution changes or add VP9 resize support.
 
 Source authority: [merged companion research](https://github.com/iconidentify/omarchy-m1-video/blob/cca0e194e9205016deb3ecff78b8c622bac5104b/docs/plans/issue-12-vp9-sub64.md),
 and AsahiLinux/linux `94fb23346d522edf53722357c426a3e58030beea`

@@ -207,10 +207,19 @@ static void vp9_parse_color_config(struct v4l2r_bits *b,
 	}
 }
 
-static void vp9_parse_frame_and_render_size(struct v4l2r_bits *b)
+static void vp9_parse_frame_size(struct v4l2r_bits *b,
+				 const VADecPictureParameterBufferVP9 *pic)
 {
-	v4l2r_bits_read(b, 16);			/* frame_width_minus_1 */
-	v4l2r_bits_read(b, 16);			/* frame_height_minus_1 */
+	unsigned int width = v4l2r_bits_read(b, 16) + 1;
+	unsigned int height = v4l2r_bits_read(b, 16) + 1;
+	if (width != pic->frame_width || height != pic->frame_height)
+		b->error = true;
+}
+
+static void vp9_parse_frame_and_render_size(struct v4l2r_bits *b,
+					  const VADecPictureParameterBufferVP9 *pic)
+{
+	vp9_parse_frame_size(b, pic);
 	if (v4l2r_bits_bit(b)) {		/* render_and_frame_size_different */
 		v4l2r_bits_read(b, 16);
 		v4l2r_bits_read(b, 16);
@@ -248,7 +257,7 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 		if (v4l2r_bits_read(b, 24) != 0x498342)
 			return;
 		vp9_parse_color_config(b, hdr, profile);
-		vp9_parse_frame_and_render_size(b);
+		vp9_parse_frame_and_render_size(b, &codec->va_pic);
 	} else {
 		if (!show_frame)
 			hdr->intra_only = v4l2r_bits_bit(b);
@@ -264,7 +273,7 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 			else
 				hdr->color_range_full = false;
 			v4l2r_bits_read(b, 8);	/* refresh_frame_flags */
-			vp9_parse_frame_and_render_size(b);
+			vp9_parse_frame_and_render_size(b, &codec->va_pic);
 		} else {
 			v4l2r_bits_read(b, 8);	/* refresh_frame_flags */
 
@@ -279,8 +288,7 @@ static void vp9_parse_uncompressed_header(struct vp9_context *codec,
 				for (int i = 0; i < 3 && !found; i++)
 					found = v4l2r_bits_bit(b);
 				if (!found) {
-					v4l2r_bits_read(b, 16);
-					v4l2r_bits_read(b, 16);
+					vp9_parse_frame_size(b, &codec->va_pic);
 				}
 				if (v4l2r_bits_bit(b)) {
 					v4l2r_bits_read(b, 16);
@@ -811,15 +819,17 @@ static VAStatus vp9_render_buffer_impl(struct v4l2r_context *ctx,
 		    (codec->va_pic.profile != 0 && codec->va_pic.profile != 2) ||
 		    codec->va_pic.bit_depth != (codec->va_pic.profile ? 10 : 8))
 			return VA_STATUS_ERROR_INVALID_BUFFER;
-		/* A client can declare a different coded size inside a valid
-		 * context. Reject the AVD kernel's unsupported boundary here too,
-		 * before parsing or submitting controls. */
-		if (ctx->is_avd &&
-		    (codec->va_pic.frame_width < V4L2R_AVD_VP9_MIN_DIMENSION ||
-		     codec->va_pic.frame_height < V4L2R_AVD_VP9_MIN_DIMENSION ||
-		     codec->va_pic.frame_width > V4L2R_AVD_VP9_MAX_DIMENSION ||
-		     codec->va_pic.frame_height > V4L2R_AVD_VP9_MAX_DIMENSION))
+		/* Context creation does not validate every later picture's size.
+		 * Use the selected decoder's exact contract, including narrower
+		 * bounds, discrete pairs and step origins on generic backends. */
+		if (!v4l2r_context_dimensions(ctx, codec->va_pic.frame_width,
+					      codec->va_pic.frame_height)) {
+			v4l2r_diag(ctx, V4L2R_DIAG_LEVEL_WARNING, V4L2R_DIAG_UNSUPPORTED,
+				   "vp9-dimensions", 0,
+				   "VP9 coded dimensions %ux%u are outside the selected backend contract",
+				   codec->va_pic.frame_width, codec->va_pic.frame_height);
 			return VA_STATUS_ERROR_INVALID_BUFFER;
+		}
 		codec->have_pic = true;
 		return VA_STATUS_SUCCESS;
 	case VASliceParameterBufferType:
